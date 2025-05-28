@@ -46,6 +46,7 @@ class CanvasSelector:
             self.label_size_option.current(0)
         else:
             self.selected_label_size.set('')
+        self.update_canvas_size()
 
     def update_canvas_size(self, event=None):
         """Update the canvas size based on the selected label size."""
