@@ -108,4 +108,4 @@ class CanvasSelector:
 
     def mm_to_pixels(self, mm):
         inches = mm / 25.4
-        return int(inches * self.config.print_dpi)
+        return int(inches * self.config.label_sizes[self.config.device]["print_dpi"])
