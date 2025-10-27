@@ -26,9 +26,21 @@ class TextTab:
         elif self.config.os_system == "Windows":
             default_bg = 'systemButtonFace'
 
+        # Content label and multi-line text entry with scrollbar
         tk.Label(self.frame, text="Content", bg=default_bg).grid(row=0, column=0, sticky='nw')
-        self.content_entry = tk.Text(self.frame, highlightbackground=default_bg, height=3, width=30)
-        self.content_entry.grid(row=0, column=1, sticky='ew', padx=5)
+        
+        # Create frame to hold text widget and scrollbar
+        text_frame = tk.Frame(self.frame, bg=default_bg)
+        text_frame.grid(row=0, column=1, sticky='ew', padx=5)
+        
+        self.content_entry = tk.Text(text_frame, highlightbackground=default_bg, height=3, width=30)
+        self.content_entry.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        # Add scrollbar for longer text
+        scrollbar = tk.Scrollbar(text_frame, command=self.content_entry.yview)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.content_entry.config(yscrollcommand=scrollbar.set)
+        
         self.content_entry.insert("1.0", "Text")
 
         self.sample_text_label = tk.Label(self.frame, text="Sample Text", font=('Arial', 14), bg=default_bg)
