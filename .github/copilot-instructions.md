@@ -15,7 +15,7 @@ NiimPrintX is a Python library for interfacing with NiimBot label printers via B
 **Linux (Ubuntu/Debian):**
 ```bash
 sudo apt-get update
-sudo apt-get install -y imagemagick libmagickwand-dev python3-tk xvfb
+sudo apt-get install -y imagemagick libmagickwand-dev python3-tk xvfb libcairo2-dev pkg-config
 ```
 
 **macOS:**
@@ -29,13 +29,18 @@ export CFLAGS="-I/usr/local/opt/libffi/include"
 ### 2. Install Python Dependencies
 
 ```bash
-# Using pip
+# Using pip (Linux/CI)
+pip install -r requirements-ci.txt
+
+# Using pip (macOS - includes pyobjc packages)
 pip install -r requirements.txt
 
-# Or using Poetry
+# Or using Poetry (recommended)
 python -m venv venv
 poetry install
 ```
+
+**Note:** `requirements.txt` includes macOS-specific packages (pyobjc-*) which will fail on Linux. Use `requirements-ci.txt` for Linux/CI environments.
 
 ### 3. Running the Application
 
