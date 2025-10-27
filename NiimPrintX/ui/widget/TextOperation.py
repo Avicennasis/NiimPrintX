@@ -35,7 +35,8 @@ class TextOperation:
 
             # Create a new WandImage
             with WandImage(width=text_width, height=text_height, background=Color('transparent')) as img:
-                draw.text(x=2, y=int(text_height / 2 + metrics.ascender / 2), body=text)
+                # Position text at top using ascender for proper multi-line rendering
+                draw.text(x=2, y=int(metrics.ascender), body=text)
                 draw(img)
 
                 # Ensure the image is in RGBA format
