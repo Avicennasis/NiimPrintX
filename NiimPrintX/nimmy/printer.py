@@ -231,8 +231,6 @@ class PrinterClient:
             case _:
                 return packet_to_int(response)
 
-        return None
-
     async def get_rfid(self):
         packet = await self.send_command(RequestCodeEnum.GET_RFID, b"\x01")
         data = packet.data
@@ -362,10 +360,3 @@ class PrinterClient:
         page, progress1, progress2 = struct.unpack(">HBB", packet.data[:4])
         return {"page": page, "progress1": progress1, "progress2": progress2}
 
-    def __del__(self):
-        try:
-            if self.transport.client and self.transport.client.is_connected:
-                loop = asyncio.get_running_loop()
-                loop.create_task(self.disconnect())
-        except (RuntimeError, AttributeError):
-            pass

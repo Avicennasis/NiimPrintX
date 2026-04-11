@@ -12,29 +12,8 @@ from .widget.PrintOption import PrintOption
 from NiimPrintX.ui.widget.CanvasSelector import CanvasSelector
 from NiimPrintX.ui.widget.FileMenu import FileMenu
 
-from NiimPrintX.nimmy.printer import PrinterClient
-
 import asyncio
 import threading
-
-from loguru import logger
-
-
-logger.disable('NiimPrintX.nimmy')
-
-# import sys
-# import logging
-#
-# logging.basicConfig(level=logging.DEBUG, filename='/Users/dhivah/Documents/Personal/repos/NiimPrintX/logfile.log', filemode='w',
-#                     format='%(name)s - %(levelname)s - %(message)s')
-
-# def handle_exception(exc_type, exc_value, exc_traceback):
-#     if issubclass(exc_type, KeyboardInterrupt):
-#         sys.__exit__(0)
-#     else:
-#         logging.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
-#
-# sys.excepthook = handle_exception
 
 class LabelPrinterApp(tk.Tk):
     def __init__(self):
@@ -48,15 +27,6 @@ class LabelPrinterApp(tk.Tk):
         self.resizable(width=True, height=True)  # Allow window to be resizable
         self.protocol("WM_DELETE_WINDOW", self.on_close)
         self.withdraw()
-
-        # self.async_loop = asyncio.new_event_loop()
-        # threading.Thread(target=self.start_asyncio_loop, daemon=True).start()
-        #
-        # self.app_config = AppConfig()
-        # self.create_widgets()
-        # self.create_menu()
-        # self.printer = None
-        # self.load_resources()
 
     def load_resources(self):
         self.async_loop = asyncio.new_event_loop()

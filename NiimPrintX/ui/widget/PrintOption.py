@@ -26,19 +26,14 @@ class PrintOption:
 
     async def schedule_heartbeat(self):
         while True:
-            # debug(self.config.printer_connected, self.config.print_job)
             if self.print_op.printer and not self.config.print_job:
-                # debug("connected")
                 state, hb = await self.print_op.heartbeat()
                 self.root.after(0, lambda: self.update_status(state, hb))
             elif not self.config.print_job:
-                # debug("not connected")
                 self.root.after(0, lambda: self.update_status(False))
             await asyncio.sleep(5)
 
     def update_status(self, connected=False, hb_data=None):
-        # debug(hb_data)
-        # debug(f"Heartbeat received: {connected}")
         self.config.printer_connected = connected
         if not connected and self.connect_button["state"] != tk.DISABLED:
             self.connect_button.config(text="Connect")

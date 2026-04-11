@@ -28,18 +28,6 @@ async def find_device(device_name_prefix=None):
     raise BLEException(f"Failed to find device {device_name_prefix}")
 
 
-async def scan_devices(device_name=None):
-    print("Scanning for devices...")
-    devices = await BleakScanner.discover()
-    for device in devices:
-        if device_name:
-            if device.name and device_name.lower() in device.name.lower():
-                print(f"Found device: {device.name} at {device.address}")
-                return device
-        else:
-            print(f"Found device: {device.name} at {device.address}")
-    return None
-
 
 class BLETransport:
     def __init__(self, address=None):

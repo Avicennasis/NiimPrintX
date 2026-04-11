@@ -4,8 +4,7 @@ import json
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
-from tkinter import filedialog, font
-import pickle
+from tkinter import filedialog
 from PIL import Image, ImageTk
 
 class FileMenu:
@@ -83,16 +82,11 @@ class FileMenu:
             try:
                 with open(file_path, 'r') as f:
                     data = json.load(f)
-            except (json.JSONDecodeError, UnicodeDecodeError):
-                # Legacy pickle format — require user confirmation
-                if not messagebox.askokcancel(
-                    "Legacy File Format",
-                    "This file uses a legacy format. Only open files you trust.\n\n"
-                    "Re-save after opening to convert to the safe JSON format.\n\n"
-                    "Continue?"):
-                    return
-                with open(file_path, 'rb') as f:
-                    data = pickle.load(f)
+            except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as e:
+                messagebox.showerror("Error", f"Failed to open file: {e}\n\n"
+                                     "Only JSON .niim files are supported. Legacy pickle "
+                                     "files must be re-saved from an older version first.")
+                return
 
             # Validate required keys
             for key in ("device", "current_label_size", "text", "image"):

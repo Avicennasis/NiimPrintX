@@ -122,11 +122,6 @@ class TextTab:
             self.config.text_items[self.config.current_selected]['content'] = content
             self.text_op.update_canvas_text(self.config.current_selected)
 
-        # if widget_name == "font_dropdown":
-        #     self.bold_var.set(False)
-        #     self.italic_var.set(False)
-        #     self.underline_var.set(False)
-
     def get_font_properties(self):
         family = self.font_family_dropdown.get()
         try:

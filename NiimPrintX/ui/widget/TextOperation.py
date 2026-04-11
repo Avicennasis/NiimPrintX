@@ -1,6 +1,4 @@
 import tkinter as tk
-from tkinter import ttk
-from tkinter import font as tk_font
 import tkinter.messagebox as messagebox
 from wand.image import Image as WandImage
 from wand.drawing import Drawing as WandDrawing
