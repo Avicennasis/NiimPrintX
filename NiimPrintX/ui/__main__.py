@@ -48,6 +48,11 @@ if __name__ == "__main__":
         app.load_resources()  # Start loading resources, then show the main window
         app.after(5000, splash.destroy)  # Automatically destroy the splash screen after 5 seconds
         app.after(5000, app.deiconify)
+
+        # Open file from command-line if provided
+        if len(sys.argv) > 1 and os.path.isfile(sys.argv[1]):
+            app.after(100, lambda: app.file_menu.load_from_file(sys.argv[1]))
+
         app.mainloop()
     except Exception as e:
         print(f"Error {e}")

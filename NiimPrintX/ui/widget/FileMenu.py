@@ -75,8 +75,9 @@ class FileMenu:
             with open(file_path, 'wb') as f:
                 pickle.dump(data, f)
 
-    def load_from_file(self):
-        file_path = filedialog.askopenfilename(filetypes=[("NIIM files", "*.niim")])
+    def load_from_file(self, file_path=None):
+        if file_path is None:
+            file_path = filedialog.askopenfilename(filetypes=[("NIIM files", "*.niim")])
         if file_path:
             with open(file_path, 'rb') as f:
                 data = pickle.load(f)
