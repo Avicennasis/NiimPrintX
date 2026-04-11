@@ -50,11 +50,6 @@ class LabelPrinterApp(tk.Tk):
         self.create_widgets()
         self.create_menu()
         self.printer = None
-        self.after(5000, self.show_main_window)
-
-    def show_main_window(self):
-        self.deiconify()
-        self.lift()
 
     def create_menu(self):
         menu_bar = tk.Menu(self)
@@ -99,12 +94,10 @@ class LabelPrinterApp(tk.Tk):
 
     def on_close(self):
         if messagebox.askokcancel("Quit", "Do you want to quit?"):
+            self.async_loop.call_soon_threadsafe(self.async_loop.stop)
             self.destroy()
 
 if __name__ == "__main__":
-    try:
-        app = LabelPrinterApp()
-        app.load_resources()
-        app.mainloop()
-    except Exception as e:
-        raise e
+    app = LabelPrinterApp()
+    app.load_resources()
+    app.mainloop()
