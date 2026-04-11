@@ -1,8 +1,5 @@
 from PIL import Image, ImageTk
 
-from devtools import debug
-
-
 class ImageOperation:
     def __init__(self, config):
         self.config = config

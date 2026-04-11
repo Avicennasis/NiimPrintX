@@ -6,9 +6,6 @@ import tkinter.messagebox as messagebox
 from .TextOperation import TextOperation
 from ..component.FontList import fonts
 
-from devtools import debug
-
-
 class TextTab:
     def __init__(self, parent, config):
         self.parent = parent

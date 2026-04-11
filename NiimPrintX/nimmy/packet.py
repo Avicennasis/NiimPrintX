@@ -1,6 +1,3 @@
-from devtools import debug
-
-
 def packet_to_int(x):
     return int.from_bytes(x.data, "big")
 

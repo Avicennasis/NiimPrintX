@@ -3,9 +3,6 @@ from tkinter import messagebox
 from NiimPrintX.nimmy.bluetooth import find_device
 from NiimPrintX.nimmy.printer import PrinterClient
 
-from devtools import debug
-
-
 class PrinterOperation:
     def __init__(self, config):
         self.config = config

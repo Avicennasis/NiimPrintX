@@ -7,7 +7,6 @@ from tkinter import filedialog, font
 import pickle
 from PIL import Image, ImageTk
 
-from devtools import debug
 class FileMenu:
     def __init__(self, root, parent, config):
         self.root = root
@@ -35,7 +34,6 @@ class FileMenu:
             "image": {}
         }
         if self.config.text_items:
-            debug(self.config.text_items)
             for text_id, properties in self.config.text_items.items():
                 font_image = ImageTk.getimage(properties["font_image"])
                 with io.BytesIO() as buffer:

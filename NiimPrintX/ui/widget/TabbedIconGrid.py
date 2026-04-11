@@ -5,8 +5,6 @@ from tkinter import ttk
 from PIL import Image, ImageTk
 import threading
 
-from devtools import debug
-
 class TabbedIconGrid(tk.Frame):
     def __init__(self, parent, base_folder, icon_size=(50, 50), columns=8, on_icon_selected=None, **kwargs):
         super().__init__(parent, **kwargs)

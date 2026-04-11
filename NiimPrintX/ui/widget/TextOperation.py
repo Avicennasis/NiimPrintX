@@ -6,9 +6,6 @@ from wand.image import Image as WandImage
 from wand.drawing import Drawing as WandDrawing
 from wand.color import Color
 
-from devtools import debug
-
-
 class TextOperation:
     def __init__(self, parent, config):
         self.parent = parent

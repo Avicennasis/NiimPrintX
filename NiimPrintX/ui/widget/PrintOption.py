@@ -11,9 +11,6 @@ import tempfile
 
 from .PrinterOperation import PrinterOperation
 
-from devtools import debug
-
-
 class PrintOption:
     def __init__(self, root, parent, config):
         self.root = root
@@ -242,9 +239,7 @@ class PrintOption:
         button_frame.grid(row=3, column=0, columnspan=4, padx=20, pady=10, sticky="ew")
 
         self.print_button = tk.Button(button_frame, text="Print",
-                                      command=lambda image=self.print_image, density=self.print_density.get(),
-                                                     quantity=self.print_copy.get(): self.print_label(image, density,
-                                                                                                      quantity))
+                                      command=lambda: self.print_label(self.print_image, self.print_density.get(), self.print_copy.get()))
         self.print_button.grid(row=0, column=0, padx=5, pady=10, sticky="ew")
 
         close_button = tk.Button(button_frame, text="Close", command=popup.destroy)
@@ -263,7 +258,6 @@ class PrintOption:
     def update_image_offset(self):
         horizontal_offset = self.horizontal_offset.get()
         vertical_offset = self.vertical_offset.get()
-        debug(horizontal_offset, vertical_offset)
         self.print_image = self.export_to_png(output_filename=None,
                                               horizontal_offset=horizontal_offset,
                                               vertical_offset=vertical_offset)

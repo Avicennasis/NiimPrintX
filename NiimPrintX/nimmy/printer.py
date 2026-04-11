@@ -8,8 +8,6 @@ from .bluetooth import BLETransport
 from .logger_config import get_logger
 from .packet import NiimbotPacket, packet_to_int
 
-from devtools import debug
-
 logger = get_logger()
 
 

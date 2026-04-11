@@ -1,9 +1,6 @@
 import sys
 from loguru import logger
 
-from devtools import debug
-
-
 def setup_logger():
     logger.remove()
     default_level = "INFO"

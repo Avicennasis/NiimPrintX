@@ -36,7 +36,6 @@ logger.disable('NiimPrintX.nimmy')
 #
 # sys.excepthook = handle_exception
 
-from devtools import debug
 class LabelPrinterApp(tk.Tk):
     def __init__(self):
         super().__init__()
