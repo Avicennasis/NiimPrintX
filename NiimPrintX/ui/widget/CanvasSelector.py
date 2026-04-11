@@ -39,6 +39,7 @@ class CanvasSelector:
         device = self.selected_device.get().lower()
         if device:
             label_sizes = list(self.config.label_sizes[device]['size'].keys())
+            self.config.device = device
         else:
             label_sizes = []
         self.label_size_option['values'] = label_sizes
