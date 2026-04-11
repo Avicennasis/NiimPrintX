@@ -89,6 +89,9 @@ class PrinterClient:
             try:
                 if not self.transport.client or not self.transport.client.is_connected:
                     await self.connect()
+                # Clear stale state BEFORE arming notifications
+                self.notification_event.clear()
+                self.notification_data = None
                 packet = NiimbotPacket(request_code, data)
                 await self.transport.start_notification(self.char_uuid, self.notification_handler)
                 notifying = True
@@ -104,12 +107,15 @@ class PrinterClient:
             except BLEException as e:
                 logger.error(f"An error occurred: {e}")
                 raise PrinterException(f"BLE error during {RequestCodeEnum(request_code).name}: {e}")
+            except ValueError as e:
+                logger.error(f"Malformed response for {RequestCodeEnum(request_code).name}: {e}")
+                raise PrinterException(f"Malformed printer response: {e}")
             finally:
                 if notifying:
                     try:
                         await self.transport.stop_notification(self.char_uuid)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.warning(f"stop_notify failed: {e}")
                 self.notification_event.clear()
 
     async def write_raw(self, data):
