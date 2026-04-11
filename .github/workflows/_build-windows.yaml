@@ -12,7 +12,11 @@ jobs:
       - name: Extract Tag
         id: get_tag_name
         run: |
-          $version = $env:GITHUB_REF -replace 'refs/tags/', ''
+          if ($env:GITHUB_REF -like "refs/tags/*") {
+            $version = $env:GITHUB_REF -replace 'refs/tags/', ''
+          } else {
+            $version = ""
+          }
           echo "VERSION=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
       - name: Checkout source code
@@ -24,6 +28,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
+          python-version: '3.12'
           cache: 'poetry'
 
       - name: Install dependencies

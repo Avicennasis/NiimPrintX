@@ -1,4 +1,5 @@
 import asyncio
+import sys
 import click
 from PIL import Image
 from NiimPrintX.nimmy.bluetooth import find_device
@@ -22,7 +23,6 @@ logger = get_logger()
 def niimbot_cli(ctx, verbose):
     ctx.ensure_object(dict)
     ctx.obj['VERBOSE'] = verbose
-    setup_logger()
     logger_enable(verbose)
 
 
@@ -46,6 +46,7 @@ def niimbot_cli(ctx, verbose):
 @click.option(
     "-n",
     "--quantity",
+    type=click.IntRange(1, 65535),
     default=1,
     show_default=True,
     help="Print quantity",
@@ -91,6 +92,7 @@ def print_command(model, density, rotate, image, quantity, vertical_offset, hori
 
     # Cap density for models that only support 3 levels
     if model not in ("b21",) and density > 3:
+        print_info(f"Model {model.upper()} supports max density 3; capping from {density}")
         density = 3
     try:
         image = Image.open(image)
@@ -100,10 +102,15 @@ def print_command(model, density, rotate, image, quantity, vertical_offset, hori
             image = image.rotate(-int(rotate), expand=True)
         if image.width > max_width_px:
             print_error(f"Image width {image.width}px exceeds max {max_width_px}px for {model.upper()}")
-            return
-        asyncio.run(_print(model, density, image, quantity, vertical_offset, horizontal_offset))
+            sys.exit(1)
+        success = asyncio.run(_print(model, density, image, quantity, vertical_offset, horizontal_offset))
+        if not success:
+            sys.exit(1)
+    except SystemExit:
+        raise
     except Exception as e:
         print_error(f"{e}")
+        sys.exit(1)
 
 
 async def _print(model, density, image, quantity, vertical_offset, horizontal_offset):
@@ -114,7 +121,7 @@ async def _print(model, density, image, quantity, vertical_offset, horizontal_of
         printer = PrinterClient(device)
         if not await printer.connect():
             print_error("Failed to connect to printer")
-            return
+            return False
         print(f"Connected to {device.name}")
         if model == "b1":
             print_info("Printing with B1 model")
@@ -124,9 +131,11 @@ async def _print(model, density, image, quantity, vertical_offset, horizontal_of
             await printer.print_image(image, density=density, quantity=quantity, vertical_offset=vertical_offset,
                                       horizontal_offset=horizontal_offset)
         print_success("Print job completed")
+        return True
     except Exception as e:
         logger.debug(f"{e}")
         print_error(f"{e}")
+        return False
     finally:
         if printer:
             await printer.disconnect()
@@ -144,7 +153,9 @@ async def _print(model, density, image, quantity, vertical_offset, horizontal_of
 def info_command(model):
     logger.info("Niimbot Information")
     print_info("Niimbot Information")
-    asyncio.run(_info(model))
+    success = asyncio.run(_info(model))
+    if not success:
+        sys.exit(1)
 
 
 async def _info(model):
@@ -154,16 +165,18 @@ async def _info(model):
         printer = PrinterClient(device)
         if not await printer.connect():
             print_error("Failed to connect to printer")
-            return
+            return False
         device_serial = await printer.get_info(InfoEnum.DEVICESERIAL)
         software_version = await printer.get_info(InfoEnum.SOFTVERSION)
         hardware_version = await printer.get_info(InfoEnum.HARDVERSION)
         print(f"Device Serial : {device_serial}")
         print(f"Software Version : {software_version}")
         print(f"Hardware Version : {hardware_version}")
+        return True
     except Exception as e:
         logger.debug(f"{e}")
         print_error(e)
+        return False
     finally:
         if printer:
             await printer.disconnect()

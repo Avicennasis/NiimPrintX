@@ -2,6 +2,8 @@
 
 ## Remaining Upstream Issues (Need Hardware/Research)
 
+> These items are blocked on hardware availability or platform-specific testing and cannot be resolved without physical devices.
+
 - [ ] **#37 — B21S support** — May be similar to B21; needs hardware to verify protocol
 - [ ] **#34 — K3 support** — Unknown protocol; needs hardware research
 - [ ] **#23 — B3S support** — Unknown protocol; needs hardware research
@@ -10,10 +12,14 @@
 
 ## Known Protocol Issues (Need Hardware to Verify)
 
+> These protocol changes risk breaking working configurations. Do not implement without hardware to verify.
+
 - [ ] **D11_H 7-byte START_PRINT** — Upstream PR #36 comment by @MultiMote suggests D11_H needs a 7-byte START_PRINT packet (matching `start_printV2` format) instead of the 1-byte `start_print`. Users reported blank labels. D11_H may need routing through the V2 print path. Needs hardware testing before changing.
 - [ ] **B1 multi-copy printing** — `print_imageV2()` passes quantity to `start_printV2` and `set_dimensionV2` but only sends page data once. Upstream user @hadess confirmed multi-copy doesn't work. Unclear if firmware handles repetition or if the page block needs to loop. Needs B1 hardware testing.
 
 ## Upstream Issues to Close (No Code Needed)
+
+> Note: Issues are on upstream repo (labbots/NiimPrintX). Fork has issues disabled. These require manual commenting by maintainer.
 
 - [ ] **#44** — "Is project alive?" — Comment: fork is actively maintained
 - [ ] **#27** — French user wants Excel VBA printing — Point to CLI docs
@@ -22,22 +28,22 @@
 
 ## Future Improvements (Phase 3-6 from Round 4 Review)
 
-- [ ] **CI/CD pipeline** — Add test runner workflow, lint/type check, dependency audit, PR build check
-- [ ] **Expand test suite** — 50+ test cases identified; packet error-path tests done, need PrinterClient mocks, UserConfig merge, CLI CliRunner, bluetooth find_device
-- [ ] **User config documentation** — Document TOML config format in README
-- [ ] **Rotation UI control** (#38) — Add rotation slider/dropdown to the GUI for user-adjustable rotation
-- [ ] **Update Flatpak metadata** — Change developer_name from "labbots" to fork maintainer
-- [ ] **Screenshot for metainfo** — Add main-window.png (missing from PR #16 binary cherry-pick)
-- [ ] **README install instructions** — Fix contradictory venv + poetry install guidance
-- [ ] **Python version floor** — Document why >=3.12 (tomllib needs 3.11, bleak winrt needs 3.12)
+- [x] **CI/CD pipeline** — Add test runner workflow, lint/type check, dependency audit, PR build check
+- [x] **Expand test suite** — 60 tests total (UserConfig merge, CLI CliRunner, bluetooth find_device, PrinterClient heartbeat/validation/info)
+- [x] **User config documentation** — Document TOML config format in README
+- [x] **Rotation UI control** (#38) — Added rotation dropdown to print preview popup
+- [x] **Update Flatpak metadata** — Change developer_name from "labbots" to fork maintainer
+- [x] **Screenshot for metainfo** — Extracted main-window.png from NiimPrintX.gif
+- [x] **README install instructions** — Fix contradictory venv + poetry install guidance
+- [x] **Python version floor** — Document why >=3.12 (tomllib needs 3.11, bleak winrt needs 3.12)
 
-- [ ] **Error handling** — Add error handling to save_to_file, load_text/image, display_print, load_image (#69-74)
-- [ ] **Input validation** — Validate density spinbox, quantity IntRange, TOML config scalars (#45, #54, #55, #65)
-- [ ] **CLI exit codes** — CLI exits code 0 on all errors; needs sys.exit(1) (#62, #63)
-- [ ] **Dependencies** — Bump Pillow to ^12.1.1 (CVE fix), replace appdirs with platformdirs, remove unused devtools/pytest-asyncio
-- [ ] **GitHub Actions** — Fix Linux job name, macOS runtime_hooks, version extraction, poetry cache, apt-get update
-- [ ] **Performance** — Replace getpixel() loop with tobytes(), remove export_to_png double encode-decode
-- [ ] **Dead code cleanup** — Remove dead imports (asyncio, ttk, messagebox, PIL), commented-out code in TextTab
+- [x] **Error handling** — Add error handling to save_to_file, load_text/image, display_print, load_image (#69-74)
+- [x] **Input validation** — Validate density spinbox, quantity IntRange, TOML config scalars (#45, #54, #55, #65)
+- [x] **CLI exit codes** — CLI exits code 0 on all errors; needs sys.exit(1) (#62, #63)
+- [x] **Dependencies** — Bump Pillow to ^12.1.1 (CVE fix), replace appdirs with platformdirs, remove unused devtools
+- [x] **GitHub Actions** — Fix Linux job name, macOS runtime_hooks, version extraction, poetry cache, apt-get update
+- [x] **Performance** — Replace getpixel() loop with tobytes()
+- [x] **Dead code cleanup** — Remove dead imports, commented-out code in TextTab/CanvasSelector
 
 ## Code Review Fixes (2026-04-11, second session)
 
@@ -128,3 +134,11 @@
 - [x] User config file (TOML at ~/.config/NiimPrintX/)
 - [x] Modern Linux theming (sv-ttk Sun Valley)
 - [x] Test suite foundation (13 tests, all passing)
+
+## Burn Session 2 — Additional Improvements (2026-04-11)
+
+- [x] **Rotation UI control** (#38) — Rotation dropdown added to print preview popup
+- [x] **Screenshot for metainfo** — Extracted from NiimPrintX.gif
+- [x] **TextOperation cleanup** — Removed remaining commented-out code
+- [x] **Test expansion** — 75+ tests (image encoding verification, CLI exit codes, utility modules, get_rfid, integration)
+- [x] **Upstream issue triage** — Items documented as needing manual upstream access

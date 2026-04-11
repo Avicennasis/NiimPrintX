@@ -1,11 +1,11 @@
 import os
 import sys
-import appdirs
+import platformdirs
 from loguru import logger
 
 
 def _get_log_path():
-    log_dir = appdirs.user_log_dir('NiimPrintX')
+    log_dir = platformdirs.user_log_dir('NiimPrintX')
     os.makedirs(log_dir, exist_ok=True)
     return os.path.join(log_dir, "nimmy.log")
 
@@ -41,10 +41,9 @@ def logger_enable(verbose: int):
     new_level = levels.get(verbose, "DEBUG")
 
     # Remove existing handlers and re-add with new level
-    for handler_id in list(logger._core.handlers):
-        logger.remove(handler_id)
+    logger.remove()  # public API — removes all handlers atomically
 
-    logger.add(sys.stdout, colorize=True, format="<blue>{time}</blue> | <level>{level}</level> | {message}",
+    logger.add(sys.stderr, colorize=True, format="<blue>{time}</blue> | <level>{level}</level> | {message}",
                level=new_level)
     try:
         logger.add(_get_log_path(), rotation="100 MB", compression="zip", level=new_level)

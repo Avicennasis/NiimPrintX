@@ -14,6 +14,7 @@ class TabbedIconGrid(tk.Frame):
         self.on_icon_selected = on_icon_selected
         self.icon_cache = {}  # Store loaded icons to avoid redundant processing
         self.icon_references = {}  # Prevent PhotoImage GC
+        self.tab_names = {}  # tab_index → original folder name
 
         self.notebook = ttk.Notebook(self)
         self.create_tabs()
@@ -25,14 +26,17 @@ class TabbedIconGrid(tk.Frame):
             subfolder_path = os.path.join(self.base_folder, subfolder)
             if os.path.isdir(subfolder_path):
                 tab_frame = tk.Frame(self.notebook)
+                tab_index = self.notebook.index("end")
                 self.notebook.add(tab_frame, text=subfolder.capitalize())
+                self.tab_names[tab_index] = subfolder  # store original name
         self.notebook.bind("<<NotebookTabChanged>>", self.load_tab_icons)
 
     def load_tab_icons(self, event):
         """Load icons when a tab is selected."""
         notebook = event.widget
         selected_tab_index = notebook.index(notebook.select())  # Get the selected tab index
-        subfolder_name = notebook.tab(selected_tab_index, "text").lower()
+        subfolder_name = self.tab_names.get(selected_tab_index,
+                                             notebook.tab(selected_tab_index, "text").lower())
 
         # Get the corresponding tab frame
         tab_frame = notebook.nametowidget(notebook.tabs()[selected_tab_index])
@@ -41,15 +45,16 @@ class TabbedIconGrid(tk.Frame):
         if subfolder_name not in self.icon_cache:
             subfolder_path = os.path.join(self.base_folder, subfolder_name)
             self.icon_cache[subfolder_name] = self.create_icon_grid(tab_frame, subfolder_path, subfolder_name)
-            self.icon_cache[subfolder_name].bind("<MouseWheel>",
-                                                 lambda e, canvas=self.icon_cache[subfolder_name]: self.on_mouse_wheel(
-                                                     e, canvas))
 
         # Ensure the correct canvas is used for mouse wheel event
         self.icon_cache[subfolder_name].configure(scrollregion=self.icon_cache[subfolder_name].bbox("all"))
         self.icon_cache[subfolder_name].bind("<MouseWheel>",
                                              lambda e, canvas=self.icon_cache[subfolder_name]: self.on_mouse_wheel(e,
                                                                                                                    canvas))
+        self.icon_cache[subfolder_name].bind("<Button-4>",
+                                             lambda e, canvas=self.icon_cache[subfolder_name]: canvas.yview_scroll(-3, "units"))
+        self.icon_cache[subfolder_name].bind("<Button-5>",
+                                             lambda e, canvas=self.icon_cache[subfolder_name]: canvas.yview_scroll(3, "units"))
 
     def create_icon_grid(self, parent, folder, subfolder_name):
         """Create a scrollable icon grid for a given folder."""
@@ -73,16 +78,12 @@ class TabbedIconGrid(tk.Frame):
         h_scrollbar.pack(side="bottom", fill="x")  # Pack the horizontal scrollbar
         canvas.pack(side="left", fill="both", expand=True)
 
-        # canvas.grid(row=0, column=0, sticky="nsew")  # Fill the parent container with the canvas
-        # v_scrollbar.grid(row=0, column=1, sticky="ns")  # Attach the vertical scrollbar
-        # h_scrollbar.grid(row=1, column=0, sticky="ew")
+        canvas.bind("<Button-4>", lambda e, c=canvas: c.yview_scroll(-3, "units"))
+        canvas.bind("<Button-5>", lambda e, c=canvas: c.yview_scroll(3, "units"))
 
         # Asynchronous loading of icons
         threading.Thread(target=self.load_icons, args=(scrollable_frame, folder, subfolder_name), daemon=True).start()
         canvas.after(200, lambda: canvas.configure(scrollregion=canvas.bbox("all")))
-
-        # parent.grid_rowconfigure(0, weight=1)  # Allow the first row to expand
-        # parent.grid_columnconfigure(0, weight=1)
 
         return canvas
 
@@ -105,7 +106,7 @@ class TabbedIconGrid(tk.Frame):
                     pass  # skip corrupt files
         try:
             frame.after(0, lambda: self._create_icon_widgets(frame, pil_images, subfolder_name))
-        except Exception:
+        except tk.TclError:
             pass  # widget destroyed before thread completed
 
     def _create_icon_widgets(self, frame, pil_images, subfolder_name):

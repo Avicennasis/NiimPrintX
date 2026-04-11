@@ -32,9 +32,6 @@ class CanvasSelector:
         self.update_canvas_size()
         self.frame.pack(side=tk.LEFT)
 
-        # print_button = tk.Button(self.frame, text="Print")
-        # print_button.pack(side=tk.RIGHT, padx=10)
-
     def update_device_label_size(self, event=None):
         device = self.selected_device.get().lower()
         if device:

@@ -7,10 +7,10 @@
     </provides>
     <name>NiimPrintX</name>
     <summary>Create and print labels on Niimbot printers</summary>
-    <developer_name>labbots</developer_name>
-    <url type="homepage">https://github.com/labbots/NiimPrintX/</url>
-    <url type="vcs-browser">https://github.com/labbots/NiimPrintX/</url>
-    <url type="bugtracker">https://github.com/labbots/NiimPrintX/issues/</url>
+    <developer_name>Avicennasis</developer_name>
+    <url type="homepage">https://github.com/Avicennasis/NiimPrintX/</url>
+    <url type="vcs-browser">https://github.com/Avicennasis/NiimPrintX/</url>
+    <url type="bugtracker">https://github.com/Avicennasis/NiimPrintX/issues/</url>
     <metadata_license>0BSD</metadata_license>
     <project_license>GPL-3.0</project_license>
     <content_rating type="oars-1.1" />
@@ -20,7 +20,7 @@
     </recommends>
     <screenshots>
         <screenshot type="default">
-            <image>https://raw.githubusercontent.com/labbots/NiimPrintX/refs/heads/main/assets/linux/main-window.png</image>
+            <image>https://raw.githubusercontent.com/Avicennasis/NiimPrintX/refs/heads/main/assets/linux/main-window.png</image>
             <caption>Main window</caption>
         </screenshot>
     </screenshots>
@@ -30,6 +30,9 @@
       </p>
     </description>
     <releases>
+        <release version="0.2.2" date="2026-04-11">
+            <url>https://github.com/Avicennasis/NiimPrintX/releases/tag/v0.2.2</url>
+        </release>
         <release version="0.2.0" date="2026-04-11">
             <url>https://github.com/Avicennasis/NiimPrintX/releases/tag/v0.2.0</url>
         </release>

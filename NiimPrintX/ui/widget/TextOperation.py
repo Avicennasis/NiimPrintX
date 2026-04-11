@@ -12,7 +12,6 @@ class TextOperation:
     # Function to add text to canvas and make it draggable
     def create_text_image(self, font_props, text):
         with WandDrawing() as draw:
-            # draw.font = font_props["font_name"]
             draw.font_family = font_props["family"]
             draw.font_size = font_props["size"]
             if font_props["slant"] == 'italic':
@@ -29,9 +28,7 @@ class TextOperation:
             text_width = int(metrics.text_width) + 5
             text_height = int(metrics.text_height) + int(abs(metrics.descender)) + 2
 
-            with WandImage(width=text_width, height=text_height, background=Color('transparent')) as img:
-                # Set resolution on the IMAGE, not the Drawing (Drawing.resolution is a no-op)
-                img.resolution = (300, 300)
+            with WandImage(width=text_width, height=text_height, background=Color('transparent'), resolution=300) as img:
                 draw.text(x=2, y=int(metrics.ascender), body=text)
                 draw(img)
 
@@ -39,7 +36,6 @@ class TextOperation:
                 img.format = 'png'
                 img.alpha_channel = 'activate'  # Ensure alpha channel is active
                 img_blob = img.make_blob('png32')  # Use 'png32' for RGBA
-                # img.save(filename="test.png")
                 # Convert to format displayable in Tkinter
                 tk_image = tk.PhotoImage(data=img_blob)
                 return tk_image
@@ -88,7 +84,6 @@ class TextOperation:
         self.parent.content_entry.insert("1.0", text)
 
         self.parent.font_family_dropdown.set(font_prop["family"])
-        # self.parent.font_dropdown.set(font_prop["font"])
         self.parent.size_var.set(font_prop["size"])
         self.parent.kerning_var.set(font_prop["kerning"])
 
@@ -154,6 +149,9 @@ class TextOperation:
     def resize_text(self, event, text_id):
         dy = event.y - self.config.text_items[text_id]['initial_y']
         new_size = max(8, self.config.text_items[text_id]['initial_size'] + dy // 10)
+        # Skip expensive re-render if size hasn't actually changed
+        if new_size == self.config.text_items[text_id]["font_props"]['size']:
+            return
         self.config.text_items[text_id]["font_props"]['size'] = new_size
         tk_image = self.create_text_image(self.config.text_items[text_id]["font_props"],
                                           self.config.text_items[text_id]['content'])

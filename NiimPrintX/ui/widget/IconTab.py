@@ -1,8 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
-import tkinter.messagebox as messagebox
-
 from .ImageOperation import ImageOperation
 from .TabbedIconGrid import TabbedIconGrid
 

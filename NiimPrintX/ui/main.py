@@ -1,4 +1,3 @@
-import os
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
@@ -94,8 +93,20 @@ class LabelPrinterApp(tk.Tk):
 
     def on_close(self):
         if messagebox.askokcancel("Quit", "Do you want to quit?"):
-            self.async_loop.call_soon_threadsafe(self.async_loop.stop)
-            self.destroy()
+            # Schedule task cancellation on the async loop
+            async def _shutdown():
+                tasks = [t for t in asyncio.all_tasks(self.async_loop) if not t.done()]
+                for t in tasks:
+                    t.cancel()
+                if tasks:
+                    await asyncio.gather(*tasks, return_exceptions=True)
+                self.async_loop.stop()
+
+            self.async_loop.call_soon_threadsafe(
+                self.async_loop.create_task, _shutdown()
+            )
+            # Delay destroy to let async loop clean up
+            self.after(300, self.destroy)
 
 if __name__ == "__main__":
     app = LabelPrinterApp()

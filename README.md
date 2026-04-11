@@ -22,9 +22,13 @@ It provides both a Command-Line Interface (CLI) and a Graphical User Interface (
 ## Requirements
 To run NiimPrintX, you need to have the following installed:
 
-* Python 3.12 or later
+* **Python 3.12 or later** -- `bleak`'s winrt backend requires Python 3.12+, and the TOML config parser (`tomllib`) requires Python 3.11+
 * ImageMagick library
 * Poetry for dependency management
+
+### Supported Printer Models
+
+D11, D11_H, D101, D110, D110_M, B1, B18, B21
 
 
 ## Installation
@@ -38,11 +42,16 @@ Clone the repository:
 git clone https://github.com/labbots/NiimPrintX.git
 cd NiimPrintX
 ```
-Install the necessary dependencies using Poetry:
+Install the necessary dependencies using Poetry (Poetry manages its own virtual environment automatically):
 
 ```shell
-python -m venv venv
 poetry install
+```
+
+To include the optional GUI dependencies (Tkinter theme):
+
+```shell
+poetry install --extras gui
 ```
 
 ### Note:
@@ -56,6 +65,39 @@ export PKG_CONFIG_PATH="/usr/local/opt/libffi/lib/pkgconfig"
 export LDFLAGS="-L/usr/local/opt/libffi/lib"
 export CFLAGS="-I/usr/local/opt/libffi/include"
 ```
+
+
+## User Configuration
+
+NiimPrintX supports an optional TOML configuration file for customizing device settings and adding custom label sizes. The config file is located at:
+
+* **Linux/macOS:** `~/.config/NiimPrintX/config.toml`
+* **Windows:** `%LOCALAPPDATA%\NiimPrintX\config.toml`
+
+(The exact path is determined by [platformdirs](https://github.com/platformdirs/platformdirs).)
+
+### Example config.toml
+
+```toml
+# Add custom label sizes to an existing built-in device
+[devices.d110.size]
+"30mm x 15mm" = [30, 15]
+"custom" = [60, 20]
+
+# Define an entirely new device (must include at least one valid size)
+[devices.myprinter]
+density = 3
+print_dpi = 203
+rotation = -90
+
+[devices.myprinter.size]
+"50mm x 25mm" = [50, 25]
+```
+
+### How merging works
+
+* **Existing devices:** User-defined sizes are merged into the built-in size list. You can add new label sizes without losing the defaults.
+* **New devices:** You can define entirely new device entries. A new device must include at least one valid size (a `[width, height]` pair). Optional settings (`density`, `print_dpi`, `rotation`) default to `3`, `203`, and `-90` respectively if omitted.
 
 
 ## Usage

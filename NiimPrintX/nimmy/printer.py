@@ -120,7 +120,7 @@ class PrinterClient:
                 self.notification_event.clear()
 
     async def write_raw(self, data):
-        async with self._print_lock:
+        async with self._command_lock:
             try:
                 if not self.transport.client or not self.transport.client.is_connected:
                     await self.connect()
@@ -130,17 +130,17 @@ class PrinterClient:
                 raise PrinterException(f"BLE write failed: {e}")
 
     async def write_no_notify(self, request_code, data):
-        try:
-            if not self.transport.client or not self.transport.client.is_connected:
-                await self.connect()
-            packet = NiimbotPacket(request_code, data)
-            await self.transport.write(packet.to_bytes(), self.char_uuid)
-        except BLEException as e:
-            logger.error(f"Write error: {e}")
-            raise PrinterException(f"BLE write failed: {e}")
+        async with self._command_lock:
+            try:
+                if not self.transport.client or not self.transport.client.is_connected:
+                    await self.connect()
+                packet = NiimbotPacket(request_code, data)
+                await self.transport.write(packet.to_bytes(), self.char_uuid)
+            except BLEException as e:
+                logger.error(f"Write error: {e}")
+                raise PrinterException(f"BLE write failed: {e}")
 
     def notification_handler(self, sender, data):
-        # print(f"Notification from {sender}: {data}")
         logger.trace(f"Notification: {data}")
         self.notification_data = data
         self.notification_event.set()
@@ -153,7 +153,23 @@ class PrinterClient:
                 await self.set_label_type(1)
                 await self.start_print()
                 await self.start_page_print()
-                await self.set_dimension(image.height, image.width)
+
+                # Calculate post-offset dimensions
+                effective_height = image.height
+                effective_width = image.width
+                if horizontal_offset > 0:
+                    effective_width += horizontal_offset
+                elif horizontal_offset < 0:
+                    effective_width = max(0, effective_width + horizontal_offset)
+                if vertical_offset > 0:
+                    effective_height += vertical_offset
+                elif vertical_offset < 0:
+                    effective_height = max(0, effective_height + vertical_offset)
+
+                if effective_width == 0 or effective_height == 0:
+                    raise PrinterException("Image produces no data after applying offsets")
+
+                await self.set_dimension(effective_height, effective_width)
                 await self.set_quantity(quantity)
 
                 for pkt in self._encode_image(image, vertical_offset, horizontal_offset):
@@ -166,8 +182,12 @@ class PrinterClient:
                         raise PrinterException(f"BLE write failed: {e}")
                     await asyncio.sleep(0.01)
 
-                while not await self.end_page_print():
+                for _ in range(200):  # ~10 seconds at 0.05s interval
+                    if await self.end_page_print():
+                        break
                     await asyncio.sleep(0.05)
+                else:
+                    raise PrinterException("end_page_print timed out")
 
                 max_status_checks = 600  # ~60 seconds at 0.1s interval
                 status = {"page": 0, "progress1": 0, "progress2": 0}
@@ -192,7 +212,23 @@ class PrinterClient:
                 await self.set_label_type(1)
                 await self.start_printV2(quantity=quantity)
                 await self.start_page_print()
-                await self.set_dimensionV2(image.height, image.width, quantity)
+
+                # Calculate post-offset dimensions
+                effective_height = image.height
+                effective_width = image.width
+                if horizontal_offset > 0:
+                    effective_width += horizontal_offset
+                elif horizontal_offset < 0:
+                    effective_width = max(0, effective_width + horizontal_offset)
+                if vertical_offset > 0:
+                    effective_height += vertical_offset
+                elif vertical_offset < 0:
+                    effective_height = max(0, effective_height + vertical_offset)
+
+                if effective_width == 0 or effective_height == 0:
+                    raise PrinterException("Image produces no data after applying offsets")
+
+                await self.set_dimensionV2(effective_height, effective_width, quantity)
 
                 for pkt in self._encode_image(image, vertical_offset, horizontal_offset):
                     logger.debug(f"Sending packet: {pkt}")
@@ -206,7 +242,18 @@ class PrinterClient:
                     await asyncio.sleep(0.01)
 
                 await self.end_page_print()
-                await asyncio.sleep(2)
+
+                max_status_checks = 600
+                status = {"page": 0, "progress1": 0, "progress2": 0}
+                for _ in range(max_status_checks):
+                    status = await self.get_print_status()
+                    if status['page'] == quantity:
+                        break
+                    await asyncio.sleep(0.1)
+                else:
+                    raise PrinterException(f"Print status timeout: page {status['page']}/{quantity}")
+
+                await self.end_print()
             except PrinterException:
                 logger.error("B1 print job failed")
                 raise
@@ -217,13 +264,13 @@ class PrinterClient:
 
         # Apply horizontal offset
         if horizontal_offset > 0:
-            img = ImageOps.expand(img, border=(horizontal_offset, 0, 0, 0), fill=1)
+            img = ImageOps.expand(img, border=(horizontal_offset, 0, 0, 0), fill=0)
         elif horizontal_offset < 0:
             img = img.crop((-horizontal_offset, 0, img.width, img.height))
 
         # Apply vertical offset
         if vertical_offset > 0:
-            img = ImageOps.expand(img, border=(0, vertical_offset, 0, 0), fill=1)
+            img = ImageOps.expand(img, border=(0, vertical_offset, 0, 0), fill=0)
         elif vertical_offset < 0:
             img = img.crop((0, -vertical_offset, img.width, img.height))
 
@@ -231,9 +278,10 @@ class PrinterClient:
             return
 
         for y in range(img.height):
-            line_data = [img.getpixel((x, y)) for x in range(img.width)]
-            line_data = "".join("0" if pix == 0 else "1" for pix in line_data)
-            line_data = int(line_data, 2).to_bytes(math.ceil(img.width / 8), "big")
+            # Get row as packed bits (mode "1" tobytes gives MSB-first packed format)
+            row_bytes = img.crop((0, y, img.width, y + 1)).tobytes()
+            byte_count = math.ceil(img.width / 8)
+            line_data = row_bytes[:byte_count]
             counts = (0, 0, 0)  # It seems like you can always send zeros
             header = struct.pack(">H3BB", y, *counts, 1)
             pkt = NiimbotPacket(0x85, header + line_data)
@@ -311,6 +359,8 @@ class PrinterClient:
                 power_level = packet.data[9]
             case 9:
                 closing_state = packet.data[8]
+            case _:
+                logger.warning(f"Unrecognized heartbeat length {len(packet.data)}, cannot parse state")
 
         return {
             "closing_state": closing_state,
@@ -372,6 +422,8 @@ class PrinterClient:
         return bool(packet.data[0])
 
     async def set_quantity(self, n):
+        if not 0 <= n <= 65535:
+            raise ValueError(f"Quantity must be 0-65535, got {n}")
         packet = await self.send_command(RequestCodeEnum.SET_QUANTITY, struct.pack(">H", n))
         return bool(packet.data[0])
 

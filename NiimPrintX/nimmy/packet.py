@@ -13,19 +13,20 @@ class NiimbotPacket:
             raise ValueError(f"Packet too short: {len(pkt) if pkt else 0} bytes")
         if pkt[:2] != b"\x55\x55":
             raise ValueError(f"Invalid packet header: {pkt[:2].hex()}")
-        if pkt[-2:] != b"\xaa\xaa":
-            raise ValueError(f"Invalid packet footer: {pkt[-2:].hex()}")
         type_ = pkt[2]
         len_ = pkt[3]
-        if 4 + len_ + 3 > len(pkt):
+        expected_end = 4 + len_ + 3  # header(4) + data(len_) + checksum(1) + footer(2)
+        if expected_end > len(pkt):
             raise ValueError(f"Packet length field {len_} exceeds actual data: buffer is {len(pkt)} bytes")
+        if pkt[expected_end - 2 : expected_end] != b"\xaa\xaa":
+            raise ValueError(f"Invalid packet footer: {pkt[expected_end-2:expected_end].hex()}")
         data = pkt[4 : 4 + len_]
 
         checksum = type_ ^ len_
         for i in data:
             checksum ^= i
-        if checksum != pkt[-3]:
-            raise ValueError(f"Checksum mismatch: expected {checksum:#x}, got {pkt[-3]:#x}")
+        if checksum != pkt[expected_end - 3]:
+            raise ValueError(f"Checksum mismatch: expected {checksum:#x}, got {pkt[expected_end-3]:#x}")
 
         return cls(type_, data)
 

@@ -33,19 +33,11 @@ class BLETransport:
         self.address = address
         self.client = None
 
-    async def __aenter__(self):
-        if self.address:
-            self.client = BleakClient(self.address)
-            await self.client.connect()  # raises BleakError on failure
-            logger.info(f"Connected to {self.address}")
-        return self
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        if self.client:
-            await self.client.disconnect()
-            logger.info("Disconnected.")
-
     async def connect(self, address):
+        if self.client is not None and self.address != address:
+            # Address changed — disconnect old client first
+            await self.disconnect()
+        self.address = address
         if self.client is None:
             self.client = BleakClient(address)
         if not self.client.is_connected:
@@ -56,6 +48,7 @@ class BLETransport:
     async def disconnect(self):
         if self.client and self.client.is_connected:
             await self.client.disconnect()
+        self.client = None  # allow fresh client on next connect
 
     async def write(self, data, char_uuid):
         if self.client and self.client.is_connected:

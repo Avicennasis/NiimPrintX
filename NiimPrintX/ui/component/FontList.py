@@ -15,24 +15,36 @@ def fonts():
         elif platform.system() == "Windows":
             magick_path = os.path.join(imagemagick_base_path, 'magick.exe')
         elif platform.system() == "Linux":
-            magick_path = os.path.join(os.sep, 'usr', 'local', 'bin', 'convert')
+            magick_path = os.path.join(imagemagick_base_path, 'bin', 'magick')
         else:
             magick_path = 'magick'
     else:
         if platform.system() == "Linux":
-            magick_path = 'convert'
+            magick_path = 'magick'
         else:
             magick_path = 'magick'
 
     try:
         result = subprocess.run([magick_path, '-list', 'font'], stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE, text=True, encoding='utf8')
+        if result.returncode != 0:
+            raise FileNotFoundError("magick failed")
         output = result.stdout
         fonts_details = parse_font_details(output)
         grouped_fonts = group_fonts_by_family(fonts_details)
         return grouped_fonts
     except (FileNotFoundError, OSError):
-        # ImageMagick not installed — return empty font list
+        if magick_path == 'magick':
+            # Fallback to IM6 'convert' command
+            try:
+                result = subprocess.run(['convert', '-list', 'font'], stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE, text=True, encoding='utf8')
+                output = result.stdout
+                fonts_details = parse_font_details(output)
+                grouped_fonts = group_fonts_by_family(fonts_details)
+                return grouped_fonts
+            except (FileNotFoundError, OSError):
+                return {}
         return {}
 
 
@@ -44,17 +56,17 @@ def parse_font_details(output):
             if font:
                 font_details.append(font)
                 font = {}
-            font['name'] = line.split(':')[1].strip()
+            font['name'] = line.split(':', 1)[1].strip()
         elif line.startswith('    family:'):
-            font['family'] = line.split(':')[1].strip()
+            font['family'] = line.split(':', 1)[1].strip()
         elif line.startswith('    style:'):
-            font['style'] = line.split(':')[1].strip()
+            font['style'] = line.split(':', 1)[1].strip()
         elif line.startswith('    stretch:'):
-            font['stretch'] = line.split(':')[1].strip()
+            font['stretch'] = line.split(':', 1)[1].strip()
         elif line.startswith('    weight:'):
-            font['weight'] = line.split(':')[1].strip()
+            font['weight'] = line.split(':', 1)[1].strip()
         elif line.startswith('    glyphs:'):
-            font['glyphs'] = line.split(':')[1].strip()
+            font['glyphs'] = line.split(':', 1)[1].strip()
     if font:
         font_details.append(font)
     return font_details

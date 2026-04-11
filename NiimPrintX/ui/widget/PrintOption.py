@@ -26,11 +26,14 @@ class PrintOption:
 
     async def schedule_heartbeat(self):
         while True:
-            if self.print_op.printer and not self.config.print_job:
-                state, hb = await self.print_op.heartbeat()
-                self.root.after(0, lambda s=state, h=hb: self.update_status(s, h))
-            elif not self.config.print_job:
-                self.root.after(0, lambda: self.update_status(False))
+            try:
+                if self.print_op.printer and not self.config.print_job:
+                    state, hb = await self.print_op.heartbeat()
+                    self.root.after(0, lambda s=state, h=hb: self.update_status(s, h))
+                elif not self.config.print_job:
+                    self.root.after(0, lambda: self.update_status(False))
+            except tk.TclError:
+                return  # Root destroyed, exit heartbeat loop cleanly
             await asyncio.sleep(5)
 
     def update_status(self, connected=False, hb_data=None):
@@ -172,9 +175,11 @@ class PrintOption:
         # Create a new Toplevel window
         popup = tk.Toplevel(self.root)
         popup.title("Preview Image")
+        popup.grab_set()  # Make modal — prevents opening multiple popups
 
         # Load the PNG image with PIL and convert to ImageTk
         self.print_image = Image.open(filename)
+        self.print_image.load()  # Force decode before tempfile is removed
         img_tk = ImageTk.PhotoImage(self.print_image)
 
         # Create a Label to display the image
@@ -185,8 +190,8 @@ class PrintOption:
         option_frame = tk.Frame(popup)
         option_frame.grid(row=1, column=0, columnspan=4, padx=20, pady=10, sticky="ew")
 
-        self.print_density = tk.IntVar()
-        self.print_density.set(3)
+        self.print_density = tk.StringVar()
+        self.print_density.set("3")
         tk.Label(option_frame, text="Density").grid(row=0, column=0, padx=5, pady=5, sticky="e")
         density_slider = tk.Spinbox(option_frame,
                                     from_=1,
@@ -197,13 +202,24 @@ class PrintOption:
         density_slider.grid(row=0, column=1, padx=5, pady=5, sticky="w")
 
         tk.Label(option_frame, text="Copies").grid(row=0, column=2, padx=20, pady=5, sticky="e")
-        self.print_copy = tk.IntVar()
-        self.print_copy.set(1)
+        self.print_copy = tk.StringVar()
+        self.print_copy.set("1")
         print_copy_dropdown = tk.Spinbox(option_frame, from_=1, to=100,
                                          textvariable=self.print_copy,
                                          width=4
                                          )
         print_copy_dropdown.grid(row=0, column=3, padx=5, pady=5, sticky="w")
+
+        tk.Label(option_frame, text="Rotation").grid(row=0, column=4, padx=20, pady=5, sticky="e")
+        device_rotation = self.config.label_sizes[self.config.device].get("rotation", -90)
+        rotation_choices = ["0", "90", "180", "270"]
+        self.print_rotation = tk.StringVar()
+        # Set default to the device's configured rotation (convert negative to positive for display)
+        default_rot = str(device_rotation % 360)
+        self.print_rotation.set(default_rot)
+        rotation_dropdown = ttk.Combobox(option_frame, textvariable=self.print_rotation,
+                                          values=rotation_choices, state="readonly", width=4)
+        rotation_dropdown.grid(row=0, column=5, padx=5, pady=5, sticky="w")
 
         offset_frame = tk.Frame(popup)
         offset_frame.grid(row=2, column=0, columnspan=4, padx=20, pady=10, sticky="ew")
@@ -251,6 +267,7 @@ class PrintOption:
         # Ensure the frames are evenly spaced
         option_frame.grid_columnconfigure(1, weight=1)
         option_frame.grid_columnconfigure(3, weight=1)
+        option_frame.grid_columnconfigure(5, weight=1)
         offset_frame.grid_columnconfigure(1, weight=1)
         offset_frame.grid_columnconfigure(3, weight=1)
 
@@ -273,7 +290,27 @@ class PrintOption:
         self.print_button.config(state=tk.DISABLED)
         self.config.print_job = True
 
-        rotation = self.config.label_sizes[self.config.device].get("rotation", -90)
+        # Validate density
+        try:
+            density = int(density)
+        except (ValueError, TypeError):
+            density = 3
+        density = max(1, min(density, self.config.label_sizes[self.config.device]['density']))
+
+        # Validate quantity
+        try:
+            quantity = int(quantity)
+        except (ValueError, TypeError):
+            quantity = 1
+        quantity = max(1, min(quantity, 100))
+
+        try:
+            rotation = int(self.print_rotation.get())
+        except (ValueError, AttributeError):
+            rotation = self.config.label_sizes[self.config.device].get("rotation", -90) % 360
+
+        # PIL rotates counter-clockwise, so negate for clockwise
+        rotation = -rotation
         image = image.rotate(rotation, PIL.Image.NEAREST, expand=True)
         future = asyncio.run_coroutine_threadsafe(
             self.print_op.print(image, density, quantity), self.root.async_loop

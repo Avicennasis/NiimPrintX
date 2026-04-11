@@ -16,10 +16,10 @@ python = ">=3.12,<3.14"
 click = "^8.1.7"
 bleak = "^0.22.3"
 loguru = "^0.7.2"
-pillow = "^10.3.0"
+pillow = "^12.1.1"
 pycairo = "^1.26.0"
 wand = "^0.6.13"
-appdirs = "^1.4.4"
+platformdirs = "^4.0"
 rich = "^13.7.1"
 sv-ttk = {version = "^2.6", optional = true}
 
@@ -27,7 +27,6 @@ sv-ttk = {version = "^2.6", optional = true}
 gui = ["sv-ttk"]
 
 [tool.poetry.group.dev.dependencies]
-devtools = "^0.12.2"
 pyinstaller = "^6.6.0"
 pytest = "^8.0"
 pytest-asyncio = "^0.23"

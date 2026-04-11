@@ -5,28 +5,30 @@ class ImageOperation:
         self.config = config
 
     def load_image(self, file_path):
-
-        # Open the image and resize if necessary
-        image = Image.open(file_path)
+        try:
+            image = Image.open(file_path)
+        except Exception as e:
+            import tkinter.messagebox as messagebox
+            messagebox.showerror("Error", f"Failed to load image: {e}")
+            return
 
         x1, y1, x2, y2 = self.config.canvas.bbox(self.config.bounding_box)
         canvas_width = x2 - x1
         canvas_height = y2 - y1
 
-        # Resize the image if it exceeds canvas dimensions
         img_width, img_height = image.size
         scale_factor = min(canvas_width / img_width, canvas_height / img_height)
         new_width = int(img_width * scale_factor)
         new_height = int(img_height * scale_factor)
 
-        resized_image = image.convert("RGBA").resize((new_width, new_height), Image.Resampling.LANCZOS)
+        source_image = image.convert("RGBA")  # Keep full-res as original
+        resized_image = source_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
         img_tk = ImageTk.PhotoImage(resized_image)
 
-        # Add the image to the canvas
         image_id = self.config.canvas.create_image(0, 0, image=img_tk, anchor="nw")
         self.config.image_items[image_id] = {
             "image": img_tk,
-            "original_image": resized_image,
+            "original_image": source_image,  # Full-res, not resized
             "bbox": None,
             "handle": None
         }
@@ -75,6 +77,8 @@ class ImageOperation:
             self.config.current_selected_image = None
 
     def move_image(self, event, image_id):
+        if self.config.image_items[image_id].get("bbox") is None:
+            return
         """Move the selected image."""
         dx = event.x - self.config.image_items[image_id]["initial_x"]
         dy = event.y - self.config.image_items[image_id]["initial_y"]

@@ -1,8 +1,8 @@
-appdirs==1.4.4
+platformdirs>=4.0
 bleak==0.22.3
 click==8.1.7
 loguru==0.7.2
-pillow>=10.4.0
+pillow>=12.1.1
 pycairo==1.26.0
 rich==13.7.1
 Wand==0.6.13
