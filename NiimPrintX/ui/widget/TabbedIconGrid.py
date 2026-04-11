@@ -21,13 +21,12 @@ class TabbedIconGrid(tk.Frame):
 
     def create_tabs(self):
         """Create a tab for each subfolder."""
-        for subfolder in os.listdir(self.base_folder):
+        for subfolder in sorted(os.listdir(self.base_folder)):
             subfolder_path = os.path.join(self.base_folder, subfolder)
-
             if os.path.isdir(subfolder_path):
                 tab_frame = tk.Frame(self.notebook)
-                self.notebook.add(tab_frame, text=subfolder.capitalize())  # Add tab to notebook
-                self.notebook.bind("<<NotebookTabChanged>>", self.load_tab_icons)  # Bind tab switch event
+                self.notebook.add(tab_frame, text=subfolder.capitalize())
+        self.notebook.bind("<<NotebookTabChanged>>", self.load_tab_icons)
 
     def load_tab_icons(self, event):
         """Load icons when a tab is selected."""
@@ -69,7 +68,7 @@ class TabbedIconGrid(tk.Frame):
 
 
         # Add the scrollable frame to the canvas
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="n")
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
         v_scrollbar.pack(side="right", fill="y")  # Pack the vertical scrollbar
         h_scrollbar.pack(side="bottom", fill="x")  # Pack the horizontal scrollbar
         canvas.pack(side="left", fill="both", expand=True)
@@ -79,7 +78,7 @@ class TabbedIconGrid(tk.Frame):
         # h_scrollbar.grid(row=1, column=0, sticky="ew")
 
         # Asynchronous loading of icons
-        threading.Thread(target=self.load_icons, args=(scrollable_frame, folder, subfolder_name)).start()
+        threading.Thread(target=self.load_icons, args=(scrollable_frame, folder, subfolder_name), daemon=True).start()
         canvas.after(200, lambda: canvas.configure(scrollregion=canvas.bbox("all")))
 
         # parent.grid_rowconfigure(0, weight=1)  # Allow the first row to expand
@@ -89,15 +88,25 @@ class TabbedIconGrid(tk.Frame):
 
     def load_icons(self, frame, folder, subfolder_name):
         """Load PIL images in background thread, then create PhotoImages + widgets on main thread."""
-        icon_folder = f"{folder}/50x50"
+        icon_folder = os.path.join(folder, "50x50")
         pil_images = []
-        for filename in os.listdir(icon_folder):
+        try:
+            filenames = os.listdir(icon_folder)
+        except OSError:
+            return  # silently skip if 50x50/ doesn't exist
+        for filename in filenames:
             if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
                 image_path = os.path.join(icon_folder, filename)
-                pil_images.append((filename, Image.open(image_path), subfolder_name))
-
-        # Schedule PhotoImage creation + widget creation on the main thread
-        frame.after(0, lambda: self._create_icon_widgets(frame, pil_images, subfolder_name))
+                try:
+                    img = Image.open(image_path)
+                    img.load()  # force decode here, not lazily on main thread
+                    pil_images.append((filename, img, subfolder_name))
+                except Exception:
+                    pass  # skip corrupt files
+        try:
+            frame.after(0, lambda: self._create_icon_widgets(frame, pil_images, subfolder_name))
+        except Exception:
+            pass  # widget destroyed before thread completed
 
     def _create_icon_widgets(self, frame, pil_images, subfolder_name):
         """Create PhotoImages and icon grid widgets — must run on main thread."""

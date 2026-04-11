@@ -48,6 +48,7 @@ class PrinterClient:
         self.notification_event = asyncio.Event()
         self.notification_data = None
         self._command_lock = asyncio.Lock()
+        self._print_lock = asyncio.Lock()
 
     async def connect(self):
         if await self.transport.connect(self.device.address):
@@ -89,6 +90,9 @@ class PrinterClient:
             try:
                 if not self.transport.client or not self.transport.client.is_connected:
                     await self.connect()
+                # Clear stale state BEFORE arming notifications
+                self.notification_event.clear()
+                self.notification_data = None
                 packet = NiimbotPacket(request_code, data)
                 await self.transport.start_notification(self.char_uuid, self.notification_handler)
                 notifying = True
@@ -104,22 +108,26 @@ class PrinterClient:
             except BLEException as e:
                 logger.error(f"An error occurred: {e}")
                 raise PrinterException(f"BLE error during {RequestCodeEnum(request_code).name}: {e}")
+            except ValueError as e:
+                logger.error(f"Malformed response for {RequestCodeEnum(request_code).name}: {e}")
+                raise PrinterException(f"Malformed printer response: {e}")
             finally:
                 if notifying:
                     try:
                         await self.transport.stop_notification(self.char_uuid)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.warning(f"stop_notify failed: {e}")
                 self.notification_event.clear()
 
     async def write_raw(self, data):
-        try:
-            if not self.transport.client or not self.transport.client.is_connected:
-                await self.connect()
-            await self.transport.write(data.to_bytes(), self.char_uuid)
-        except BLEException as e:
-            logger.error(f"Write error: {e}")
-            raise PrinterException(f"BLE write failed: {e}")
+        async with self._print_lock:
+            try:
+                if not self.transport.client or not self.transport.client.is_connected:
+                    await self.connect()
+                await self.transport.write(data.to_bytes(), self.char_uuid)
+            except BLEException as e:
+                logger.error(f"Write error: {e}")
+                raise PrinterException(f"BLE write failed: {e}")
 
     async def write_no_notify(self, request_code, data):
         try:
@@ -137,58 +145,71 @@ class PrinterClient:
         self.notification_data = data
         self.notification_event.set()
 
-    async def print_image(self, image: Image, density: int = 3, quantity: int = 1, vertical_offset= 0,
-                          horizontal_offset = 0):
-        try:
-            await self.set_label_density(density)
-            await self.set_label_type(1)
-            await self.start_print()
-            await self.start_page_print()
-            await self.set_dimension(image.height, image.width)
-            await self.set_quantity(quantity)
+    async def print_image(self, image: Image, density: int = 3, quantity: int = 1, vertical_offset=0,
+                          horizontal_offset=0):
+        async with self._print_lock:
+            try:
+                await self.set_label_density(density)
+                await self.set_label_type(1)
+                await self.start_print()
+                await self.start_page_print()
+                await self.set_dimension(image.height, image.width)
+                await self.set_quantity(quantity)
 
-            for pkt in self._encode_image(image, vertical_offset, horizontal_offset):
-                # Send each line and wait for a response or status check
-                await self.write_raw(pkt)
-                # Adding a short delay or status check here can help manage buffer issues
-                await asyncio.sleep(0.01)  # Adjust the delay as needed based on printer feedback
+                for pkt in self._encode_image(image, vertical_offset, horizontal_offset):
+                    try:
+                        if not self.transport.client or not self.transport.client.is_connected:
+                            await self.connect()
+                        await self.transport.write(pkt.to_bytes(), self.char_uuid)
+                    except BLEException as e:
+                        logger.error(f"Write error: {e}")
+                        raise PrinterException(f"BLE write failed: {e}")
+                    await asyncio.sleep(0.01)
 
-            while not await self.end_page_print():
-                await asyncio.sleep(0.05)
+                while not await self.end_page_print():
+                    await asyncio.sleep(0.05)
 
-            max_status_checks = 600  # ~60 seconds at 0.1s interval
-            for _ in range(max_status_checks):
-                status = await self.get_print_status()
-                if status['page'] == quantity:
-                    break
-                await asyncio.sleep(0.1)
-            else:
-                raise PrinterException(f"Print status timeout: page {status['page']}/{quantity}")
+                max_status_checks = 600  # ~60 seconds at 0.1s interval
+                status = {"page": 0, "progress1": 0, "progress2": 0}
+                for _ in range(max_status_checks):
+                    status = await self.get_print_status()
+                    if status['page'] == quantity:
+                        break
+                    await asyncio.sleep(0.1)
+                else:
+                    raise PrinterException(f"Print status timeout: page {status['page']}/{quantity}")
 
-            await self.end_print()
-        except PrinterException:
-            logger.error("Print job failed")
-            raise
+                await self.end_print()
+            except PrinterException:
+                logger.error("Print job failed")
+                raise
 
     async def print_imageV2(self, image: Image, density: int = 3, quantity: int = 1, vertical_offset=0,
                             horizontal_offset=0):
-        try:
-            await self.set_label_density(density)
-            await self.set_label_type(1)
-            await self.start_printV2(quantity=quantity)
-            await self.start_page_print()
-            await self.set_dimensionV2(image.height, image.width, quantity)
+        async with self._print_lock:
+            try:
+                await self.set_label_density(density)
+                await self.set_label_type(1)
+                await self.start_printV2(quantity=quantity)
+                await self.start_page_print()
+                await self.set_dimensionV2(image.height, image.width, quantity)
 
-            for pkt in self._encode_image(image, vertical_offset, horizontal_offset):
-                logger.debug(f"Sending packet: {pkt}")
-                await self.write_raw(pkt)
-                await asyncio.sleep(0.01)
+                for pkt in self._encode_image(image, vertical_offset, horizontal_offset):
+                    logger.debug(f"Sending packet: {pkt}")
+                    try:
+                        if not self.transport.client or not self.transport.client.is_connected:
+                            await self.connect()
+                        await self.transport.write(pkt.to_bytes(), self.char_uuid)
+                    except BLEException as e:
+                        logger.error(f"Write error: {e}")
+                        raise PrinterException(f"BLE write failed: {e}")
+                    await asyncio.sleep(0.01)
 
-            await self.end_page_print()
-            await asyncio.sleep(2)
-        except PrinterException:
-            logger.error("B1 print job failed")
-            raise
+                await self.end_page_print()
+                await asyncio.sleep(2)
+            except PrinterException:
+                logger.error("B1 print job failed")
+                raise
 
     def _encode_image(self, image: Image, vertical_offset=0, horizontal_offset=0):
         # Convert the image to monochrome
@@ -288,7 +309,6 @@ class PrinterClient:
             case 10:
                 closing_state = packet.data[8]
                 power_level = packet.data[9]
-                rfid_read_state = packet.data[9]
             case 9:
                 closing_state = packet.data[8]
 
@@ -338,16 +358,16 @@ class PrinterClient:
         packet = await self.send_command(RequestCodeEnum.ALLOW_PRINT_CLEAR, b"\x01")
         return bool(packet.data[0])
 
-    async def set_dimension(self, w, h):
+    async def set_dimension(self, height, width):
         packet = await self.send_command(
-            RequestCodeEnum.SET_DIMENSION, struct.pack(">HH", w, h)
+            RequestCodeEnum.SET_DIMENSION, struct.pack(">HH", height, width)
         )
         return bool(packet.data[0])
 
-    async def set_dimensionV2(self, w, h, copies):
-        logger.debug(f"Setting dimension: {w}x{h}")
+    async def set_dimensionV2(self, height, width, copies):
+        logger.debug(f"Setting dimension: {height}x{width}")
         packet = await self.send_command(
-            RequestCodeEnum.SET_DIMENSION, struct.pack(">HHH", w, h, copies)
+            RequestCodeEnum.SET_DIMENSION, struct.pack(">HHH", height, width, copies)
         )
         return bool(packet.data[0])
 

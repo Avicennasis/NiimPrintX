@@ -22,14 +22,16 @@ class TextOperation:
             if font_props["underline"]:
                 draw.text_decoration = 'underline'
             draw.text_kerning = font_props["kerning"]
-            draw.fill_color = Color('black')  # Set font color to black
-            draw.resolution = (300, 300)  # 300 DPI for high quality text rendering
-            metrics = draw.get_font_metrics(WandImage(width=1, height=1), text, multiline=True)
+            draw.fill_color = Color('black')
+            # Get font metrics using a context-managed probe image
+            with WandImage(width=1, height=1) as probe:
+                metrics = draw.get_font_metrics(probe, text, multiline=True)
             text_width = int(metrics.text_width) + 5
-            text_height = int(metrics.text_height) + 5
+            text_height = int(metrics.text_height) + int(abs(metrics.descender)) + 2
 
-            # Create a new WandImage
             with WandImage(width=text_width, height=text_height, background=Color('transparent')) as img:
+                # Set resolution on the IMAGE, not the Drawing (Drawing.resolution is a no-op)
+                img.resolution = (300, 300)
                 draw.text(x=2, y=int(metrics.ascender), body=text)
                 draw(img)
 

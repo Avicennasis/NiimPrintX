@@ -10,18 +10,16 @@ def load_libraries():
     if hasattr(sys, '_MEIPASS'):
         base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
         magick_path = os.path.join(base_path, 'imagemagick')
-        env = os.environ.copy()
 
         if platform.system() == "Linux" or platform.system() == "Darwin":
-            env['MAGICK_HOME'] = magick_path
-            env['PATH'] = os.path.join(magick_path, 'bin') + os.pathsep + env['PATH']
-            env['LD_LIBRARY_PATH'] = os.path.join(magick_path, 'lib') + os.pathsep + env.get(
-                'LD_LIBRARY_PATH', '')
-            env['MAGICK_CONFIGURE_PATH'] = os.path.join(magick_path, 'etc', 'ImageMagick-7')
+            os.environ['MAGICK_HOME'] = magick_path
+            os.environ['PATH'] = os.path.join(magick_path, 'bin') + os.pathsep + os.environ.get('PATH', '')
+            os.environ['LD_LIBRARY_PATH'] = os.path.join(magick_path, 'lib') + os.pathsep + os.environ.get('LD_LIBRARY_PATH', '')
+            os.environ['MAGICK_CONFIGURE_PATH'] = os.path.join(magick_path, 'etc', 'ImageMagick-7')
             os.environ['DYLD_LIBRARY_PATH'] = magick_path + ':' + os.environ.get('DYLD_LIBRARY_PATH', '')
         elif platform.system() == "Windows":
-            env['MAGICK_HOME'] = magick_path
-            env['PATH'] = magick_path + os.pathsep + env['PATH']
+            os.environ['MAGICK_HOME'] = magick_path
+            os.environ['PATH'] = magick_path + os.pathsep + os.environ.get('PATH', '')
 
 
 load_libraries()

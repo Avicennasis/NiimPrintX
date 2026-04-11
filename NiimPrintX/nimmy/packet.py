@@ -17,6 +17,8 @@ class NiimbotPacket:
             raise ValueError(f"Invalid packet footer: {pkt[-2:].hex()}")
         type_ = pkt[2]
         len_ = pkt[3]
+        if 4 + len_ + 3 > len(pkt):
+            raise ValueError(f"Packet length field {len_} exceeds actual data: buffer is {len(pkt)} bytes")
         data = pkt[4 : 4 + len_]
 
         checksum = type_ ^ len_
