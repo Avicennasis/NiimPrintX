@@ -164,3 +164,29 @@
 - [x] **Print error feedback** — Error dialog shown to user on print failure
 - [x] **File load validation** — Cross-device .niim load validates before canvas rebuild
 - [x] **Test cleanup** — _make_client consolidated in conftest, imports sorted, 112 tests
+
+## Round 8 Deep Code Review (2026-04-11)
+
+- [x] **20-agent review** — 120+ findings (19 critical, 45 important, 25 medium)
+- [x] **21-agent fix session** — All critical and important fixes applied across 47 files
+- [x] **Protocol routing** — B18/B21 now correctly routed to V2 in GUI (was V1-only, CLI was correct)
+- [x] **Code dedup** — print_image/print_imageV2 consolidated into shared _print_job helper (170 LOC eliminated)
+- [x] **Memory leaks** — PIL per-row crop replaced with tobytes+slice; intermediate images explicitly closed
+- [x] **Linux fixes** — <Button1-Motion> → <B1-Motion> (image drag), .ico → .png icon in spec
+- [x] **Security** — Decompression bomb bypass closed (MAX_IMAGE_PIXELS before open), data[0] length guards on 10 parsers
+- [x] **Crash fixes** — Empty text WandImage(0,0), canvas.coords ValueError, export_to_png on None canvas
+- [x] **App lifecycle** — Shutdown timeout (3s force-destroy), on_close re-entrant guard, CancelledError catch
+- [x] **BLE hardening** — Write timeout (10s), stale BleakClient reuse fixed, stop_notification state cleanup
+- [x] **PyInstaller** — Windows CLI a.zipfiles removed (PyInstaller 6), Linux hiddenimports, macOS Bluetooth entitlement, MAGICK_HOME cache fix, desktop entry Exec fixed
+- [x] **CI/CD** — SHA-pinned all actions, Poetry pinned in builds, Python 3.13 matrix, coverage enforcement, ruff format check, S/PT/DTZ lint rules
+- [x] **Config** — d110_m label sizes, rotation validation (multiples of 90), differentiated TOML exceptions, wand import guard
+- [x] **Dependencies** — License SPDX fixed, ruff pinned, pytest-asyncio widened, pyinstaller floor tightened, bleak upgrade TODO documented
+- [x] **Tests** — 112 → 129 tests, removed 52 redundant @pytest.mark.asyncio, fixed leaked event loops
+- [x] **README** — Community Contributors section crediting 8 PR authors + 12 issue reporters from upstream
+
+## Outstanding (Deferred)
+
+- [ ] **Bleak migration** — bleak 0.22.x → 1.0+ has breaking API changes; needs dedicated session
+- [ ] **ImageMagick Windows URL** — Download URL still hardcoded; needs auto-latest or GitHub Releases pin
+- [ ] **Ruff format compliance** — `ruff format --check` added to CI but formatter not run yet; first CI run may surface new findings from S/PT/DTZ rules
+- [ ] **Version bump to v0.5.0** — Should bump before tagging release
