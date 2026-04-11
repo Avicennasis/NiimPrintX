@@ -51,8 +51,12 @@ class CanvasSelector:
 
     def update_canvas_size(self, event=None):
         """Update the canvas size based on the selected label size."""
-        self.config.device = self.selected_device.get().lower()
-        self.config.current_label_size = self.selected_label_size.get()
+        device = self.selected_device.get().lower()
+        label_size = self.selected_label_size.get()
+        if not device or device not in self.config.label_sizes or not label_size:
+            return
+        self.config.device = device
+        self.config.current_label_size = label_size
         label_width_mm, label_height_mm = self.config.label_sizes[self.config.device]['size'][self.config.current_label_size]
 
         # Convert the label size to pixels
