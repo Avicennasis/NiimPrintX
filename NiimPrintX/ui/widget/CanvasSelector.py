@@ -47,6 +47,7 @@ class CanvasSelector:
             self.label_size_option.current(0)
         else:
             self.selected_label_size.set('')
+        self.update_canvas_size()
 
     def update_canvas_size(self, event=None):
         """Update the canvas size based on the selected label size."""
@@ -109,4 +110,4 @@ class CanvasSelector:
 
     def mm_to_pixels(self, mm):
         inches = mm / 25.4
-        return int(inches * self.config.print_dpi)
+        return int(inches * self.config.label_sizes[self.config.device]["print_dpi"])
