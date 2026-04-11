@@ -11,7 +11,7 @@ packages = [{include = "*", from="NiimPrintX"}]
 [tool.poetry.dependencies]
 python = ">=3.12,<3.14"
 click = "^8.1.7"
-bleak = "^0.21.1"
+bleak = "^0.22.3"
 loguru = "^0.7.2"
 pillow = "^10.3.0"
 pycairo = "^1.26.0"
