@@ -8,6 +8,11 @@
 - [ ] **#18 — macOS CoreBluetooth "Event loop is closed" crash** — bleak async lifecycle bug on macOS Big Sur; may be fixed by bleak 0.22.3 upgrade (needs macOS testing)
 - [ ] **#10 — Phomemo printer support** — Different brand/protocol; likely out of scope
 
+## Known Protocol Issues (Need Hardware to Verify)
+
+- [ ] **D11_H 7-byte START_PRINT** — Upstream PR #36 comment by @MultiMote suggests D11_H needs a 7-byte START_PRINT packet (matching `start_printV2` format) instead of the 1-byte `start_print`. Users reported blank labels. D11_H may need routing through the V2 print path. Needs hardware testing before changing.
+- [ ] **B1 multi-copy printing** — `print_imageV2()` passes quantity to `start_printV2` and `set_dimensionV2` but only sends page data once. Upstream user @hadess confirmed multi-copy doesn't work. Unclear if firmware handles repetition or if the page block needs to loop. Needs B1 hardware testing.
+
 ## Upstream Issues to Close (No Code Needed)
 
 - [ ] **#44** — "Is project alive?" — Comment: fork is actively maintained

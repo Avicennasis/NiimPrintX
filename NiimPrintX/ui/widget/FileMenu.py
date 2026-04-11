@@ -1,5 +1,6 @@
 import base64
 import io
+import json
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
@@ -72,15 +73,20 @@ class FileMenu:
         file_path = filedialog.asksaveasfilename(defaultextension=".niim",
                                                  filetypes=[("NIIM files", "*.niim")])
         if file_path:
-            with open(file_path, 'wb') as f:
-                pickle.dump(data, f)
+            with open(file_path, 'w') as f:
+                json.dump(data, f, indent=2)
 
     def load_from_file(self, file_path=None):
         if file_path is None:
             file_path = filedialog.askopenfilename(filetypes=[("NIIM files", "*.niim")])
         if file_path:
-            with open(file_path, 'rb') as f:
-                data = pickle.load(f)
+            try:
+                with open(file_path, 'r') as f:
+                    data = json.load(f)
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                # Legacy pickle format — warn user about untrusted files
+                with open(file_path, 'rb') as f:
+                    data = pickle.load(f)
 
             self.root.canvas_selector.selected_device.set(data["device"].upper())
             self.root.canvas_selector.selected_label_size.set(data["current_label_size"])

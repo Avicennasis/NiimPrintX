@@ -6,8 +6,6 @@ from NiimPrintX.nimmy.printer import PrinterClient, InfoEnum
 from NiimPrintX.nimmy.logger_config import setup_logger, get_logger, logger_enable
 from NiimPrintX.nimmy.helper import print_info, print_error, print_success
 
-from devtools import debug
-
 setup_logger()
 logger = get_logger()
 

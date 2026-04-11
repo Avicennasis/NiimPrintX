@@ -8,10 +8,21 @@ logger = get_logger()
 
 
 async def find_device(device_name_prefix=None):
-    devices = await BleakScanner.discover()
-    for device in devices:
-        if device.name and device.name.lower().startswith(device_name_prefix.lower()) and len(device.metadata.get('uuids', [])) == 0:
-            return device
+    devices = await BleakScanner.discover(return_adv=True)
+    # For D110 variants, prefer the device without service UUIDs.
+    # D110 appears as two BLE devices; the printing-capable one has no UUIDs.
+    is_d110 = device_name_prefix.lower().startswith("d110")
+    fallback = None
+    for address, (device, adv_data) in devices.items():
+        if device.name and device.name.lower().startswith(device_name_prefix.lower()):
+            if is_d110:
+                if len(adv_data.service_uuids) == 0:
+                    return device
+                fallback = device
+            else:
+                return device
+    if fallback:
+        return fallback
     raise BLEException(f"Failed to find device {device_name_prefix}")
 
 

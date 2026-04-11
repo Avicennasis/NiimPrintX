@@ -293,7 +293,7 @@ class PrinterClient:
 
     async def start_printV2(self, quantity):
         assert 0 <= quantity <= 65535
-        command = struct.pack('H', quantity)
+        command = struct.pack('>H', quantity)
         packet = await self.send_command(RequestCodeEnum.START_PRINT, b'\x00' + command + b'\x00\x00\x00\x00')
         return bool(packet.data[0])
 
