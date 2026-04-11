@@ -109,6 +109,11 @@ class AppConfig:
             }
         }
         self.current_label_size = None
+        # Merge user config for custom label sizes
+        from NiimPrintX.ui.UserConfig import load_user_config, merge_label_sizes
+        user_config = load_user_config()
+        if user_config:
+            self.label_sizes = merge_label_sizes(self.label_sizes, user_config)
         self.frames = {}
         self.print_job = False
         self.printer_connected = False
