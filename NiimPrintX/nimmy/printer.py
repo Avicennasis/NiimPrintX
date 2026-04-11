@@ -98,8 +98,10 @@ class PrinterClient:
             return response
         except asyncio.TimeoutError:
             logger.error(f"Timeout occurred for request {RequestCodeEnum(request_code).name}")
+            raise PrinterException(f"Printer timed out on {RequestCodeEnum(request_code).name}")
         except BLEException as e:
             logger.error(f"An error occurred: {e}")
+            raise PrinterException(f"BLE error during {RequestCodeEnum(request_code).name}: {e}")
 
     async def write_raw(self, data):
         try:
@@ -126,45 +128,53 @@ class PrinterClient:
 
     async def print_image(self, image: Image, density: int = 3, quantity: int = 1, vertical_offset= 0,
                           horizontal_offset = 0):
-        await self.set_label_density(density)
-        await self.set_label_type(1)
-        await self.start_print()
-        await self.start_page_print()
-        await self.set_dimension(image.height, image.width)
-        await self.set_quantity(quantity)
+        try:
+            await self.set_label_density(density)
+            await self.set_label_type(1)
+            await self.start_print()
+            await self.start_page_print()
+            await self.set_dimension(image.height, image.width)
+            await self.set_quantity(quantity)
 
-        for pkt in self._encode_image(image, vertical_offset, horizontal_offset):
-            # Send each line and wait for a response or status check
-            await self.write_raw(pkt)
-            # Adding a short delay or status check here can help manage buffer issues
-            await asyncio.sleep(0.01)  # Adjust the delay as needed based on printer feedback
+            for pkt in self._encode_image(image, vertical_offset, horizontal_offset):
+                # Send each line and wait for a response or status check
+                await self.write_raw(pkt)
+                # Adding a short delay or status check here can help manage buffer issues
+                await asyncio.sleep(0.01)  # Adjust the delay as needed based on printer feedback
 
-        while not await self.end_page_print():
-            await asyncio.sleep(0.05)
+            while not await self.end_page_print():
+                await asyncio.sleep(0.05)
 
-        while True:
-            status = await self.get_print_status()
-            if status['page'] == quantity:
-                break
-            await asyncio.sleep(0.1)
+            while True:
+                status = await self.get_print_status()
+                if status['page'] == quantity:
+                    break
+                await asyncio.sleep(0.1)
 
-        await self.end_print()
+            await self.end_print()
+        except PrinterException:
+            logger.error("Print job failed")
+            raise
 
     async def print_imageV2(self, image: Image, density: int = 3, quantity: int = 1, vertical_offset=0,
                             horizontal_offset=0):
-        await self.set_label_density(density)
-        await self.set_label_type(1)
-        await self.start_printV2(quantity=quantity)
-        await self.start_page_print()
-        await self.set_dimensionV2(image.height, image.width, quantity)
+        try:
+            await self.set_label_density(density)
+            await self.set_label_type(1)
+            await self.start_printV2(quantity=quantity)
+            await self.start_page_print()
+            await self.set_dimensionV2(image.height, image.width, quantity)
 
-        for pkt in self._encode_image(image, vertical_offset, horizontal_offset):
-            logger.debug(f"Sending packet: {pkt}")
-            await self.write_raw(pkt)
-            await asyncio.sleep(0.01)
+            for pkt in self._encode_image(image, vertical_offset, horizontal_offset):
+                logger.debug(f"Sending packet: {pkt}")
+                await self.write_raw(pkt)
+                await asyncio.sleep(0.01)
 
-        await self.end_page_print()
-        await asyncio.sleep(2)
+            await self.end_page_print()
+            await asyncio.sleep(2)
+        except PrinterException:
+            logger.error("B1 print job failed")
+            raise
 
     def _encode_image(self, image: Image, vertical_offset=0, horizontal_offset=0):
         # Convert the image to monochrome
