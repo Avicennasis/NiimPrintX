@@ -23,6 +23,7 @@ def _make_client():
     client.notification_event = asyncio.Event()
     client.notification_data = None
     client._command_lock = asyncio.Lock()
+    client._print_lock = asyncio.Lock()
     return client
 
 
