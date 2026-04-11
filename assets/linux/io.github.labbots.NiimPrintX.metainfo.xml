@@ -30,6 +30,9 @@
       </p>
     </description>
     <releases>
+        <release version="0.3.0" date="2026-04-11">
+            <url>https://github.com/Avicennasis/NiimPrintX/releases/tag/v0.3.0</url>
+        </release>
         <release version="0.2.2" date="2026-04-11">
             <url>https://github.com/Avicennasis/NiimPrintX/releases/tag/v0.2.2</url>
         </release>
