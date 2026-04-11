@@ -29,6 +29,11 @@ class FileMenu:
 
     def save_to_file(self):
         try:
+            file_path = filedialog.asksaveasfilename(defaultextension=".niim",
+                                                     filetypes=[("NIIM files", "*.niim")])
+            if not file_path:
+                return
+
             data = {
                 "device": self.config.device,
                 "current_label_size": self.config.current_label_size,
@@ -42,11 +47,9 @@ class FileMenu:
                     if isinstance(font_image_widget, ImageTk.PhotoImage):
                         pil_image = ImageTk.getimage(font_image_widget)
                     else:
-                        # tk.PhotoImage — convert via PPM data
-                        ppm_data = font_image_widget.data()
-                        if isinstance(ppm_data, str):
-                            ppm_data = ppm_data.encode('latin-1')
-                        pil_image = Image.open(io.BytesIO(ppm_data))
+                        # tk.PhotoImage — extract PNG via Tk call
+                        png_b64 = font_image_widget.tk.call(str(font_image_widget), 'data', '-format', 'png')
+                        pil_image = Image.open(io.BytesIO(base64.b64decode(png_b64)))
                     with io.BytesIO() as buffer:
                         pil_image.save(buffer, format="PNG")
                         buffer.seek(0)
@@ -80,11 +83,8 @@ class FileMenu:
                     }
                     data['image'][str(image_id)] = item_data
 
-            file_path = filedialog.asksaveasfilename(defaultextension=".niim",
-                                                     filetypes=[("NIIM files", "*.niim")])
-            if file_path:
-                with open(file_path, 'w') as f:
-                    json.dump(data, f, indent=2)
+            with open(file_path, 'w') as f:
+                json.dump(data, f, indent=2)
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save: {e}")
 
@@ -107,12 +107,6 @@ class FileMenu:
                     messagebox.showerror("Error", f"Invalid .niim file: missing '{key}'")
                     return
 
-            # Clear stale state before rebuilding canvas
-            self.config.text_items = {}
-            self.config.image_items = {}
-            self.config.current_selected = None
-            self.config.current_selected_image = None
-
             self.root.canvas_selector.selected_device.set(data["device"].upper())
             self.root.canvas_selector.selected_label_size.set(data["current_label_size"])
             self.root.canvas_selector.update_canvas_size()
@@ -129,6 +123,7 @@ class FileMenu:
         try:
             font_img_data = base64.b64decode(data["font_image"])
             font_image = Image.open(io.BytesIO(font_img_data))
+            font_image.load()
             if font_image.width * font_image.height > _MAX_LABEL_PIXELS:
                 raise ValueError(f"Image too large: {font_image.width}x{font_image.height}")
             font_img_tk = ImageTk.PhotoImage(font_image)
@@ -151,11 +146,14 @@ class FileMenu:
         try:
             original_image_data = base64.b64decode(data["original_image"])
             original_image = Image.open(io.BytesIO(original_image_data))
+            original_image.load()
             if original_image.width * original_image.height > _MAX_LABEL_PIXELS:
                 raise ValueError(f"Image too large: {original_image.width}x{original_image.height}")
 
             image_data = base64.b64decode(data["image"])
             image = Image.open(io.BytesIO(image_data))
+            if image.width * image.height > _MAX_LABEL_PIXELS:
+                raise ValueError(f"Resized image too large: {image.width}x{image.height}")
             img_tk = ImageTk.PhotoImage(image)
             image_id = self.config.canvas.create_image(data['coords'][0], data['coords'][1],
                                                        image=img_tk, anchor="nw")

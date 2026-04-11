@@ -17,8 +17,11 @@ class PrinterOperation:
             if await self.printer.connect():
                 self.config.printer_connected = True
                 return True
+            self.printer = None
+            return False
         except Exception as e:
             logger.error(f"Cannot connect to printer {model}: {e}")
+            self.printer = None
             return False
 
     async def printer_disconnect(self):

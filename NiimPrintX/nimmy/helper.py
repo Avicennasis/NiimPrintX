@@ -6,6 +6,7 @@ no_color = os.getenv("NO_COLOR") is not None
 
 # Create a console object with or without color support
 console = Console(color_system=None if no_color else "auto")
+err_console = Console(color_system=None if no_color else "auto", stderr=True)
 
 
 def print_success(message):
@@ -15,9 +16,9 @@ def print_success(message):
 
 def print_error(message):
     """Prints a message indicating an error in red color."""
-    console.print(f"[bold red]{message}[/bold red]", style="bold red")
+    err_console.print(f"[bold red]{message}[/bold red]")
 
 
 def print_info(message):
     """Prints an informational message in blue color."""
-    console.print(f"[bold blue]{message}[/bold blue]", style="bold blue")
+    err_console.print(f"[bold blue]{message}[/bold blue]")

@@ -1,30 +1,9 @@
-import asyncio
 import struct
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from PIL import Image
-from NiimPrintX.nimmy.printer import PrinterClient, RequestCodeEnum
+from NiimPrintX.nimmy.printer import RequestCodeEnum
 from NiimPrintX.nimmy.packet import NiimbotPacket
-
-
-def _make_client():
-    """Create a PrinterClient with a mocked transport for integration testing."""
-    device = MagicMock()
-    device.name = "test-printer"
-    device.address = "AA:BB:CC:DD:EE:FF"
-    client = PrinterClient.__new__(PrinterClient)
-    client.device = device
-    client.transport = MagicMock()
-    client.transport.client = MagicMock()
-    client.transport.client.is_connected = True
-    client.transport.start_notification = AsyncMock()
-    client.transport.stop_notification = AsyncMock()
-    client.char_uuid = "test-uuid"
-    client.notification_event = asyncio.Event()
-    client.notification_data = None
-    client._command_lock = asyncio.Lock()
-    client._print_lock = asyncio.Lock()
-    return client
 
 
 def _auto_respond(client):
@@ -66,13 +45,14 @@ def _auto_respond(client):
 
 
 @pytest.mark.asyncio
-async def test_print_image_sends_correct_command_sequence():
+async def test_print_image_sends_correct_command_sequence(make_client):
     """print_image should send commands in the correct order."""
-    client = _make_client()
+    client = make_client()
     commands = _auto_respond(client)
 
     img = Image.new("L", (16, 4), color=128)
-    await client.print_image(img, density=3, quantity=1)
+    with patch("asyncio.sleep", new_callable=AsyncMock):
+        await client.print_image(img, density=3, quantity=1)
 
     # Verify command sequence:
     #   density, label_type, start, start_page, dimension, quantity,
@@ -91,13 +71,14 @@ async def test_print_image_sends_correct_command_sequence():
 
 
 @pytest.mark.asyncio
-async def test_print_image_command_ordering():
+async def test_print_image_command_ordering(make_client):
     """Commands must appear in the protocol-required order."""
-    client = _make_client()
+    client = make_client()
     commands = _auto_respond(client)
 
     img = Image.new("L", (16, 4), color=128)
-    await client.print_image(img, density=3, quantity=1)
+    with patch("asyncio.sleep", new_callable=AsyncMock):
+        await client.print_image(img, density=3, quantity=1)
 
     density_idx = commands.index(RequestCodeEnum.SET_LABEL_DENSITY)
     label_type_idx = commands.index(RequestCodeEnum.SET_LABEL_TYPE)
@@ -122,9 +103,9 @@ async def test_print_image_command_ordering():
 
 
 @pytest.mark.asyncio
-async def test_print_image_v2_sends_correct_commands():
+async def test_print_image_v2_sends_correct_commands(make_client):
     """print_imageV2 should use V2 start/dimension commands and end with status polling + end_print."""
-    client = _make_client()
+    client = make_client()
 
     # Custom auto-respond that returns page=2 for status (matching quantity=2)
     commands_sent = []
@@ -164,24 +145,26 @@ async def test_print_image_v2_sends_correct_commands():
 
 
 @pytest.mark.asyncio
-async def test_print_image_small_image():
+async def test_print_image_small_image(make_client):
     """Printing a 1x1 image should work without errors."""
-    client = _make_client()
+    client = make_client()
     commands = _auto_respond(client)
 
     img = Image.new("L", (8, 1), color=0)
-    await client.print_image(img, density=1, quantity=1)
+    with patch("asyncio.sleep", new_callable=AsyncMock):
+        await client.print_image(img, density=1, quantity=1)
 
     # Should have exactly 1 image data row
     assert commands.count(0x85) == 1
 
 
 @pytest.mark.asyncio
-async def test_print_image_with_offsets():
+async def test_print_image_with_offsets(make_client):
     """Printing with offsets should not crash."""
-    client = _make_client()
+    client = make_client()
     _auto_respond(client)
 
     img = Image.new("L", (16, 8), color=128)
-    await client.print_image(img, density=2, quantity=1, vertical_offset=5, horizontal_offset=3)
+    with patch("asyncio.sleep", new_callable=AsyncMock):
+        await client.print_image(img, density=2, quantity=1, vertical_offset=5, horizontal_offset=3)
     # No exception means success

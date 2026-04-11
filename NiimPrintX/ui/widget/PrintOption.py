@@ -25,7 +25,8 @@ class PrintOption:
         asyncio.run_coroutine_threadsafe(self.schedule_heartbeat(), self.root.async_loop)
 
     async def schedule_heartbeat(self):
-        while True:
+        self._heartbeat_active = True
+        while self._heartbeat_active:
             try:
                 if self.print_op.printer and not self.config.print_job:
                     state, hb = await self.print_op.heartbeat()
@@ -33,7 +34,7 @@ class PrintOption:
                 elif not self.config.print_job:
                     self.root.after(0, lambda: self.update_status(False))
             except tk.TclError:
-                return  # Root destroyed, exit heartbeat loop cleanly
+                break  # Root destroyed, exit heartbeat loop cleanly
             await asyncio.sleep(5)
 
     def update_status(self, connected=False, hb_data=None):
@@ -204,7 +205,7 @@ class PrintOption:
         tk.Label(option_frame, text="Copies").grid(row=0, column=2, padx=20, pady=5, sticky="e")
         self.print_copy = tk.StringVar()
         self.print_copy.set("1")
-        print_copy_dropdown = tk.Spinbox(option_frame, from_=1, to=100,
+        print_copy_dropdown = tk.Spinbox(option_frame, from_=1, to=65535,
                                          textvariable=self.print_copy,
                                          width=4
                                          )
@@ -283,7 +284,6 @@ class PrintOption:
         img_tk = ImageTk.PhotoImage(self.print_image)
         self.image_label.config(image=img_tk)
         self.image_label.image = img_tk
-        self.print_button.config(command=lambda: self.print_label(self.print_image, self.print_density.get(), self.print_copy.get()))
 
 
     def print_label(self, image, density, quantity):
@@ -302,7 +302,7 @@ class PrintOption:
             quantity = int(quantity)
         except (ValueError, TypeError):
             quantity = 1
-        quantity = max(1, min(quantity, 100))
+        quantity = max(1, min(quantity, 65535))
 
         try:
             rotation = int(self.print_rotation.get())

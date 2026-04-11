@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
 VERSION="${1}"
 ARCH="${2}"
 APP_NAME="NiimPrintX"
 DMG_FILE_NAME="${APP_NAME}-Installer-${VERSION}-MacOSX-${ARCH}.dmg"
 VOLUME_NAME="${APP_NAME} Installer"
-SOURCE_FOLDER_PATH="NiimprintX/"
+SOURCE_FOLDER_PATH="NiimPrintX/"
 DIST_FOLDER="dist"
 
 cd "${DIST_FOLDER}"

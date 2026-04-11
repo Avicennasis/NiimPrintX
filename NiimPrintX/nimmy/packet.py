@@ -10,7 +10,10 @@ class NiimbotPacket:
     @classmethod
     def from_bytes(cls, pkt):
         if pkt is None or len(pkt) < 7:
-            raise ValueError(f"Packet too short: {len(pkt) if pkt else 0} bytes")
+            raise ValueError(
+                f"Packet too short: {len(pkt) if pkt else 0} bytes "
+                f"(minimum 7: header=2 + type=1 + len=1 + checksum=1 + footer=2)"
+            )
         if pkt[:2] != b"\x55\x55":
             raise ValueError(f"Invalid packet header: {pkt[:2].hex()}")
         type_ = pkt[2]
@@ -31,6 +34,8 @@ class NiimbotPacket:
         return cls(type_, data)
 
     def to_bytes(self):
+        if not 0 <= self.type <= 255:
+            raise ValueError(f"Packet type must be 0-255, got {self.type}")
         if len(self.data) > 255:
             raise ValueError(f"Packet data too long: {len(self.data)} bytes (max 255)")
         checksum = self.type ^ len(self.data)

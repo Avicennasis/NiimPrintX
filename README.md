@@ -1,25 +1,50 @@
 <h1 align="center">NiimPrintX</h1>
 <p align="center">
-<a href="https://github.com/labbots/NiimPrintX/releases"><img src="https://img.shields.io/github/release/labbots/NiimPrintX.svg?style=for-the-badge" alt="Latest Release"></a>
-<a href="https://github.com/labbots/NiimPrintX/actions/workflows/tag.yaml"><img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/labbots/NiimPrintX/tag.yaml?style=for-the-badge"></a>
-<a href="https://github.com/labbots/NiimPrintX/commits/main/"><img alt="GitHub commits since latest release" src="https://img.shields.io/github/commits-since/labbots/NiimPrintX/latest?style=for-the-badge"></a>
+<a href="https://github.com/avicennasis/NiimPrintX/releases"><img src="https://img.shields.io/github/release/avicennasis/NiimPrintX.svg?style=for-the-badge" alt="Latest Release"></a>
+<a href="https://github.com/avicennasis/NiimPrintX/actions/workflows/tag.yaml"><img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/avicennasis/NiimPrintX/tag.yaml?style=for-the-badge"></a>
+<a href="https://github.com/avicennasis/NiimPrintX/actions/workflows/ci.yaml"><img alt="CI Status" src="https://img.shields.io/github/actions/workflow/status/avicennasis/NiimPrintX/ci.yaml?style=for-the-badge&label=CI"></a>
+<a href="https://github.com/avicennasis/NiimPrintX/commits/main/"><img alt="GitHub commits since latest release" src="https://img.shields.io/github/commits-since/avicennasis/NiimPrintX/latest?style=for-the-badge"></a>
 </p>
 
 
 ![NiimPrintX](docs/assets/NiimPrintX.gif)
 
-NiimPrintX is a Python library designed to seamlessly interface with NiimBot label printers via Bluetooth. 
+NiimPrintX is a Python library designed to seamlessly interface with NiimBot label printers via Bluetooth.
 It provides both a Command-Line Interface (CLI) and a Graphical User Interface (GUI) for users to design and print labels efficiently.
 
+## Fork Notice
+
+This is a community-maintained fork of the original [labbots/NiimPrintX](https://github.com/labbots/NiimPrintX). The upstream project was last updated in May 2024 and is no longer actively maintained. We picked up where it left off to keep NiimPrintX alive and moving forward.
+
+Since forking, we have:
+
+- Merged outstanding upstream pull requests from the community
+- Conducted 6 rounds of deep code review, hardening the codebase throughout
+- Added a comprehensive test suite (100+ pytest tests) and CI/CD pipeline
+- Replaced the pickle-based `.niim` file format with a secure JSON-based format
+- Introduced user-configurable custom label sizes, per-device rotation, and BLE resilience improvements
+
+**Current version: v0.3.0**
+
+A huge thank you to [labbots](https://github.com/labbots) for creating NiimPrintX and building the foundation this project stands on.
+
 ## Key Features
-* **Cross-Platform Compatibility:** NiimPrintX works on Windows, macOS, and Linux, ensuring broad usability.
-* **Bluetooth Connectivity:** Effortlessly connect to your NiimBot label printers via Bluetooth.
-* **Comprehensive Model Support:** Compatible with multiple NiimBot printer models (D11, B21, B1, D110, B18).
-* **Dual Interface Options:** Provides both Command-Line Interface (CLI) and Graphical User Interface (GUI) to suit different user preferences.
-* **Custom Label Design:** The GUI app enables users to design labels tailored to specific devices and label sizes.
+
+* **Cross-Platform Compatibility:** Works on Windows, macOS, and Linux.
+* **Bluetooth Connectivity:** Effortlessly connect to NiimBot label printers via BLE, with auto-reconnect and lock-based concurrency for resilient connections.
+* **Comprehensive Model Support:** Compatible with multiple NiimBot printer models (D11, D11_H, D101, D110, D110_M, B1, B18, B21).
+* **Dual Interface Options:** Provides both a Command-Line Interface (CLI) and a Graphical User Interface (GUI).
+* **Custom Label Design:** The GUI enables users to design labels tailored to specific devices and label sizes.
 * **Advanced Print Settings:** Customize print density, quantity, and image rotation for precise label printing.
+* **JSON-Based .niim Format:** Label designs are saved in a secure JSON format, replacing the original pickle-based approach to eliminate deserialization risks.
+* **User-Configurable Label Sizes:** Define custom label dimensions and device profiles via a simple TOML config file.
+* **Per-Device Rotation Settings:** Configure default rotation on a per-device basis through the config file.
+* **Decompression Bomb Protection:** Image loading includes safeguards against decompression bomb attacks.
+* **Comprehensive Test Suite:** 100+ pytest tests covering packets, Bluetooth communication, image encoding, configuration, CLI, and print integration.
+* **CI/CD Pipeline:** Automated ruff linting, pytest runs on every push, and PyInstaller builds for Linux, macOS, and Windows on tagged releases.
 
 ## Requirements
+
 To run NiimPrintX, you need to have the following installed:
 
 * **Python 3.12 or later** -- `bleak`'s winrt backend requires Python 3.12+, and the TOML config parser (`tomllib`) requires Python 3.11+
@@ -32,14 +57,13 @@ D11, D11_H, D101, D110, D110_M, B1, B18, B21
 
 
 ## Installation
-To install NiimPrintX, follow these steps:
 
-* Ensure that ImageMagick is installed and properly configured on your system. You can download it from [here](https://imagemagick.org/script/download.php).
+Ensure that ImageMagick is installed and properly configured on your system. You can download it from [here](https://imagemagick.org/script/download.php).
 
 Clone the repository:
 
 ```shell
-git clone https://github.com/labbots/NiimPrintX.git
+git clone https://github.com/avicennasis/NiimPrintX.git
 cd NiimPrintX
 ```
 Install the necessary dependencies using Poetry (Poetry manages its own virtual environment automatically):
@@ -55,7 +79,7 @@ poetry install --extras gui
 ```
 
 ### Note:
-MacOS specific setup for local development
+macOS specific setup for local development:
 
 ```shell
 brew install libffi
@@ -101,9 +125,11 @@ rotation = -90
 
 
 ## Usage
+
 NiimPrintX provides both CLI and GUI applications to use the printer.
 
 ### Command-Line Interface (CLI)
+
 The CLI allows you to print images and get information about the printer models.
 
 #### General CLI Usage
@@ -157,16 +183,36 @@ python -m NiimPrintX.cli info -m d110
 ```
 
 ### Graphical User Interface (GUI)
+
 The GUI application allows users to design labels based on the label device and label size. Simply run the GUI application:
 
 ```shell
 python -m NiimPrintX.ui
 ```
 
-## Contributing
+## Development
+
 Contributions are welcome! Please fork the repository and submit a pull request with your improvements.
 
+### Running Tests
+
+```shell
+poetry run pytest -v
+```
+
+### Running Lint
+
+```shell
+poetry run ruff check NiimPrintX/
+```
+
+### Building
+
+Automated builds for Linux, macOS (Intel and Apple Silicon), and Windows are handled by [GitHub Actions workflows](.github/workflows/). Tagged releases trigger PyInstaller builds and publish artifacts to [GitHub Releases](https://github.com/avicennasis/NiimPrintX/releases).
+
 ## Credits
+
+* Special thanks to [labbots](https://github.com/labbots) for creating the original NiimPrintX project. The vision, architecture, and initial implementation are all theirs -- this fork simply carries the torch forward.
 * Icons made by [Dave Gandy](https://www.flaticon.com/authors/dave-gandy) from [www.flaticon.com](https://www.flaticon.com/)
 * Icons made by [Pixel perfect](https://www.flaticon.com/authors/pixel-perfect) from [www.flaticon.com](https://www.flaticon.com/)
 * Icons made by [Freepik](https://www.freepik.com) from [www.flaticon.com](https://www.flaticon.com/)
@@ -178,3 +224,7 @@ Contributions are welcome! Please fork the repository and submit a pull request 
 * Icons made by [IconKanan](https://www.flaticon.com/authors/iconkanan) from [www.flaticon.com](https://www.flaticon.com/)
 * Icons made by [kornkun](https://www.flaticon.com/authors/kornkun) from [www.flaticon.com](https://www.flaticon.com/)
 * Icons made by [Rifaldi Ridha Aisy](https://www.flaticon.com/authors/rifaldi-ridha-aisy) from [www.flaticon.com](https://www.flaticon.com/)
+
+## License
+
+NiimPrintX is licensed under the [GNU General Public License v3.0](LICENSE). See the LICENSE file for details.

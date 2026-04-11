@@ -1,3 +1,4 @@
+import base64
 import tkinter as tk
 import tkinter.messagebox as messagebox
 from wand.image import Image as WandImage
@@ -28,22 +29,22 @@ class TextOperation:
             text_width = int(metrics.text_width) + 5
             text_height = int(metrics.text_height) + int(abs(metrics.descender)) + 2
 
-            with WandImage(width=text_width, height=text_height, background=Color('transparent'), resolution=300) as img:
+            with WandImage(width=text_width, height=text_height, background=Color('transparent')) as img:
                 draw.text(x=2, y=int(metrics.ascender), body=text)
                 draw(img)
 
                 # Ensure the image is in RGBA format
                 img.format = 'png'
                 img.alpha_channel = 'activate'  # Ensure alpha channel is active
-                img_blob = img.make_blob('png32')  # Use 'png32' for RGBA
+                img_blob = img.make_blob('png')
                 # Convert to format displayable in Tkinter
-                tk_image = tk.PhotoImage(data=img_blob)
+                tk_image = tk.PhotoImage(data=base64.b64encode(img_blob))
                 return tk_image
     def add_text_to_canvas(self):
         # Get the current text in the content_entry Entry widget
         text = self.parent.content_entry.get("1.0", "end-1c")
 
-        font_obj, font_props = self.parent.get_font_properties()
+        font_props = self.parent.get_font_properties()
         if not text:
             messagebox.showerror("Error", f"Please enter text in content to add.")
             return
@@ -106,8 +107,9 @@ class TextOperation:
 
     def update_canvas_text(self, text_id):
         text = self.parent.content_entry.get("1.0", "end-1c")
+        font_props = self.parent.get_font_properties()
         self.config.text_items[text_id]['content'] = text
-        font_props = self.config.text_items[text_id]['font_props']
+        self.config.text_items[text_id]['font_props'] = font_props
         tk_image = self.create_text_image(font_props, text)
         self.config.canvas.itemconfig(text_id, image=tk_image)
         self.config.text_items[text_id]['font_image'] = tk_image

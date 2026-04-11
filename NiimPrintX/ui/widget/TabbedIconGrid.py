@@ -31,30 +31,31 @@ class TabbedIconGrid(tk.Frame):
                 self.tab_names[tab_index] = subfolder  # store original name
         self.notebook.bind("<<NotebookTabChanged>>", self.load_tab_icons)
 
+        # C18: Force-load the first tab since NotebookTabChanged doesn't fire on initial render
+        if self.notebook.tabs():
+            first_tab_index = 0
+            first_subfolder = self.tab_names.get(first_tab_index)
+            if first_subfolder:
+                self._load_tab_by_index(first_tab_index, first_subfolder)
+
     def load_tab_icons(self, event):
         """Load icons when a tab is selected."""
         notebook = event.widget
-        selected_tab_index = notebook.index(notebook.select())  # Get the selected tab index
+        selected_tab_index = notebook.index(notebook.select())
         subfolder_name = self.tab_names.get(selected_tab_index,
                                              notebook.tab(selected_tab_index, "text").lower())
+        self._load_tab_by_index(selected_tab_index, subfolder_name)
 
-        # Get the corresponding tab frame
-        tab_frame = notebook.nametowidget(notebook.tabs()[selected_tab_index])
+    def _load_tab_by_index(self, tab_index, subfolder_name):
+        """Load icons for a tab by index and subfolder name (extracted for direct calls)."""
+        tab_frame = self.notebook.nametowidget(self.notebook.tabs()[tab_index])
 
         # Check if icons are cached and load asynchronously if not
         if subfolder_name not in self.icon_cache:
             subfolder_path = os.path.join(self.base_folder, subfolder_name)
             self.icon_cache[subfolder_name] = self.create_icon_grid(tab_frame, subfolder_path, subfolder_name)
-
-        # Ensure the correct canvas is used for mouse wheel event
-        self.icon_cache[subfolder_name].configure(scrollregion=self.icon_cache[subfolder_name].bbox("all"))
-        self.icon_cache[subfolder_name].bind("<MouseWheel>",
-                                             lambda e, canvas=self.icon_cache[subfolder_name]: self.on_mouse_wheel(e,
-                                                                                                                   canvas))
-        self.icon_cache[subfolder_name].bind("<Button-4>",
-                                             lambda e, canvas=self.icon_cache[subfolder_name]: canvas.yview_scroll(-3, "units"))
-        self.icon_cache[subfolder_name].bind("<Button-5>",
-                                             lambda e, canvas=self.icon_cache[subfolder_name]: canvas.yview_scroll(3, "units"))
+        # I17: Scroll bindings are established in create_icon_grid; no duplicate bindings needed here.
+        # M13: scrollregion is configured in _create_icon_widgets after all widgets are placed.
 
     def create_icon_grid(self, parent, folder, subfolder_name):
         """Create a scrollable icon grid for a given folder."""
@@ -78,16 +79,18 @@ class TabbedIconGrid(tk.Frame):
         h_scrollbar.pack(side="bottom", fill="x")  # Pack the horizontal scrollbar
         canvas.pack(side="left", fill="both", expand=True)
 
+        # I18: Bind all scroll events on the canvas at construction time
+        canvas.bind("<MouseWheel>", lambda e, c=canvas: self.on_mouse_wheel(e, c))
         canvas.bind("<Button-4>", lambda e, c=canvas: c.yview_scroll(-3, "units"))
         canvas.bind("<Button-5>", lambda e, c=canvas: c.yview_scroll(3, "units"))
 
         # Asynchronous loading of icons
-        threading.Thread(target=self.load_icons, args=(scrollable_frame, folder, subfolder_name), daemon=True).start()
-        canvas.after(200, lambda: canvas.configure(scrollregion=canvas.bbox("all")))
+        # M13: scrollregion is configured in _create_icon_widgets after the bg thread completes
+        threading.Thread(target=self.load_icons, args=(scrollable_frame, folder, subfolder_name, canvas), daemon=True).start()
 
         return canvas
 
-    def load_icons(self, frame, folder, subfolder_name):
+    def load_icons(self, frame, folder, subfolder_name, canvas):
         """Load PIL images in background thread, then create PhotoImages + widgets on main thread."""
         icon_folder = os.path.join(folder, "50x50")
         pil_images = []
@@ -100,16 +103,20 @@ class TabbedIconGrid(tk.Frame):
                 image_path = os.path.join(icon_folder, filename)
                 try:
                     img = Image.open(image_path)
-                    img.load()  # force decode here, not lazily on main thread
+                    # I16: img.load() forces full pixel decode into memory in this thread.
+                    # After this call the PIL Image holds a fully-decoded raster buffer
+                    # and the bg thread never mutates it again, so handing it to the main
+                    # thread via after() is safe (no lazy I/O or shared mutable state).
+                    img.load()
                     pil_images.append((filename, img, subfolder_name))
                 except Exception:
                     pass  # skip corrupt files
         try:
-            frame.after(0, lambda: self._create_icon_widgets(frame, pil_images, subfolder_name))
+            frame.after(0, lambda: self._create_icon_widgets(frame, pil_images, subfolder_name, canvas))
         except tk.TclError:
             pass  # widget destroyed before thread completed
 
-    def _create_icon_widgets(self, frame, pil_images, subfolder_name):
+    def _create_icon_widgets(self, frame, pil_images, subfolder_name, canvas):
         """Create PhotoImages and icon grid widgets — must run on main thread."""
         icons = []
         for filename, pil_img, sub_name in pil_images:
@@ -135,6 +142,9 @@ class TabbedIconGrid(tk.Frame):
                     )
                     icon_label.grid(row=row, column=col, padx=5, pady=5)
                     icon_label.bind("<Button-1>", lambda event, idx=index: self.on_icon_click(idx, icons))
+
+        # M13: Configure scrollregion AFTER all widgets are placed, not before the bg thread completes
+        canvas.configure(scrollregion=canvas.bbox("all"))
 
     def on_mouse_wheel(self, event, canvas):
         """Handle mouse wheel scrolling."""

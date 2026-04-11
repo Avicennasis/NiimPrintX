@@ -122,7 +122,7 @@ async def _print(model, density, image, quantity, vertical_offset, horizontal_of
         if not await printer.connect():
             print_error("Failed to connect to printer")
             return False
-        print(f"Connected to {device.name}")
+        print_info(f"Connected to {device.name}")
         if model == "b1":
             print_info("Printing with B1 model")
             await printer.print_imageV2(image, density=density, quantity=quantity)
@@ -169,9 +169,9 @@ async def _info(model):
         device_serial = await printer.get_info(InfoEnum.DEVICESERIAL)
         software_version = await printer.get_info(InfoEnum.SOFTVERSION)
         hardware_version = await printer.get_info(InfoEnum.HARDVERSION)
-        print(f"Device Serial : {device_serial}")
-        print(f"Software Version : {software_version}")
-        print(f"Hardware Version : {hardware_version}")
+        print_info(f"Device Serial : {device_serial}")
+        print_info(f"Software Version : {software_version}")
+        print_info(f"Hardware Version : {hardware_version}")
         return True
     except Exception as e:
         logger.debug(f"{e}")

@@ -38,7 +38,7 @@ def logger_enable(verbose: int):
 
     # Mapping verbosity level to Loguru levels
     levels = {1: "INFO", 2: "DEBUG", 3: "TRACE"}
-    new_level = levels.get(verbose, "DEBUG")
+    new_level = levels.get(min(verbose, 3), "TRACE")
 
     # Remove existing handlers and re-add with new level
     logger.remove()  # public API — removes all handlers atomically

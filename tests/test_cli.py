@@ -92,4 +92,4 @@ def test_print_b_series_within_limit(runner):
         result = runner.invoke(niimbot_cli, ['print', '-m', 'b1', '-i', 'ok.png'])
         # Should pass width check, fail at BLE
         assert result.exit_code != 0
-        assert "width" not in result.output.lower() or "exceeds" not in result.output.lower()
+        assert "exceeds" not in result.output.lower()

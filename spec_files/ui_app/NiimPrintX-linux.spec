@@ -21,6 +21,13 @@ hidden_imports += collect_submodules('tkinter')
 tcl_library = os.environ.get('TCL_LIBRARY', '/usr/share/tcltk/tcl8.6')
 tk_library = os.environ.get('TK_LIBRARY', '/usr/share/tcltk/tk8.6')
 
+if not os.path.exists(tcl_library):
+    import warnings
+    warnings.warn(f"TCL_LIBRARY not found: {tcl_library}")
+if not os.path.exists(tk_library):
+    import warnings
+    warnings.warn(f"TK_LIBRARY not found: {tk_library}")
+
 datas += [
     (tcl_library, 'tcl'),
     (tk_library, 'tk')

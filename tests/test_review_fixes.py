@@ -1,34 +1,12 @@
 """Tests verifying critical fixes identified in the code review."""
 
-import asyncio
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from PIL import Image
 
 from NiimPrintX.nimmy.packet import NiimbotPacket
-from NiimPrintX.nimmy.printer import PrinterClient, RequestCodeEnum
+from NiimPrintX.nimmy.printer import RequestCodeEnum
 from NiimPrintX.nimmy.bluetooth import BLETransport
-
-
-def _make_client():
-    """Create a PrinterClient with a mocked device, bypassing BLE."""
-    device = MagicMock()
-    device.name = "test-printer"
-    device.address = "AA:BB:CC:DD:EE:FF"
-    client = PrinterClient.__new__(PrinterClient)
-    client.device = device
-    client.transport = MagicMock()
-    client.transport.client = MagicMock()
-    client.transport.client.is_connected = True
-    client.transport.start_notification = AsyncMock()
-    client.transport.stop_notification = AsyncMock()
-    client.transport.write = AsyncMock()
-    client.char_uuid = "test-uuid"
-    client.notification_event = asyncio.Event()
-    client.notification_data = None
-    client._command_lock = asyncio.Lock()
-    client._print_lock = asyncio.Lock()
-    return client
 
 
 # --- 1. Packet from_bytes with trailing bytes ---
@@ -49,15 +27,15 @@ def test_packet_from_bytes_oversized_packet():
 
 
 @pytest.mark.asyncio
-async def test_set_quantity_negative_raises():
-    client = _make_client()
+async def test_set_quantity_negative_raises(make_client):
+    client = make_client()
     with pytest.raises(ValueError, match="Quantity must be"):
         await client.set_quantity(-1)
 
 
 @pytest.mark.asyncio
-async def test_set_quantity_overflow_raises():
-    client = _make_client()
+async def test_set_quantity_overflow_raises(make_client):
+    client = make_client()
     with pytest.raises(ValueError, match="Quantity must be"):
         await client.set_quantity(70000)
 
@@ -65,9 +43,9 @@ async def test_set_quantity_overflow_raises():
 # --- 3. _encode_image fill=0 produces blank borders ---
 
 
-def test_encode_image_positive_offset_blank_border():
+def test_encode_image_positive_offset_blank_border(make_client):
     """Positive vertical offset should produce blank (non-printing) rows at top."""
-    client = _make_client()
+    client = make_client()
     img = Image.new("L", (8, 2), color=0)  # all black
     packets = list(client._encode_image(img, vertical_offset=2))
     assert len(packets) == 4  # 2 original + 2 offset
@@ -81,9 +59,9 @@ def test_encode_image_positive_offset_blank_border():
 
 
 @pytest.mark.asyncio
-async def test_heartbeat_unknown_length_returns_all_none():
+async def test_heartbeat_unknown_length_returns_all_none(make_client):
     """Unknown heartbeat length should return all-None dict without crashing."""
-    client = _make_client()
+    client = make_client()
     hb_data = bytes(15)  # 15 bytes -- not in any match case
     response_pkt = NiimbotPacket(RequestCodeEnum.HEARTBEAT, hb_data)
 
@@ -117,9 +95,11 @@ def test_validate_dims_negative_rejected():
 
 @pytest.mark.asyncio
 async def test_transport_disconnect_clears_client():
-    transport = BLETransport()
+    transport = BLETransport(address="AA:BB:CC:DD:EE:FF")
     transport.client = MagicMock()
     transport.client.is_connected = True
     transport.client.disconnect = AsyncMock()
+    mock_client = transport.client  # save reference before disconnect nulls it
     await transport.disconnect()
     assert transport.client is None
+    mock_client.disconnect.assert_awaited_once()

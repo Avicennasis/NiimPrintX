@@ -47,9 +47,8 @@ class TextTab:
         self.font_family_dropdown = ttk.Combobox(self.frame, values=list(self.fonts.keys()))
         self.font_family_dropdown.grid(row=1, column=1, sticky='ew', padx=5)
         self.font_family_dropdown.set("Arial")
-        widget_name = "font_dropdown"
         self.font_family_dropdown.bind("<<ComboboxSelected>>",
-                                       lambda event, w=widget_name: self.update_text_properties(event, w))
+                                       lambda event: self.update_text_properties(event))
         self.update_font_list()
 
         self.bold_var = tk.BooleanVar()
@@ -99,8 +98,8 @@ class TextTab:
         self.sample_text_label.config(font=label_font,
                                       text=f"{content} in {font_family}")
 
-    def update_text_properties(self, event=None, widget_name=None):
-        font_obj, font_props = self.get_font_properties()
+    def update_text_properties(self, event=None):
+        font_props = self.get_font_properties()
         content = self.content_entry.get("1.0", "end-1c")
         label_font = tk_font.Font(family=font_props['family'], size=14, weight=font_props['weight'],
                                   slant=font_props['slant'])
@@ -135,9 +134,7 @@ class TextTab:
             "slant": slant,
             "underline": underline,
         }
-        font_obj = tk_font.Font(family=family, size=size, weight=weight, slant=slant, underline=underline)
-
-        return font_obj, font_props
+        return font_props
 
     def get_text_operation(self):
         return self.text_op

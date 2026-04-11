@@ -75,6 +75,13 @@ class CanvasSelector:
         if hasattr(self.config, "canvas") and self.config.canvas is not None:
             self.config.canvas.destroy()
         self.config.text_items = {}
+        for item in self.config.image_items.values():
+            orig = item.get("original_image")
+            if orig is not None:
+                try:
+                    orig.close()
+                except Exception:
+                    pass
         self.config.image_items = {}
         self.config.current_selected = None
         self.config.current_selected_image = None
@@ -102,7 +109,7 @@ class CanvasSelector:
             tags="label_box"
         )
 
-        self.config.print_area_box = self.config.canvas.create_rectangle(
+        self.config.canvas.create_rectangle(
             x_center - self.print_area_width // 2,
             y_center - self.print_area_height // 2,
             x_center + self.print_area_width // 2,

@@ -7,7 +7,7 @@ logger = get_logger()
 
 
 async def find_device(device_name_prefix=None):
-    if not device_name_prefix:
+    if device_name_prefix is None or device_name_prefix == "":
         raise BLEException("No device name prefix specified")
     devices = await BleakScanner.discover(return_adv=True)
     # For D110 variants, prefer the device without service UUIDs.
@@ -32,6 +32,7 @@ class BLETransport:
     def __init__(self, address=None):
         self.address = address
         self.client = None
+        self._notifying_uuids = set()
 
     async def connect(self, address):
         if self.client is not None and self.address != address:
@@ -41,14 +42,22 @@ class BLETransport:
         if self.client is None:
             self.client = BleakClient(address)
         if not self.client.is_connected:
-            await self.client.connect()  # raises BleakError on failure
+            try:
+                await self.client.connect()
+            except Exception:
+                self.client = None
+                raise
             return True
         return True  # already connected
 
     async def disconnect(self):
-        if self.client and self.client.is_connected:
-            await self.client.disconnect()
-        self.client = None  # allow fresh client on next connect
+        if self.client:
+            try:
+                await self.client.disconnect()
+            except Exception:
+                pass
+        self.client = None
+        self._notifying_uuids.clear()
 
     async def write(self, data, char_uuid):
         if self.client and self.client.is_connected:
@@ -57,13 +66,15 @@ class BLETransport:
             raise BLEException("BLE client is not connected.")
 
     async def start_notification(self, char_uuid, handler):
-        if self.client and self.client.is_connected:
-            await self.client.start_notify(char_uuid, handler)
-        else:
+        if not (self.client and self.client.is_connected):
             raise BLEException("BLE client is not connected.")
+        if char_uuid not in self._notifying_uuids:
+            await self.client.start_notify(char_uuid, handler)
+            self._notifying_uuids.add(char_uuid)
 
     async def stop_notification(self, char_uuid):
-        if self.client and self.client.is_connected:
-            await self.client.stop_notify(char_uuid)
-        else:
+        if not (self.client and self.client.is_connected):
             raise BLEException("BLE client is not connected.")
+        if char_uuid in self._notifying_uuids:
+            await self.client.stop_notify(char_uuid)
+            self._notifying_uuids.discard(char_uuid)

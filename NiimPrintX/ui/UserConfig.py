@@ -35,6 +35,9 @@ def _validate_dims(dims):
 
 def _safe_int(value, default):
     """Convert to int with fallback for invalid TOML values."""
+    if isinstance(value, float):
+        logger.warning(f"Config value {value!r} is a float, rounding to int")
+        return round(value)
     try:
         return int(value)
     except (TypeError, ValueError):
@@ -55,6 +58,8 @@ def merge_label_sizes(builtin_sizes, user_config):
                     validated = _validate_dims(dims)
                     if validated:
                         builtin_sizes[device_name]["size"][label] = validated
+                    else:
+                        logger.warning(f"Skipping invalid dims for {device_name!r} label {label!r}: {dims!r}")
         else:
             # Add entirely new device — require at least one valid size
             sizes = {}
@@ -64,11 +69,13 @@ def merge_label_sizes(builtin_sizes, user_config):
                     validated = _validate_dims(v)
                     if validated:
                         sizes[k] = validated
+                    else:
+                        logger.warning(f"Skipping invalid dims for {device_name!r} label {k!r}: {v!r}")
             if not sizes:
                 continue
             builtin_sizes[device_name] = {
                 "size": sizes,
-                "density": _safe_int(device_conf.get("density", 3), 3),
+                "density": max(1, min(_safe_int(device_conf.get("density", 3), 3), 5)),
                 "print_dpi": _safe_int(device_conf.get("print_dpi", 203), 203),
                 "rotation": _safe_int(device_conf.get("rotation", -90), -90),
             }

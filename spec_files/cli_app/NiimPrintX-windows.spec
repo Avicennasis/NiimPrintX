@@ -60,12 +60,3 @@ coll = COLLECT(
     upx_exclude=[],
     name='niimprintx',
 )
-
-# BUNDLE step for creating onefile executable
-app = BUNDLE(
-    coll,
-    name='niimprintx.exe',
-    icon=None,  # Add path to .ico file if you have an icon
-    onefile=True,  # Ensure the onefile mode is enabled
-    console=True,
-)

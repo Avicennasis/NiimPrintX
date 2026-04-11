@@ -6,6 +6,9 @@ on:
       os:
         type: string
 
+permissions:
+  contents: read
+
 jobs:
   macos:
     name: ${{ inputs.os }}

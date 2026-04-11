@@ -8,7 +8,7 @@ readme = "README.md"
 packages = [{include = "NiimPrintX"}]
 
 [tool.poetry.scripts]
-niimprintx = "NiimPrintX.cli.command:cli"
+niimprintx = "NiimPrintX.cli.command:niimbot_cli"
 niimprintx-ui = "NiimPrintX.ui.__main__:main"
 
 [tool.poetry.dependencies]
@@ -17,19 +17,21 @@ click = "^8.1.7"
 bleak = "^0.22.3"
 loguru = "^0.7.2"
 pillow = "^12.1.1"
-pycairo = "^1.26.0"
-wand = "^0.6.13"
 platformdirs = "^4.0"
 rich = "^13.7.1"
+pycairo = {version = "^1.26.0", optional = true}
+wand = {version = "^0.6.13", optional = true}
 sv-ttk = {version = "^2.6", optional = true}
 
 [tool.poetry.extras]
-gui = ["sv-ttk"]
+gui = ["sv-ttk", "pycairo", "wand"]
 
 [tool.poetry.group.dev.dependencies]
 pyinstaller = "^6.6.0"
 pytest = "^8.0"
 pytest-asyncio = "^0.23"
+ruff = ">=0.4"
+pytest-cov = "^5.0"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

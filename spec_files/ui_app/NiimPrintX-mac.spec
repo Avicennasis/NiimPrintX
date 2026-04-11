@@ -59,7 +59,7 @@ a = Analysis(
     hiddenimports=['tkinter'],
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=[],
+    runtime_hooks=runtime_hooks,
     excludes=[],
     noarchive=False,
     optimize=0,
@@ -101,5 +101,5 @@ app = BUNDLE(
     coll,
     name='NiimPrintX.app',
     icon=os.path.join(src_path, 'assets', 'icon.icns'),
-    bundle_identifier=None,
+    bundle_identifier="com.niimprintx.app",
 )

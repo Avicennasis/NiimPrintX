@@ -6,7 +6,9 @@ class ImageOperation:
 
     def load_image(self, file_path):
         try:
-            image = Image.open(file_path)
+            raw_image = Image.open(file_path)
+            source_image = raw_image.convert("RGBA")
+            raw_image.close()
         except Exception as e:
             import tkinter.messagebox as messagebox
             messagebox.showerror("Error", f"Failed to load image: {e}")
@@ -16,12 +18,10 @@ class ImageOperation:
         canvas_width = x2 - x1
         canvas_height = y2 - y1
 
-        img_width, img_height = image.size
+        img_width, img_height = source_image.size
         scale_factor = min(canvas_width / img_width, canvas_height / img_height)
         new_width = int(img_width * scale_factor)
         new_height = int(img_height * scale_factor)
-
-        source_image = image.convert("RGBA")  # Keep full-res as original
         resized_image = source_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
         img_tk = ImageTk.PhotoImage(resized_image)
 
@@ -47,12 +47,13 @@ class ImageOperation:
         self.deselect_image()
         self.config.current_selected_image = image_id
         # Draw a bounding box
-        bbox = self.config.canvas.create_rectangle(self.config.canvas.bbox(image_id), outline="blue", width=2)
+        bb = self.config.canvas.bbox(image_id)
+        bbox = self.config.canvas.create_rectangle(bb, outline="blue", width=2)
         handle = self.config.canvas.create_oval(
-            self.config.canvas.bbox(image_id)[2] - 5,
-            self.config.canvas.bbox(image_id)[3] - 5,
-            self.config.canvas.bbox(image_id)[2] + 5,
-            self.config.canvas.bbox(image_id)[3] + 5,
+            bb[2] - 5,
+            bb[3] - 5,
+            bb[2] + 5,
+            bb[3] + 5,
             outline="blue",
             fill="gray"
         )
@@ -77,9 +78,9 @@ class ImageOperation:
             self.config.current_selected_image = None
 
     def move_image(self, event, image_id):
+        """Move the selected image."""
         if self.config.image_items[image_id].get("bbox") is None:
             return
-        """Move the selected image."""
         dx = event.x - self.config.image_items[image_id]["initial_x"]
         dy = event.y - self.config.image_items[image_id]["initial_y"]
         self.config.canvas.move(image_id, dx, dy)
@@ -99,12 +100,14 @@ class ImageOperation:
         dx = event.x - self.config.image_items[image_id]["initial_x"]
         dy = event.y - self.config.image_items[image_id]["initial_y"]
 
-        # Calculate the new size based on the mouse movement
-        new_width = max(initial_width + dx, 20)  # Ensure a minimum width
-        new_height = max(initial_height + dy, 20)  # Ensure a minimum height
-
         # Always resize from the original image to maintain quality
         original_image = self.config.image_items[image_id]["original_image"]
+
+        # Calculate the new size based on the mouse movement, preserving aspect ratio
+        orig_w, orig_h = original_image.size
+        aspect = orig_w / orig_h
+        new_width = max(initial_width + dx, 20)  # Ensure a minimum width
+        new_height = max(int(new_width / aspect), 20)  # Lock aspect ratio
 
         # Resize the image to the new size
         resized_image = original_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
@@ -135,8 +138,11 @@ class ImageOperation:
 
     def delete_image(self):
         if self.config.current_selected_image:
+            item = self.config.image_items[self.config.current_selected_image]
             self.config.canvas.delete(self.config.current_selected_image)
-            self.config.canvas.delete(self.config.image_items[self.config.current_selected_image]['bbox'])
-            self.config.canvas.delete(self.config.image_items[self.config.current_selected_image]['handle'])
+            if item.get("bbox"):
+                self.config.canvas.delete(item["bbox"])
+            if item.get("handle"):
+                self.config.canvas.delete(item["handle"])
             del self.config.image_items[self.config.current_selected_image]
             self.config.current_selected_image = None

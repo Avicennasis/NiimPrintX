@@ -39,6 +39,8 @@ def fonts():
             try:
                 result = subprocess.run(['convert', '-list', 'font'], stdout=subprocess.PIPE,
                                         stderr=subprocess.PIPE, text=True, encoding='utf8')
+                if result.returncode != 0:
+                    return {}
                 output = result.stdout
                 fonts_details = parse_font_details(output)
                 grouped_fonts = group_fonts_by_family(fonts_details)

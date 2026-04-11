@@ -1,6 +1,9 @@
 import os
 import platformdirs
 import platform
+
+from NiimPrintX.ui.UserConfig import load_user_config, merge_label_sizes
+
 class AppConfig:
     def __init__(self):
         self.os_system = platform.system()
@@ -17,7 +20,7 @@ class AppConfig:
         self.label_sizes = {
             "d110": {
                 "size": {
-                    "30mm x 15mm": (30, 15),
+                    "30mm x 15mm": (30, 15),  # D110 uses 15mm height (differs from other D-series 14mm)
                     "40mm x 12mm": (40, 12),
                     "50mm x 14mm": (50, 14),
                     "75mm x 12mm": (75, 12),
@@ -110,7 +113,6 @@ class AppConfig:
         }
         self.current_label_size = None
         # Merge user config for custom label sizes
-        from NiimPrintX.ui.UserConfig import load_user_config, merge_label_sizes
         user_config = load_user_config()
         if user_config:
             self.label_sizes = merge_label_sizes(self.label_sizes, user_config)

@@ -11,6 +11,10 @@ def extract_bundled_files():
     dest_dir = Path.home() / '.NiimPrintX_bundled'
 
     if dest_dir.exists():
+        # Check if already current by comparing mtime
+        if dest_dir.stat().st_mtime >= temp_dir.stat().st_mtime:
+            os.environ["MAGICK_HOME"] = str(dest_dir)
+            return
         shutil.rmtree(dest_dir)
     shutil.copytree(temp_dir, dest_dir)
 

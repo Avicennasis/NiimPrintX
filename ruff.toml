@@ -1,0 +1,12 @@
+target-version = "py312"
+line-length = 120
+
+[lint]
+select = ["E", "F", "W", "I", "B", "UP", "C4", "RUF", "SIM"]
+ignore = ["E501", "B008"]
+
+[lint.isort]
+known-first-party = ["NiimPrintX"]
+
+[lint.per-file-ignores]
+"tests/*" = ["S101"]

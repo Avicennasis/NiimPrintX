@@ -93,20 +93,15 @@ class LabelPrinterApp(tk.Tk):
 
     def on_close(self):
         if messagebox.askokcancel("Quit", "Do you want to quit?"):
-            # Schedule task cancellation on the async loop
             async def _shutdown():
                 tasks = [t for t in asyncio.all_tasks(self.async_loop) if not t.done()]
                 for t in tasks:
                     t.cancel()
                 if tasks:
                     await asyncio.gather(*tasks, return_exceptions=True)
-                self.async_loop.stop()
 
-            self.async_loop.call_soon_threadsafe(
-                self.async_loop.create_task, _shutdown()
-            )
-            # Delay destroy to let async loop clean up
-            self.after(300, self.destroy)
+            future = asyncio.run_coroutine_threadsafe(_shutdown(), self.async_loop)
+            future.add_done_callback(lambda _: self.after(0, self.destroy))
 
 if __name__ == "__main__":
     app = LabelPrinterApp()
