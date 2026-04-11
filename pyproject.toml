@@ -9,7 +9,7 @@ packages = [{include = "*", from="NiimPrintX"}]
 
 
 [tool.poetry.dependencies]
-python = ">=3.12,<3.13"
+python = ">=3.12,<3.14"
 click = "^8.1.7"
 bleak = "^0.21.1"
 loguru = "^0.7.2"
