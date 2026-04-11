@@ -8,7 +8,11 @@ class SplashScreen(tk.Toplevel):
         self.overrideredirect(True)  # Remove window decorations
 
         # Load the image
-        self.image = tk.PhotoImage(file=image_path)
+        try:
+            self.image = tk.PhotoImage(file=image_path)
+        except tk.TclError:
+            self.destroy()
+            return
         label = tk.Label(self, image=self.image)
         label.pack()
         self.update_idletasks()  # compute geometry before withdraw

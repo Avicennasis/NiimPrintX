@@ -1,5 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 import os
+from PyInstaller.utils.hooks import collect_submodules
 
 # Function to collect files and adjust their target directory
 def collect_and_adjust_files(base_path, target_dir):
@@ -18,6 +19,13 @@ imagemagick_path = os.path.abspath('./resources/ImageMagick')
 
 # Collect the ImageMagick binaries and libraries and specify the target directory
 datas = collect_and_adjust_files(imagemagick_path, 'imagemagick')
+
+# Include all submodules from PIL, tkinter, bleak, and wand
+hiddenimports = collect_submodules('PIL')
+hiddenimports += collect_submodules('tkinter')
+hiddenimports += collect_submodules('bleak')
+hiddenimports += collect_submodules('wand')
+hiddenimports += ['platformdirs', 'sv_ttk', 'cairo']
 
 current_path = os.getcwd()
 if os.path.basename(current_path) == "ui_app":
@@ -39,7 +47,7 @@ a = Analysis(
     pathex=['.'],
     binaries=[],
     datas=datas,
-    hiddenimports=['tkinter'],
+    hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

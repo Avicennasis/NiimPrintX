@@ -24,7 +24,11 @@ class TabbedIconGrid(tk.Frame):
 
     def create_tabs(self):
         """Create a tab for each subfolder."""
-        for subfolder in sorted(os.listdir(self.base_folder)):
+        try:
+            entries = sorted(os.listdir(self.base_folder))
+        except OSError:
+            return
+        for subfolder in entries:
             subfolder_path = os.path.join(self.base_folder, subfolder)
             if os.path.isdir(subfolder_path):
                 tab_frame = tk.Frame(self.notebook)
@@ -43,7 +47,10 @@ class TabbedIconGrid(tk.Frame):
     def load_tab_icons(self, event):
         """Load icons when a tab is selected."""
         notebook = event.widget
-        selected_tab_index = notebook.index(notebook.select())
+        selected_tab = notebook.select()
+        if not selected_tab:
+            return
+        selected_tab_index = notebook.index(selected_tab)
         subfolder_name = self.tab_names[selected_tab_index]
         self._load_tab_by_index(selected_tab_index, subfolder_name)
 
@@ -70,9 +77,8 @@ class TabbedIconGrid(tk.Frame):
             "<Configure>",
             lambda e: canvas.configure(
                 scrollregion=canvas.bbox("all"),
-            )
+            ),
         )
-
 
         # Add the scrollable frame to the canvas
         canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
@@ -87,7 +93,9 @@ class TabbedIconGrid(tk.Frame):
 
         # Asynchronous loading of icons
         # M13: scrollregion is configured in _create_icon_widgets after the bg thread completes
-        threading.Thread(target=self.load_icons, args=(scrollable_frame, folder, subfolder_name, canvas), daemon=True).start()
+        threading.Thread(
+            target=self.load_icons, args=(scrollable_frame, folder, subfolder_name, canvas), daemon=True
+        ).start()
 
         return canvas
 
@@ -96,11 +104,11 @@ class TabbedIconGrid(tk.Frame):
         icon_folder = os.path.join(folder, "50x50")
         pil_images = []
         try:
-            filenames = os.listdir(icon_folder)
+            filenames = sorted(os.listdir(icon_folder))
         except OSError:
             return  # silently skip if 50x50/ doesn't exist
         for filename in filenames:
-            if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+            if filename.lower().endswith((".png", ".jpg", ".jpeg")):
                 image_path = os.path.join(icon_folder, filename)
                 try:
                     img = Image.open(image_path)
@@ -117,6 +125,11 @@ class TabbedIconGrid(tk.Frame):
 
     def _create_icon_widgets(self, frame, pil_images, subfolder_name, canvas):
         """Create PhotoImages and icon grid widgets — must run on main thread."""
+        try:
+            if not frame.winfo_exists():
+                return
+        except tk.TclError:
+            return
         icons = []
         for filename, pil_img, sub_name in pil_images:
             photo = ImageTk.PhotoImage(pil_img)
@@ -131,14 +144,7 @@ class TabbedIconGrid(tk.Frame):
                 index = row * self.columns + col
                 if index < len(icons):
                     filename, photo, sub_name = icons[index]
-                    icon_label = tk.Label(
-                        frame,
-                        image=photo,
-                        cursor="hand2",
-                        bd=2,
-                        relief=tk.RAISED,
-                        bg="white"
-                    )
+                    icon_label = tk.Label(frame, image=photo, cursor="hand2", bd=2, relief=tk.RAISED, bg="white")
                     icon_label.grid(row=row, column=col, padx=5, pady=5)
                     icon_label.bind("<Button-1>", lambda event, idx=index, ic=icons: self.on_icon_click(idx, ic))
 
@@ -155,5 +161,6 @@ class TabbedIconGrid(tk.Frame):
         """Handle icon click and trigger callback."""
         filename, _, subfolder_name = icons[index]
         subpath = os.path.join(subfolder_name, "original", filename)
-        if self.on_icon_selected:
+        full_path = os.path.join(self.base_folder, subpath)
+        if self.on_icon_selected and os.path.isfile(full_path):
             self.on_icon_selected(subpath)

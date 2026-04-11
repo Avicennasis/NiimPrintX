@@ -7,18 +7,22 @@ from loguru import logger
 
 
 def _get_log_path():
-    log_dir = platformdirs.user_log_dir('NiimPrintX')
+    log_dir = platformdirs.user_log_dir("NiimPrintX")
     os.makedirs(log_dir, exist_ok=True)
     return os.path.join(log_dir, "nimmy.log")
 
 
+def _add_handlers(level):
+    logger.add(
+        sys.stderr, colorize=True, format="<blue>{time}</blue> | <level>{level}</level> | {message}", level=level
+    )
+    with contextlib.suppress(PermissionError, OSError):
+        logger.add(_get_log_path(), rotation="100 MB", compression="zip", level=level)
+
+
 def setup_logger():
     logger.remove()
-    default_level = "INFO"
-    logger.add(sys.stderr, colorize=True, format="<blue>{time}</blue> | <level>{level}</level> | {message}",
-               level=default_level)
-    with contextlib.suppress(PermissionError, OSError):
-        logger.add(_get_log_path(), rotation="100 MB", compression="zip", level=default_level)
+    _add_handlers("INFO")
 
 
 # | Level name | Severity value | Logger method     |
@@ -42,11 +46,7 @@ def logger_enable(verbose: int):
 
     # Remove existing handlers and re-add with new level
     logger.remove()  # public API — removes all handlers atomically
-
-    logger.add(sys.stderr, colorize=True, format="<blue>{time}</blue> | <level>{level}</level> | {message}",
-               level=new_level)
-    with contextlib.suppress(PermissionError, OSError):
-        logger.add(_get_log_path(), rotation="100 MB", compression="zip", level=new_level)
+    _add_handlers(new_level)
 
 
 def get_logger():

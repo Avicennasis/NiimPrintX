@@ -9,7 +9,6 @@ from NiimPrintX.nimmy.bluetooth import BLETransport
 from NiimPrintX.nimmy.packet import NiimbotPacket
 from NiimPrintX.nimmy.printer import RequestCodeEnum
 
-
 # --- 1. Packet from_bytes with trailing bytes ---
 
 
@@ -17,11 +16,10 @@ def test_packet_from_bytes_oversized_packet():
     """Packets with trailing bytes after footer should still parse correctly."""
     pkt = NiimbotPacket(0x01, b"\x02\x03")
     raw = bytearray(pkt.to_bytes())
-    raw.extend(b"\xAA\xAA\xFF\xFF")  # extra trailing bytes
-    # Should parse the valid portion and ignore trailing data
-    parsed = NiimbotPacket.from_bytes(bytes(raw))
-    assert parsed.type == 0x01
-    assert parsed.data == b"\x02\x03"
+    raw.extend(b"\xaa\xaa\xff\xff")  # extra trailing bytes
+    # Strict length check: trailing bytes are now rejected (Round 9 fix)
+    with pytest.raises(ValueError, match="mismatch"):
+        NiimbotPacket.from_bytes(bytes(raw))
 
 
 # --- 2. set_quantity validation ---
@@ -51,7 +49,7 @@ def test_encode_image_positive_offset_blank_border(make_client):
     # First 2 rows are offset padding -- should be all zeros (blank)
     for pkt in packets[:2]:
         line_data = pkt.data[6:]
-        assert line_data == b'\x00', f"Expected blank border, got {line_data.hex()}"
+        assert line_data == b"\x00", f"Expected blank border, got {line_data.hex()}"
 
 
 # --- 4. heartbeat unknown length logs warning (no crash) ---
@@ -80,11 +78,13 @@ async def test_heartbeat_unknown_length_returns_all_none(make_client):
 
 def test_validate_dims_zero_rejected():
     from NiimPrintX.ui.UserConfig import _validate_dims
+
     assert _validate_dims([0, 15]) is None
 
 
 def test_validate_dims_negative_rejected():
     from NiimPrintX.ui.UserConfig import _validate_dims
+
     assert _validate_dims([-5, 15]) is None
 
 

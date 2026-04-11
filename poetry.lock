@@ -1104,4 +1104,4 @@ gui = ["pycairo", "sv-ttk", "wand"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.14"
-content-hash = "0e9308c64d4dae052b2c50c5e96f430ab3522b63f86e5271db7a5e195d6bf750"
+content-hash = "a92bf5514a9f0ddc4c18d86448f02848ca1ddaf77a2d0d5eb072e07f20b70524"

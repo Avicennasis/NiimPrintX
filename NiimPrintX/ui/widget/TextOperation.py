@@ -24,31 +24,32 @@ class TextOperation:
         with WandDrawing() as draw:
             draw.font_family = font_props["family"]
             draw.font_size = font_props["size"]
-            if font_props["slant"] == 'italic':
-                draw.font_style = 'italic'
-            if font_props["weight"] == 'bold':
+            if font_props["slant"] == "italic":
+                draw.font_style = "italic"
+            if font_props["weight"] == "bold":
                 draw.font_weight = 700
             if font_props["underline"]:
-                draw.text_decoration = 'underline'
+                draw.text_decoration = "underline"
             draw.text_kerning = font_props["kerning"]
-            draw.fill_color = Color('black')
+            draw.fill_color = Color("black")
             # Get font metrics using a context-managed probe image
             with WandImage(width=1, height=1) as probe:
                 metrics = draw.get_font_metrics(probe, text, multiline=True)
-            text_width = int(metrics.text_width) + 5
-            text_height = int(metrics.text_height) + 2
+            text_width = max(1, int(metrics.text_width) + 5)
+            text_height = max(1, int(metrics.text_height) + 2)
 
-            with WandImage(width=text_width, height=text_height, background=Color('transparent')) as img:
+            with WandImage(width=text_width, height=text_height, background=Color("transparent")) as img:
                 draw.text(x=2, y=int(metrics.ascender), body=text)
                 draw(img)
 
                 # Ensure the image is in RGBA format
-                img.format = 'png'
-                img.alpha_channel = 'activate'  # Ensure alpha channel is active
-                img_blob = img.make_blob('png')
+                img.format = "png"
+                img.alpha_channel = "activate"  # Ensure alpha channel is active
+                img_blob = img.make_blob("png")
                 # Convert to format displayable in Tkinter
-                tk_image = tk.PhotoImage(data=base64.b64encode(img_blob).decode('ascii'))
+                tk_image = tk.PhotoImage(data=base64.b64encode(img_blob).decode("ascii"))
                 return tk_image
+
     def add_text_to_canvas(self):
         # Get the current text in the content_entry Entry widget
         text = self.parent.content_entry.get("1.0", "end-1c")
@@ -61,7 +62,12 @@ class TextOperation:
         tk_image = self.create_text_image(font_props, text)
         if tk_image is None:
             return
-        text_id = self.config.canvas.create_image(0, 0, image=tk_image, anchor="nw", )
+        text_id = self.config.canvas.create_image(
+            0,
+            0,
+            image=tk_image,
+            anchor="nw",
+        )
 
         self.config.canvas.tag_bind(text_id, "<Button-1>", lambda event, tid=text_id: self.select_text(event, tid))
         self.config.text_items[text_id] = {
@@ -70,15 +76,14 @@ class TextOperation:
             "content": text,
             "handle": None,
             "bbox": None,
-
         }
 
     def delete_text(self):
         if self.config.current_selected:
             self.config.canvas.delete(self.config.current_selected)
-            if self.config.text_items[self.config.current_selected].get('bbox') is not None:
-                self.config.canvas.delete(self.config.text_items[self.config.current_selected]['bbox'])
-                self.config.canvas.delete(self.config.text_items[self.config.current_selected]['handle'])
+            if self.config.text_items[self.config.current_selected].get("bbox") is not None:
+                self.config.canvas.delete(self.config.text_items[self.config.current_selected]["bbox"])
+                self.config.canvas.delete(self.config.text_items[self.config.current_selected]["handle"])
             del self.config.text_items[self.config.current_selected]
             self.config.current_selected = None
             self.parent.add_button.config(text="Add", command=self.add_text_to_canvas)
@@ -90,8 +95,8 @@ class TextOperation:
         self.draw_bounding_box(event, text_id)
 
     def update_widgets(self, text_id):
-        font_prop = self.config.text_items[text_id]['font_props']
-        text = self.config.text_items[text_id]['content']
+        font_prop = self.config.text_items[text_id]["font_props"]
+        text = self.config.text_items[text_id]["content"]
 
         self.parent.content_entry.delete("1.0", tk.END)
         self.parent.content_entry.insert("1.0", text)
@@ -123,27 +128,25 @@ class TextOperation:
         tk_image = self.create_text_image(font_props, text)
         if tk_image is None:
             return
-        self.config.text_items[text_id]['content'] = text
-        self.config.text_items[text_id]['font_props'] = font_props
+        self.config.text_items[text_id]["content"] = text
+        self.config.text_items[text_id]["font_props"] = font_props
         self.config.canvas.itemconfig(text_id, image=tk_image)
-        self.config.text_items[text_id]['font_image'] = tk_image
+        self.config.text_items[text_id]["font_image"] = tk_image
         self.update_bbox_and_handle(text_id)
 
     def draw_bounding_box(self, event, text_id):
-        bbox = self.config.canvas.create_rectangle(self.config.canvas.bbox(text_id),
-                                                   outline="blue", width=2, tags="bounding_box")
-        handle = self.config.canvas.create_oval(self.config.canvas.bbox(text_id)[2] - 5,
-                                                self.config.canvas.bbox(text_id)[3] - 5,
-                                                self.config.canvas.bbox(text_id)[2] + 5,
-                                                self.config.canvas.bbox(text_id)[3] + 5,
-                                                outline="blue", fill="gray")
-        self.config.text_items[text_id].update({
-            "bbox": bbox,
-            "handle": handle,
-            "initial_x": event.x,
-            "initial_y": event.y,
-            "initial_size": self.config.text_items[text_id]['font_props']['size'],
-        })
+        bb = self.config.canvas.bbox(text_id)
+        bbox = self.config.canvas.create_rectangle(bb, outline="blue", width=2, tags="bounding_box")
+        handle = self.config.canvas.create_oval(bb[2] - 5, bb[3] - 5, bb[2] + 5, bb[3] + 5, outline="blue", fill="gray")
+        self.config.text_items[text_id].update(
+            {
+                "bbox": bbox,
+                "handle": handle,
+                "initial_x": event.x,
+                "initial_y": event.y,
+                "initial_size": self.config.text_items[text_id]["font_props"]["size"],
+            }
+        )
 
         self.config.canvas.tag_bind(text_id, "<Button1-Motion>", lambda e, tid=text_id: self.move_text(e, tid))
         self.config.canvas.tag_bind(handle, "<Button1-Motion>", lambda e, tid=text_id: self.resize_text(e, tid))
@@ -153,29 +156,30 @@ class TextOperation:
         dx = event.x - self.config.text_items[text_id]["initial_x"]
         dy = event.y - self.config.text_items[text_id]["initial_y"]
         self.config.canvas.move(text_id, dx, dy)
-        self.config.canvas.move(self.config.text_items[text_id]['bbox'], dx, dy)
-        self.config.canvas.move(self.config.text_items[text_id]['handle'], dx, dy)
+        self.config.canvas.move(self.config.text_items[text_id]["bbox"], dx, dy)
+        self.config.canvas.move(self.config.text_items[text_id]["handle"], dx, dy)
         self.config.text_items[text_id]["initial_x"] = event.x
         self.config.text_items[text_id]["initial_y"] = event.y
 
     def start_resize(self, event, text_id):
-        self.config.text_items[text_id]['initial_x'] = event.x
-        self.config.text_items[text_id]['initial_y'] = event.y
-        self.config.text_items[text_id]['initial_size'] = self.config.text_items[text_id]['font_props']['size']
+        self.config.text_items[text_id]["initial_x"] = event.x
+        self.config.text_items[text_id]["initial_y"] = event.y
+        self.config.text_items[text_id]["initial_size"] = self.config.text_items[text_id]["font_props"]["size"]
 
     def resize_text(self, event, text_id):
-        dy = event.y - self.config.text_items[text_id]['initial_y']
-        new_size = max(8, self.config.text_items[text_id]['initial_size'] + dy // 10)
+        dy = event.y - self.config.text_items[text_id]["initial_y"]
+        new_size = max(8, self.config.text_items[text_id]["initial_size"] + round(dy / 10))
         # Skip expensive re-render if size hasn't actually changed
-        if new_size == self.config.text_items[text_id]["font_props"]['size']:
+        if new_size == self.config.text_items[text_id]["font_props"]["size"]:
             return
-        self.config.text_items[text_id]["font_props"]['size'] = new_size
-        tk_image = self.create_text_image(self.config.text_items[text_id]["font_props"],
-                                          self.config.text_items[text_id]['content'])
+        self.config.text_items[text_id]["font_props"]["size"] = new_size
+        tk_image = self.create_text_image(
+            self.config.text_items[text_id]["font_props"], self.config.text_items[text_id]["content"]
+        )
         if tk_image is None:
             return
         self.config.canvas.itemconfig(text_id, image=tk_image)
-        self.config.text_items[text_id]['font_image'] = tk_image
+        self.config.text_items[text_id]["font_image"] = tk_image
         self.update_bbox_and_handle(text_id)
 
         self.parent.size_var.set(new_size)
@@ -188,7 +192,7 @@ class TextOperation:
             bbox_coords[2] - 5,
             bbox_coords[3] - 5,
             bbox_coords[2] + 5,
-            bbox_coords[3] + 5
+            bbox_coords[3] + 5,
         )
 
     def deselect_text(self):
@@ -198,6 +202,8 @@ class TextOperation:
             self.parent.add_button.config(text="Add", command=self.add_text_to_canvas)
 
     def delete_bounding_box(self, text_id):
-        if 'bbox' in self.config.text_items[text_id]:
-            self.config.canvas.delete(self.config.text_items[text_id]['bbox'])
-            self.config.canvas.delete(self.config.text_items[text_id]['handle'])
+        if "bbox" in self.config.text_items[text_id]:
+            self.config.canvas.delete(self.config.text_items[text_id]["bbox"])
+            self.config.canvas.delete(self.config.text_items[text_id]["handle"])
+            self.config.text_items[text_id]["bbox"] = None
+            self.config.text_items[text_id]["handle"] = None

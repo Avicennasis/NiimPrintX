@@ -1,4 +1,6 @@
 def packet_to_int(x):
+    if not x.data:
+        raise ValueError("packet_to_int called on empty-data packet")
     return int.from_bytes(x.data, "big")
 
 
@@ -21,17 +23,17 @@ class NiimbotPacket:
         type_ = pkt[2]
         len_ = pkt[3]
         expected_end = 4 + len_ + 3  # header(4) + data(len_) + checksum(1) + footer(2)
-        if expected_end > len(pkt):
-            raise ValueError(f"Packet length field {len_} exceeds actual data: buffer is {len(pkt)} bytes")
+        if expected_end != len(pkt):
+            raise ValueError(f"Packet length mismatch: expected {expected_end}, got {len(pkt)}")
         if pkt[expected_end - 2 : expected_end] != b"\xaa\xaa":
-            raise ValueError(f"Invalid packet footer: {pkt[expected_end-2:expected_end].hex()}")
+            raise ValueError(f"Invalid packet footer: {pkt[expected_end - 2 : expected_end].hex()}")
         data = bytes(pkt[4 : 4 + len_])
 
         checksum = type_ ^ len_
         for i in data:
             checksum ^= i
         if checksum != pkt[expected_end - 3]:
-            raise ValueError(f"Checksum mismatch: expected {checksum:#x}, got {pkt[expected_end-3]:#x}")
+            raise ValueError(f"Checksum mismatch: expected {checksum:#x}, got {pkt[expected_end - 3]:#x}")
 
         return cls(type_, data)
 
@@ -43,9 +45,7 @@ class NiimbotPacket:
         checksum = self.type ^ len(self.data)
         for i in self.data:
             checksum ^= i
-        return bytes(
-            (0x55, 0x55, self.type, len(self.data), *self.data, checksum, 0xAA, 0xAA)
-        )
+        return bytes((0x55, 0x55, self.type, len(self.data), *self.data, checksum, 0xAA, 0xAA))
 
     def __repr__(self):
         return f"<NiimbotPacket type={self.type} data={self.data}>"

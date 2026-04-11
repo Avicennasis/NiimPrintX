@@ -7,8 +7,10 @@ import tkinter as tk
 import tkinter.messagebox as mb
 from tkinter import filedialog, ttk
 
-import cairo
-import PIL
+try:
+    import cairo
+except ImportError:
+    cairo = None
 from PIL import Image, ImageTk
 
 from .PrinterOperation import PrinterOperation
@@ -65,9 +67,7 @@ class PrintOption:
             )
             future.add_done_callback(lambda f: self._update_device_status(f))
         else:
-            future = asyncio.run_coroutine_threadsafe(
-                self.print_op.printer_disconnect(), self.root.async_loop
-            )
+            future = asyncio.run_coroutine_threadsafe(self.print_op.printer_disconnect(), self.root.async_loop)
             future.add_done_callback(lambda f: self._update_device_status(f))
 
     def _update_device_status(self, future):
@@ -75,6 +75,7 @@ class PrintOption:
             result = future.result()
         except Exception:
             result = False
+
         def _update():
             if self.config.printer_connected:
                 self.connect_button.config(text="Disconnect")
@@ -84,6 +85,7 @@ class PrintOption:
                 self.connect_button.config(state=tk.NORMAL)
             with contextlib.suppress(tk.TclError):
                 self.root.status_bar.update_status(result if self.config.printer_connected else False)
+
         self.root.after(0, _update)
 
     def display_print(self):
@@ -106,11 +108,13 @@ class PrintOption:
                 self.display_image_in_popup(tmp_file.name)
 
     def save_image(self):
+        if self.config.print_job:
+            return
         options = {
-            'defaultextension': '.png',
-            'filetypes': [('PNG files', '*.png')],
-            'initialfile': 'niimprintx.png',  # Specify an initial file name
-            'title': 'Save as PNG'
+            "defaultextension": ".png",
+            "filetypes": [("PNG files", "*.png")],
+            "initialfile": "niimprintx.png",  # Specify an initial file name
+            "title": "Save as PNG",
         }
         # Open the save as dialog and get the selected file name
         file_path = filedialog.asksaveasfilename(**options)
@@ -123,6 +127,8 @@ class PrintOption:
         return int(inches * self.config.label_sizes[self.config.device]["print_dpi"])
 
     def export_to_png(self, output_filename=None, horizontal_offset=0.0, vertical_offset=0.0):
+        if cairo is None:
+            raise ImportError("GUI extras not installed. Run: pip install NiimPrintX[gui]")
         if self.config.canvas is None or self.config.bounding_box is None:
             return None
         width = self.config.canvas.winfo_reqwidth()
@@ -168,7 +174,8 @@ class PrintOption:
                 else:
                     # tk.PhotoImage (from Wand text) — extract via Tcl
                     import base64 as b64
-                    png_b64 = font_img_widget.tk.call(str(font_img_widget), 'data', '-format', 'png')
+
+                    png_b64 = font_img_widget.tk.call(str(font_img_widget), "data", "-format", "png")
                     resized_image = Image.open(io.BytesIO(b64.b64decode(png_b64)))
                 with io.BytesIO() as buffer:
                     resized_image.save(buffer, format="PNG")
@@ -212,21 +219,19 @@ class PrintOption:
         self.print_density = tk.StringVar()
         self.print_density.set("3")
         tk.Label(option_frame, text="Density").grid(row=0, column=0, padx=5, pady=5, sticky="e")
-        density_slider = tk.Spinbox(option_frame,
-                                    from_=1,
-                                    to=self.config.label_sizes[self.config.device]['density'],
-                                    textvariable=self.print_density,
-                                    width=4
-                                    )
+        density_slider = tk.Spinbox(
+            option_frame,
+            from_=1,
+            to=self.config.label_sizes[self.config.device]["density"],
+            textvariable=self.print_density,
+            width=4,
+        )
         density_slider.grid(row=0, column=1, padx=5, pady=5, sticky="w")
 
         tk.Label(option_frame, text="Copies").grid(row=0, column=2, padx=20, pady=5, sticky="e")
         self.print_copy = tk.StringVar()
         self.print_copy.set("1")
-        print_copy_dropdown = tk.Spinbox(option_frame, from_=1, to=65535,
-                                         textvariable=self.print_copy,
-                                         width=4
-                                         )
+        print_copy_dropdown = tk.Spinbox(option_frame, from_=1, to=65535, textvariable=self.print_copy, width=4)
         print_copy_dropdown.grid(row=0, column=3, padx=5, pady=5, sticky="w")
 
         tk.Label(option_frame, text="Rotation").grid(row=0, column=4, padx=20, pady=5, sticky="e")
@@ -236,8 +241,9 @@ class PrintOption:
         # Set default to the device's configured rotation (convert negative to positive for display)
         default_rot = str(device_rotation % 360)
         self.print_rotation.set(default_rot)
-        rotation_dropdown = ttk.Combobox(option_frame, textvariable=self.print_rotation,
-                                          values=rotation_choices, state="readonly", width=4)
+        rotation_dropdown = ttk.Combobox(
+            option_frame, textvariable=self.print_rotation, values=rotation_choices, state="readonly", width=4
+        )
         rotation_dropdown.grid(row=0, column=5, padx=5, pady=5, sticky="w")
 
         offset_frame = tk.Frame(popup)
@@ -246,38 +252,53 @@ class PrintOption:
         self.horizontal_offset = tk.DoubleVar()
         self.horizontal_offset.set(0.0)
         tk.Label(offset_frame, text="Horizontal\nOffset").grid(row=0, column=0, padx=2, pady=5, sticky="e")
-        horizontal_offset_dropdown = tk.Spinbox(offset_frame,
-                                                from_=-5,
-                                                to=5,
-                                                textvariable=self.horizontal_offset,
-                                                increment=0.5, format="%.1f",
-                                                width=4,
-                                                command=self.update_image_offset
-                                                )
+        horizontal_offset_dropdown = tk.Spinbox(
+            offset_frame,
+            from_=-5,
+            to=5,
+            textvariable=self.horizontal_offset,
+            increment=0.5,
+            format="%.1f",
+            width=4,
+            command=self.update_image_offset,
+        )
         horizontal_offset_dropdown.grid(row=0, column=1, padx=2, pady=5, sticky="w")
         horizontal_offset_dropdown.bind("<FocusOut>", lambda event: self.update_image_offset())
 
         tk.Label(offset_frame, text="Vertical\nOffset").grid(row=0, column=2, padx=10, pady=5, sticky="e")
         self.vertical_offset = tk.DoubleVar()
         self.vertical_offset.set(0.0)
-        vertical_offset_dropdown = tk.Spinbox(offset_frame, from_=-5, to=5,
-                                              textvariable=self.vertical_offset,
-                                              increment=0.5, format="%.1f",
-                                              width=4,
-                                              command=self.update_image_offset
-                                              )
+        vertical_offset_dropdown = tk.Spinbox(
+            offset_frame,
+            from_=-5,
+            to=5,
+            textvariable=self.vertical_offset,
+            increment=0.5,
+            format="%.1f",
+            width=4,
+            command=self.update_image_offset,
+        )
         vertical_offset_dropdown.grid(row=0, column=3, padx=2, pady=5, sticky="w")
         vertical_offset_dropdown.bind("<FocusOut>", lambda event: self.update_image_offset())
 
         button_frame = tk.Frame(popup)
         button_frame.grid(row=3, column=0, columnspan=4, padx=20, pady=10, sticky="ew")
 
-        self.print_button = tk.Button(button_frame, text="Print",
-                                      command=lambda: self.print_label(self.print_image, self.print_density.get(), self.print_copy.get()))
+        self.print_button = tk.Button(
+            button_frame,
+            text="Print",
+            command=lambda: self.print_label(self.print_image, self.print_density.get(), self.print_copy.get()),
+        )
         self.print_button.grid(row=0, column=0, padx=5, pady=10, sticky="ew")
 
-        close_button = tk.Button(button_frame, text="Close", command=popup.destroy)
+        def _on_popup_close():
+            with contextlib.suppress(tk.TclError):
+                self.toolbar_print_button.config(state=tk.NORMAL)
+            popup.destroy()
+
+        close_button = tk.Button(button_frame, text="Close", command=_on_popup_close)
         close_button.grid(row=0, column=1, padx=5, pady=10, sticky="ew")
+        popup.protocol("WM_DELETE_WINDOW", _on_popup_close)
 
         # Ensure the buttons are evenly spaced
         button_frame.grid_columnconfigure(0, weight=1)
@@ -296,13 +317,15 @@ class PrintOption:
             vertical_offset = self.vertical_offset.get()
         except tk.TclError:
             return
-        self.print_image = self.export_to_png(output_filename=None,
-                                              horizontal_offset=horizontal_offset,
-                                              vertical_offset=vertical_offset)
+        result = self.export_to_png(
+            output_filename=None, horizontal_offset=horizontal_offset, vertical_offset=vertical_offset
+        )
+        if result is None:
+            return
+        self.print_image = result
         img_tk = ImageTk.PhotoImage(self.print_image)
         self.image_label.config(image=img_tk)
         self.image_label.image = img_tk
-
 
     def print_label(self, image, density, quantity):
         self.print_button.config(state=tk.DISABLED)
@@ -313,7 +336,7 @@ class PrintOption:
             density = int(density)
         except (ValueError, TypeError):
             density = 3
-        density = max(1, min(density, self.config.label_sizes[self.config.device]['density']))
+        density = max(1, min(density, self.config.label_sizes[self.config.device]["density"]))
 
         # Validate quantity
         try:
@@ -329,10 +352,8 @@ class PrintOption:
 
         # PIL rotates counter-clockwise, so negate for clockwise
         rotation = -rotation
-        image = image.rotate(rotation, PIL.Image.NEAREST, expand=True)
-        future = asyncio.run_coroutine_threadsafe(
-            self.print_op.print(image, density, quantity), self.root.async_loop
-        )
+        image = image.rotate(rotation, Image.NEAREST, expand=True)
+        future = asyncio.run_coroutine_threadsafe(self.print_op.print(image, density, quantity), self.root.async_loop)
         future.add_done_callback(lambda f: self._print_handler(f))
 
     def _print_handler(self, future):
@@ -340,6 +361,7 @@ class PrintOption:
             result = future.result()
         except BaseException:
             result = False
+
         def _update():
             self.config.print_job = False
             if result:
@@ -352,4 +374,5 @@ class PrintOption:
                 self.print_button.config(state=tk.NORMAL)
             with contextlib.suppress(tk.TclError):
                 self.toolbar_print_button.config(state=tk.NORMAL)
+
         self.root.after(0, _update)

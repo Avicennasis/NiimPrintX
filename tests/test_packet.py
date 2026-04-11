@@ -1,4 +1,5 @@
 import pytest
+
 from NiimPrintX.nimmy.packet import NiimbotPacket
 
 
@@ -46,7 +47,7 @@ def test_packet_from_bytes_too_short():
 def test_packet_from_bytes_bad_header():
     """Packets with wrong header must raise ValueError."""
     with pytest.raises(ValueError, match="Invalid packet header"):
-        NiimbotPacket.from_bytes(b"\xDE\xAD\x40\x01\x01\x40\xAA\xAA")
+        NiimbotPacket.from_bytes(b"\xde\xad\x40\x01\x01\x40\xaa\xaa")
 
 
 def test_packet_from_bytes_bad_checksum():
@@ -60,8 +61,8 @@ def test_packet_from_bytes_bad_checksum():
 
 def test_packet_from_bytes_length_exceeds_buffer():
     """Length field claiming more data than buffer holds must raise ValueError."""
-    raw = b"\x55\x55\x40\x64\x01\x25\xAA\xAA"  # len=0x64=100, but only 1 data byte
-    with pytest.raises(ValueError, match="exceeds"):
+    raw = b"\x55\x55\x40\x64\x01\x25\xaa\xaa"  # len=0x64=100, but only 1 data byte
+    with pytest.raises(ValueError, match="mismatch|exceeds"):
         NiimbotPacket.from_bytes(raw)
 
 

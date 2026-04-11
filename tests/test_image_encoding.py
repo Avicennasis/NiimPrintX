@@ -32,7 +32,7 @@ def test_encode_image_packet_content_all_black(make_client):
     for pkt in packets:
         # Header is 6 bytes, then line data
         line_data = pkt.data[6:]
-        assert line_data == b'\xff\xff'  # 16 bits all set
+        assert line_data == b"\xff\xff"  # 16 bits all set
 
 
 def test_encode_image_packet_content_all_white(make_client):
@@ -43,7 +43,7 @@ def test_encode_image_packet_content_all_white(make_client):
     assert len(packets) == 4
     for pkt in packets:
         line_data = pkt.data[6:]
-        assert line_data == b'\x00\x00'  # 16 bits all clear
+        assert line_data == b"\x00\x00"  # 16 bits all clear
 
 
 def test_encode_image_packet_content_checkerboard(make_client):

@@ -8,3 +8,7 @@ class BLEException(NiimPrintXException):
 
 class PrinterException(NiimPrintXException):
     """Raised for printer-level protocol errors."""
+
+
+class ConfigException(NiimPrintXException):
+    pass

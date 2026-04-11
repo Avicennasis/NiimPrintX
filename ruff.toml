@@ -2,11 +2,15 @@ target-version = "py312"
 line-length = 120
 
 [lint]
-select = ["E", "F", "W", "I", "B", "UP", "C4", "RUF", "SIM", "S", "PT", "DTZ"]
+select = ["E", "F", "W", "I", "B", "UP", "C4", "RUF", "SIM", "S", "PT", "DTZ", "PERF", "PIE", "RET", "PLW", "PLC", "ERA", "BLE", "ASYNC"]
 ignore = ["E501", "B008"]  # E501: line length enforced by formatter only
 
 [lint.isort]
 known-first-party = ["NiimPrintX"]
 
 [lint.per-file-ignores]
-"tests/*" = ["S101"]
+"tests/*" = ["S101", "SLF001", "PLC0415"]
+"bin/*" = ["S603", "S607"]
+"NiimPrintX/ui/component/FontList.py" = ["S603", "S607"]
+"NiimPrintX/cli/command.py" = ["BLE001"]
+"NiimPrintX/ui/widget/PrinterOperation.py" = ["BLE001"]

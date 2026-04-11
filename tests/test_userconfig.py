@@ -5,7 +5,6 @@ from unittest.mock import patch
 
 from NiimPrintX.ui.UserConfig import _validate_dims, load_user_config, merge_label_sizes
 
-
 # --- _validate_dims tests ---
 
 

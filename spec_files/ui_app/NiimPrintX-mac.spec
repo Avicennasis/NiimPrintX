@@ -3,7 +3,7 @@ import os
 import subprocess
 from PyInstaller.utils.hooks import collect_submodules
 
-hiddenimports = collect_submodules('bleak') + collect_submodules('wand') + ['platformdirs', 'sv_ttk']
+hiddenimports = collect_submodules('bleak') + collect_submodules('wand') + ['platformdirs', 'sv_ttk', 'cairo']
 
 
 # Function to get the ImageMagick installation path using brew and resolve the symlink
@@ -82,7 +82,7 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
@@ -98,7 +98,7 @@ coll = COLLECT(
     a.binaries,
     a.datas,
     strip=False,
-    upx=True,
+    upx=False,
     upx_exclude=[],
     name='NiimPrintX',
 )

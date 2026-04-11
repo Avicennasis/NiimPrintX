@@ -18,7 +18,6 @@ class AppConfig:
         self.icon_folder = f"{self.current_dir}/icons"
         self.canvas = None
         self.bounding_box = None
-        self.device = None
         self.label_sizes = {
             "d110": {
                 "size": {
@@ -30,7 +29,7 @@ class AppConfig:
                 },
                 "density": 3,
                 "print_dpi": 203,
-                "rotation": -90
+                "rotation": -90,
             },
             "d11": {
                 "size": {
@@ -42,7 +41,7 @@ class AppConfig:
                 },
                 "density": 3,
                 "print_dpi": 203,
-                "rotation": -90
+                "rotation": -90,
             },
             "d11_h": {
                 "size": {
@@ -54,7 +53,7 @@ class AppConfig:
                 },
                 "density": 3,
                 "print_dpi": 300,
-                "rotation": -90
+                "rotation": -90,
             },
             "d101": {
                 "size": {
@@ -66,7 +65,7 @@ class AppConfig:
                 },
                 "density": 3,
                 "print_dpi": 203,
-                "rotation": -90
+                "rotation": -90,
             },
             "d110_m": {
                 "size": {
@@ -78,7 +77,7 @@ class AppConfig:
                 },
                 "density": 3,
                 "print_dpi": 300,
-                "rotation": -90
+                "rotation": -90,
             },
             "b18": {
                 "size": {
@@ -88,7 +87,7 @@ class AppConfig:
                 },
                 "density": 3,
                 "print_dpi": 203,
-                "rotation": 0
+                "rotation": 0,
             },
             "b21": {
                 "size": {
@@ -99,7 +98,7 @@ class AppConfig:
                 },
                 "density": 5,
                 "print_dpi": 203,
-                "rotation": 0
+                "rotation": 0,
             },
             "b1": {
                 "size": {
@@ -110,9 +109,10 @@ class AppConfig:
                 },
                 "density": 3,
                 "print_dpi": 203,
-                "rotation": 0
-            }
+                "rotation": 0,
+            },
         }
+        self.device = next(iter(self.label_sizes))
         self.current_label_size = None
         # Merge user config for custom label sizes
         user_config = load_user_config()
@@ -121,6 +121,4 @@ class AppConfig:
         self.frames = {}
         self.print_job = False
         self.printer_connected = False
-        self.cache_dir = platformdirs.user_cache_dir('NiimPrintX')
-
-
+        self.cache_dir = platformdirs.user_cache_dir("NiimPrintX")

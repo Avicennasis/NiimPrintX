@@ -12,7 +12,7 @@ err_console = Console(color_system=None if no_color else "auto", stderr=True)
 
 def print_success(message):
     """Prints a message indicating success in green color."""
-    console.print(f"[bold green]{message}[/bold green] ")
+    console.print(f"[bold green]{message}[/bold green]")
 
 
 def print_error(message):
@@ -22,4 +22,4 @@ def print_error(message):
 
 def print_info(message):
     """Prints an informational message in blue color."""
-    err_console.print(f"[bold blue]{message}[/bold blue]")
+    console.print(f"[bold blue]{message}[/bold blue]")

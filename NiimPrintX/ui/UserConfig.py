@@ -1,3 +1,4 @@
+import copy
 import os
 import tomllib
 
@@ -50,6 +51,7 @@ def _safe_int(value, default):
 
 def merge_label_sizes(builtin_sizes, user_config):
     """Merge user device configs into built-in label sizes."""
+    builtin_sizes = copy.deepcopy(builtin_sizes)
     user_devices = user_config.get("devices", {})
     for device_name, device_conf in user_devices.items():
         if not isinstance(device_conf, dict):
@@ -58,7 +60,9 @@ def merge_label_sizes(builtin_sizes, user_config):
             # Warn about ignored keys for built-in devices
             ignored = {k for k in device_conf if k != "size"}
             if ignored:
-                logger.warning(f"Config keys {ignored} for built-in device '{device_name}' are ignored; only 'size' can be extended")
+                logger.warning(
+                    f"Config keys {ignored} for built-in device '{device_name}' are ignored; only 'size' can be extended"
+                )
             # Merge sizes into existing device
             if "size" in device_conf and isinstance(device_conf["size"], dict):
                 for label, dims in device_conf["size"].items():
@@ -80,7 +84,7 @@ def merge_label_sizes(builtin_sizes, user_config):
                         logger.warning(f"Skipping invalid dims for {device_name!r} label {k!r}: {v!r}")
             if not sizes:
                 continue
-            raw_rot = _safe_int(device_conf.get("rotation", -90), -90) % 360
+            raw_rot = _safe_int(device_conf.get("rotation", 270), 270) % 360
             if raw_rot not in (0, 90, 180, 270):
                 logger.warning(f"Invalid rotation {raw_rot} for '{device_name}'; defaulting to 270")
                 raw_rot = 270

@@ -1,5 +1,6 @@
 import tkinter.messagebox as messagebox
 
+import PIL.Image
 from PIL import Image, ImageTk
 
 
@@ -9,6 +10,7 @@ class ImageOperation:
 
     def load_image(self, file_path):
         try:
+            PIL.Image.MAX_IMAGE_PIXELS = 5_000_000
             raw_image = Image.open(file_path)
             source_image = raw_image.convert("RGBA")
             raw_image.close()
@@ -26,24 +28,27 @@ class ImageOperation:
         new_height = int(img_height * scale_factor)
         resized_image = source_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
         img_tk = ImageTk.PhotoImage(resized_image)
+        resized_image.close()
 
-        cx = self.config.canvas.winfo_reqwidth() // 2
-        cy = self.config.canvas.winfo_reqheight() // 2
-        image_id = self.config.canvas.create_image(cx, cy, image=img_tk, anchor="center")
+        x1, y1, x2, y2 = self.config.canvas.bbox(self.config.bounding_box)
+        cx = (x1 + x2) // 2 - new_width // 2
+        cy = (y1 + y2) // 2 - new_height // 2
+        image_id = self.config.canvas.create_image(cx, cy, image=img_tk, anchor="nw")
         self.config.image_items[image_id] = {
             "image": img_tk,
             "original_image": source_image,  # Full-res, not resized
             "bbox": None,
-            "handle": None
+            "handle": None,
         }
 
         # Make the image draggable and resizable
-        self.config.canvas.tag_bind(image_id, "<Button-1>",
-                                    lambda event, img_id=image_id: self.select_image(event, img_id))
+        self.config.canvas.tag_bind(
+            image_id, "<Button-1>", lambda event, img_id=image_id: self.select_image(event, img_id)
+        )
         self.config.canvas.tag_bind(image_id, "<B1-Motion>", lambda e, img_id=image_id: self.move_image(e, img_id))
 
     def start_image_resize(self, event, image_id):
-        self.config.image_items[image_id]['initial_x'] = event.x
+        self.config.image_items[image_id]["initial_x"] = event.x
 
     def select_image(self, event, image_id):
         """Select and draw a bounding box around the image."""
@@ -52,24 +57,12 @@ class ImageOperation:
         # Draw a bounding box
         bb = self.config.canvas.bbox(image_id)
         bbox = self.config.canvas.create_rectangle(bb, outline="blue", width=2)
-        handle = self.config.canvas.create_oval(
-            bb[2] - 5,
-            bb[3] - 5,
-            bb[2] + 5,
-            bb[3] + 5,
-            outline="blue",
-            fill="gray"
-        )
+        handle = self.config.canvas.create_oval(bb[2] - 5, bb[3] - 5, bb[2] + 5, bb[3] + 5, outline="blue", fill="gray")
 
-        self.config.image_items[image_id].update({
-            "bbox": bbox,
-            "handle": handle,
-            "initial_x": event.x,
-            "initial_y": event.y
-        })
-        self.config.canvas.tag_bind(
-            handle, "<B1-Motion>", lambda e, img_id=image_id: self.resize_image(e, img_id)
+        self.config.image_items[image_id].update(
+            {"bbox": bbox, "handle": handle, "initial_x": event.x, "initial_y": event.y}
         )
+        self.config.canvas.tag_bind(handle, "<B1-Motion>", lambda e, img_id=image_id: self.resize_image(e, img_id))
         self.config.canvas.tag_bind(handle, "<Button-1>", lambda e: self.start_image_resize(e, image_id))
 
     def deselect_image(self):
@@ -119,6 +112,7 @@ class ImageOperation:
             return
         resized_image = original_image.resize((new_width, new_height), Image.Resampling.BILINEAR)
         img_tk = ImageTk.PhotoImage(resized_image)
+        resized_image.close()
 
         # Update the canvas with the resized image
         self.config.canvas.itemconfig(image_id, image=img_tk)
@@ -146,9 +140,9 @@ class ImageOperation:
         if self.config.current_selected_image:
             item = self.config.image_items[self.config.current_selected_image]
             self.config.canvas.delete(self.config.current_selected_image)
-            if item.get("bbox"):
+            if item.get("bbox") is not None:
                 self.config.canvas.delete(item["bbox"])
-            if item.get("handle"):
+            if item.get("handle") is not None:
                 self.config.canvas.delete(item["handle"])
             del self.config.image_items[self.config.current_selected_image]
             self.config.current_selected_image = None

@@ -1,13 +1,12 @@
-import asyncio
 import struct
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from PIL import Image
 
 from NiimPrintX.nimmy.exception import PrinterException
 from NiimPrintX.nimmy.packet import NiimbotPacket
-from NiimPrintX.nimmy.printer import InfoEnum, PrinterClient, RequestCodeEnum
+from NiimPrintX.nimmy.printer import InfoEnum, RequestCodeEnum
 
 
 async def test_send_command_clears_event_before_wait(make_client):
@@ -15,7 +14,7 @@ async def test_send_command_clears_event_before_wait(make_client):
     client = make_client()
     # Pre-set the event to simulate a stale notification
     client.notification_event.set()
-    client.notification_data = b"\x55\x55\x40\x01\xFF\xBE\xAA\xAA"  # stale data
+    client.notification_data = b"\x55\x55\x40\x01\xff\xbe\xaa\xaa"  # stale data
 
     # Build a valid response packet for GET_INFO
     response_pkt = NiimbotPacket(0x40, b"\x01")
@@ -37,7 +36,7 @@ async def test_send_command_catches_valueerror_from_malformed_packet(make_client
 
     async def fake_write(data, char_uuid):
         # Simulate a corrupted response (bad header)
-        client.notification_data = b"\xDE\xAD\x40\x01\x01\x40\xAA\xAA"
+        client.notification_data = b"\xde\xad\x40\x01\x01\x40\xaa\xaa"
         client.notification_event.set()
 
     client.transport.write = AsyncMock(side_effect=fake_write)
@@ -48,8 +47,10 @@ async def test_send_command_catches_valueerror_from_malformed_packet(make_client
 async def test_heartbeat_case_10_no_rfid(make_client):
     """10-byte heartbeat should not set rfid_read_state (only 2 useful fields)."""
     client = make_client()
-    hb_data = bytes(10)
-    response_pkt = NiimbotPacket(RequestCodeEnum.HEARTBEAT, hb_data)
+    hb_data = bytearray(10)
+    hb_data[8] = 0x05  # closing_state
+    hb_data[9] = 0x64  # power_level
+    response_pkt = NiimbotPacket(RequestCodeEnum.HEARTBEAT, bytes(hb_data))
 
     async def fake_write(data, char_uuid):
         client.notification_data = response_pkt.to_bytes()
@@ -57,8 +58,8 @@ async def test_heartbeat_case_10_no_rfid(make_client):
 
     client.transport.write = AsyncMock(side_effect=fake_write)
     result = await client.heartbeat()
-    assert result["closing_state"] == hb_data[8]
-    assert result["power_level"] == hb_data[9]
+    assert result["closing_state"] == 0x05
+    assert result["power_level"] == 0x64
     assert result["rfid_read_state"] is None
 
 
@@ -94,7 +95,7 @@ async def test_heartbeat_case_13(make_client):
     """13-byte heartbeat extracts closing_state, power, paper, and rfid."""
     client = make_client()
     hb_data = bytearray(13)
-    hb_data[9] = 0x01   # closing_state
+    hb_data[9] = 0x01  # closing_state
     hb_data[10] = 0x64  # power_level
     hb_data[11] = 0x0A  # paper_state
     hb_data[12] = 0x0B  # rfid_read_state
@@ -207,7 +208,7 @@ async def test_get_info_soft_version(make_client):
 
 async def test_get_rfid_empty_data_returns_none(make_client):
     client = make_client()
-    response_pkt = NiimbotPacket(RequestCodeEnum.GET_RFID, b'\x00')
+    response_pkt = NiimbotPacket(RequestCodeEnum.GET_RFID, b"\x00")
 
     async def fake_write(data, char_uuid):
         client.notification_data = response_pkt.to_bytes()
@@ -220,9 +221,9 @@ async def test_get_rfid_empty_data_returns_none(make_client):
 
 async def test_get_rfid_valid_data(make_client):
     client = make_client()
-    uuid = b'\x01\x02\x03\x04\x05\x06\x07\x08'
-    barcode = b'BC123'
-    serial = b'SN456'
+    uuid = b"\x01\x02\x03\x04\x05\x06\x07\x08"
+    barcode = b"BC123"
+    serial = b"SN456"
     rfid_data = uuid + bytes([len(barcode)]) + barcode + bytes([len(serial)]) + serial
     rfid_data += struct.pack(">HHB", 100, 50, 2)  # total, used, type
     response_pkt = NiimbotPacket(RequestCodeEnum.GET_RFID, rfid_data)
@@ -246,7 +247,7 @@ async def test_get_rfid_malformed_returns_none(make_client):
     """Truncated RFID data should return None, not crash."""
     client = make_client()
     # Valid start but truncated — will cause IndexError in parsing
-    response_pkt = NiimbotPacket(RequestCodeEnum.GET_RFID, b'\x01\x02\x03')
+    response_pkt = NiimbotPacket(RequestCodeEnum.GET_RFID, b"\x01\x02\x03")
 
     async def fake_write(data, char_uuid):
         client.notification_data = response_pkt.to_bytes()
@@ -259,7 +260,7 @@ async def test_get_rfid_malformed_returns_none(make_client):
 
 async def test_set_quantity(make_client):
     client = make_client()
-    response_pkt = NiimbotPacket(RequestCodeEnum.SET_QUANTITY, b'\x01')
+    response_pkt = NiimbotPacket(RequestCodeEnum.SET_QUANTITY, b"\x01")
 
     async def fake_write(data, char_uuid):
         client.notification_data = response_pkt.to_bytes()
@@ -272,7 +273,7 @@ async def test_set_quantity(make_client):
 
 async def test_end_print(make_client):
     client = make_client()
-    response_pkt = NiimbotPacket(RequestCodeEnum.END_PRINT, b'\x01')
+    response_pkt = NiimbotPacket(RequestCodeEnum.END_PRINT, b"\x01")
 
     async def fake_write(data, char_uuid):
         client.notification_data = response_pkt.to_bytes()

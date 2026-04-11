@@ -1,14 +1,15 @@
+# Generated from pyproject.toml — run: poetry export -f requirements.txt --output requirements.txt
 # This file is provided for pip users who don't use Poetry.
 # For the canonical dependency specification, see pyproject.toml.
 # To install: pip install -r requirements.txt
 # For GUI deps: pip install pycairo wand sv-ttk
-bleak>=0.22.3
-click>=8.1.7
-loguru>=0.7.2
-pillow>=12.1.1
-platformdirs>=4.0
-rich>=13.7.1
+bleak>=0.22.3,<0.23
+click>=8.1.7,<9
+loguru>=0.7.2,<1
+pillow>=12.1.1,<13
+platformdirs>=4.0,<5
+rich>=13.7.1,<14
 # Optional GUI dependencies (install manually: pip install pycairo wand sv-ttk)
-# pycairo>=1.26.0
-# wand>=0.6.13
-# sv-ttk>=2.6
+# pycairo>=1.26.0,<2
+# wand>=0.6.13,<1
+# sv-ttk>=2.6,<3

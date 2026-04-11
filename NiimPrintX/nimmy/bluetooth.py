@@ -30,7 +30,6 @@ async def find_device(device_name_prefix=None):
     raise BLEException(f"Failed to find device {device_name_prefix}")
 
 
-
 class BLETransport:
     def __init__(self, address=None):
         self.address = address
@@ -67,10 +66,7 @@ class BLETransport:
     async def write(self, data, char_uuid, timeout=10.0):
         if self.client and self.client.is_connected:
             try:
-                await asyncio.wait_for(
-                    self.client.write_gatt_char(char_uuid, data),
-                    timeout=timeout
-                )
+                await asyncio.wait_for(self.client.write_gatt_char(char_uuid, data, response=False), timeout=timeout)
             except TimeoutError:
                 raise BLEException(f"BLE write timed out after {timeout}s") from None
         else:

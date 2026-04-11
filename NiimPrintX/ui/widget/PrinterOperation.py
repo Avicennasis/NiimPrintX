@@ -1,6 +1,6 @@
 from NiimPrintX.nimmy.bluetooth import find_device
 from NiimPrintX.nimmy.logger_config import get_logger
-from NiimPrintX.nimmy.printer import PrinterClient
+from NiimPrintX.nimmy.printer import V2_MODELS, PrinterClient
 
 logger = get_logger()
 
@@ -17,6 +17,7 @@ class PrinterOperation:
             if await self.printer.connect():
                 self.config.printer_connected = True
                 return True
+            self.config.printer_connected = False
             self.printer = None
             return False
         except Exception as e:
@@ -44,7 +45,7 @@ class PrinterOperation:
                     logger.error("Print failed: could not connect to printer")
                     return False
 
-            if self.config.device in ("b1", "b18", "b21"):
+            if self.config.device in V2_MODELS:
                 await self.printer.print_imageV2(image, density, quantity)
             else:
                 await self.printer.print_image(image, density, quantity)

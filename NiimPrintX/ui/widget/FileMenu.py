@@ -1,6 +1,8 @@
 import base64
 import io
 import json
+import os
+import tempfile
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
@@ -8,6 +10,7 @@ import PIL
 from PIL import Image, ImageTk
 
 _MAX_LABEL_PIXELS = 5_000_000  # well above any real label dimensions
+
 
 class FileMenu:
     def __init__(self, root, parent, config):
@@ -29,8 +32,7 @@ class FileMenu:
 
     def save_to_file(self):
         try:
-            file_path = filedialog.asksaveasfilename(defaultextension=".niim",
-                                                     filetypes=[("NIIM files", "*.niim")])
+            file_path = filedialog.asksaveasfilename(defaultextension=".niim", filetypes=[("NIIM files", "*.niim")])
             if not file_path:
                 return
 
@@ -38,7 +40,7 @@ class FileMenu:
                 "device": self.config.device,
                 "current_label_size": self.config.current_label_size,
                 "text": {},
-                "image": {}
+                "image": {},
             }
             if self.config.text_items:
                 for text_id, properties in self.config.text_items.items():
@@ -48,7 +50,7 @@ class FileMenu:
                         pil_image = ImageTk.getimage(font_image_widget)
                     else:
                         # tk.PhotoImage — extract PNG via Tk call
-                        png_b64 = font_image_widget.tk.call(str(font_image_widget), 'data', '-format', 'png')
+                        png_b64 = font_image_widget.tk.call(str(font_image_widget), "data", "-format", "png")
                         pil_image = Image.open(io.BytesIO(base64.b64decode(png_b64)))
                     with io.BytesIO() as buffer:
                         pil_image.save(buffer, format="PNG")
@@ -58,10 +60,10 @@ class FileMenu:
                     item_data = {
                         "content": properties["content"],
                         "coords": self.config.canvas.coords(text_id),
-                        "font_props": properties['font_props'],
-                        "font_image": font_img_str
+                        "font_props": properties["font_props"],
+                        "font_image": font_img_str,
                     }
-                    data['text'][str(text_id)] = item_data
+                    data["text"][str(text_id)] = item_data
 
             if self.config.image_items:
                 for image_id, properties in self.config.image_items.items():
@@ -79,12 +81,15 @@ class FileMenu:
                     item_data = {
                         "image": resize_img_str,
                         "original_image": original_img_str,
-                        "coords": self.config.canvas.coords(image_id)
+                        "coords": self.config.canvas.coords(image_id),
                     }
-                    data['image'][str(image_id)] = item_data
+                    data["image"][str(image_id)] = item_data
 
-            with open(file_path, 'w') as f:
-                json.dump(data, f, indent=2)
+            dir_name = os.path.dirname(file_path) or "."
+            with tempfile.NamedTemporaryFile("w", dir=dir_name, delete=False, suffix=".tmp") as tf:
+                tmp_path = tf.name
+                json.dump(data, tf, indent=2)
+            os.replace(tmp_path, file_path)
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save: {e}")
 
@@ -96,9 +101,12 @@ class FileMenu:
                 with open(file_path) as f:
                     data = json.load(f)
             except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as e:
-                messagebox.showerror("Error", f"Failed to open file: {e}\n\n"
-                                     "Only JSON .niim files are supported. Legacy pickle "
-                                     "files must be re-saved from an older version first.")
+                messagebox.showerror(
+                    "Error",
+                    f"Failed to open file: {e}\n\n"
+                    "Only JSON .niim files are supported. Legacy pickle "
+                    "files must be re-saved from an older version first.",
+                )
                 return
 
             # Validate required keys
@@ -134,58 +142,95 @@ class FileMenu:
 
     def load_text(self, data):
         try:
+            # Validate coords
+            coords = data.get("coords")
+            if (
+                not isinstance(coords, (list, tuple))
+                or len(coords) < 2
+                or not all(isinstance(c, (int, float)) for c in coords[:2])
+            ):
+                raise ValueError("Invalid or missing coords: expected a list with at least 2 numeric elements")
+
+            # Validate font_props
+            fp = data.get("font_props")
+            if not isinstance(fp, dict):
+                raise ValueError("Invalid or missing font_props: expected a dict")
+            if "size" not in fp or not isinstance(fp["size"], (int, float)) or not (1 <= fp["size"] <= 500):
+                raise ValueError("font_props['size'] must be a number between 1 and 500")
+            if "kerning" in fp and not isinstance(fp["kerning"], (int, float)):
+                raise ValueError("font_props['kerning'] must be a number")
+
+            # Validate content
+            if not isinstance(data.get("content"), str):
+                raise ValueError("'content' must be a string")
+
             font_img_data = base64.b64decode(data["font_image"])
             PIL.Image.MAX_IMAGE_PIXELS = _MAX_LABEL_PIXELS
             font_image = Image.open(io.BytesIO(font_img_data))
-            font_image.load()
             if font_image.width * font_image.height > _MAX_LABEL_PIXELS:
+                font_image.close()
                 raise ValueError(f"Image too large: {font_image.width}x{font_image.height}")
+            font_image.load()
             font_img_tk = ImageTk.PhotoImage(font_image)
-            text_id = self.config.canvas.create_image(data['coords'][0], data['coords'][1],
-                                                       image=font_img_tk, anchor="nw")
-            self.config.canvas.tag_bind(text_id, "<Button-1>",
-                                        lambda event, tid=text_id: self.root.text_tab.text_op.select_text(event, tid))
+            text_id = self.config.canvas.create_image(coords[0], coords[1], image=font_img_tk, anchor="nw")
+            self.config.canvas.tag_bind(
+                text_id, "<Button-1>", lambda event, tid=text_id: self.root.text_tab.text_op.select_text(event, tid)
+            )
 
             self.config.text_items[text_id] = {
                 "font_image": font_img_tk,
-                "font_props": data["font_props"],
+                "font_props": fp,
                 "content": data["content"],
                 "handle": None,
-                "bbox": None
+                "bbox": None,
             }
         except Exception as e:
             messagebox.showwarning("Warning", f"Failed to load text item: {e}")
 
     def load_image(self, data):
         try:
+            # Validate coords
+            coords = data.get("coords")
+            if (
+                not isinstance(coords, (list, tuple))
+                or len(coords) < 2
+                or not all(isinstance(c, (int, float)) for c in coords[:2])
+            ):
+                raise ValueError("Invalid or missing coords: expected a list with at least 2 numeric elements")
+
             original_image_data = base64.b64decode(data["original_image"])
             PIL.Image.MAX_IMAGE_PIXELS = _MAX_LABEL_PIXELS
             original_image = Image.open(io.BytesIO(original_image_data))
-            original_image.load()
             if original_image.width * original_image.height > _MAX_LABEL_PIXELS:
+                original_image.close()
                 raise ValueError(f"Image too large: {original_image.width}x{original_image.height}")
+            original_image.load()
 
             image_data = base64.b64decode(data["image"])
             PIL.Image.MAX_IMAGE_PIXELS = _MAX_LABEL_PIXELS
             image = Image.open(io.BytesIO(image_data))
-            image.load()  # force decode before BytesIO is GC'd
             if image.width * image.height > _MAX_LABEL_PIXELS:
+                image.close()
                 raise ValueError(f"Resized image too large: {image.width}x{image.height}")
+            image.load()  # force decode before BytesIO is GC'd
             img_tk = ImageTk.PhotoImage(image)
-            image_id = self.config.canvas.create_image(data['coords'][0], data['coords'][1],
-                                                       image=img_tk, anchor="nw")
+            image.close()
+            image_id = self.config.canvas.create_image(coords[0], coords[1], image=img_tk, anchor="nw")
 
             self.config.image_items[image_id] = {
                 "image": img_tk,
                 "original_image": original_image,
                 "bbox": None,
-                "handle": None
+                "handle": None,
             }
 
-            self.config.canvas.tag_bind(image_id, "<Button-1>",
-                                        lambda event, img_id=image_id: self.root.icon_tab.image_op.select_image(event,
-                                                                                                                img_id))
-            self.config.canvas.tag_bind(image_id, "<Button1-Motion>",
-                                        lambda e, img_id=image_id: self.root.icon_tab.image_op.move_image(e, img_id))
+            self.config.canvas.tag_bind(
+                image_id,
+                "<Button-1>",
+                lambda event, img_id=image_id: self.root.icon_tab.image_op.select_image(event, img_id),
+            )
+            self.config.canvas.tag_bind(
+                image_id, "<B1-Motion>", lambda e, img_id=image_id: self.root.icon_tab.image_op.move_image(e, img_id)
+            )
         except Exception as e:
             messagebox.showwarning("Warning", f"Failed to load image item: {e}")

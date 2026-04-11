@@ -1,6 +1,7 @@
 import asyncio
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 from PIL import Image
 
 from NiimPrintX.nimmy.printer import PrinterClient

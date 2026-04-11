@@ -12,7 +12,6 @@ from NiimPrintX.nimmy.packet import NiimbotPacket
 from NiimPrintX.nimmy.printer import RequestCodeEnum
 from NiimPrintX.ui.UserConfig import _safe_int
 
-
 # ---------------------------------------------------------------------------
 # 1. find_characteristics — no matching characteristic raises PrinterException
 # ---------------------------------------------------------------------------
@@ -66,8 +65,9 @@ async def test_transport_connect_address_change_disconnects_old():
 
     # Old client should have been disconnected
     old_client.disconnect.assert_awaited_once()
-    # Transport should now point at the new address
+    # Transport should now point at the new address and the new client
     assert transport.address == new_address
+    assert transport.client is new_mock_client
     assert result is True
 
 
@@ -128,9 +128,7 @@ async def test_send_command_start_notification_failure_skips_stop(make_client):
     """If start_notification raises, stop_notification must NOT be called
     (notifying flag was never set)."""
     client = make_client()
-    client.transport.start_notification = AsyncMock(
-        side_effect=BLEException("start failed")
-    )
+    client.transport.start_notification = AsyncMock(side_effect=BLEException("start failed"))
 
     with pytest.raises(PrinterException, match="BLE error"):
         await client.send_command(RequestCodeEnum.GET_INFO, b"\x01")

@@ -1,5 +1,5 @@
 import struct
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 from PIL import Image
 
@@ -156,11 +156,13 @@ async def test_print_image_small_image(make_client):
 
 
 async def test_print_image_with_offsets(make_client):
-    """Printing with offsets should not crash."""
+    """Printing with offsets should send the correct number of 0x85 row packets."""
     client = make_client()
-    _auto_respond(client)
+    commands = _auto_respond(client)
 
     img = Image.new("L", (16, 8), color=128)
     with patch("asyncio.sleep", new_callable=AsyncMock):
         await client.print_image(img, density=2, quantity=1, vertical_offset=5, horizontal_offset=3)
-    # No exception means success
+
+    # 8 image rows + 5 blank rows from vertical_offset = 13 total 0x85 packets
+    assert commands.count(0x85) == 13

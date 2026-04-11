@@ -16,11 +16,11 @@ class StatusBar:
 
         # Create a canvas for the status circle
         self.circle_canvas = tk.Canvas(self.status_frame, width=20, height=20, bd=0, highlightthickness=0)
-        self.circle_id = self.circle_canvas.create_oval(4, 4, 16, 16, fill='red')
+        self.circle_id = self.circle_canvas.create_oval(4, 4, 16, 16, fill="red")
         self.circle_canvas.pack(side=tk.RIGHT, padx=10, pady=5)
 
         # Create a label for the status message
-        self.status_label = tk.Label(self.status_frame, text='Not connected', fg='red', font=('Arial', 10))
+        self.status_label = tk.Label(self.status_frame, text="Not connected", fg="red", font=("Arial", 10))
         self.status_label.pack(side=tk.RIGHT, padx=5)
 
     def update_status(self, connection=True):

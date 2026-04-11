@@ -6,7 +6,6 @@ import pytest
 from NiimPrintX.nimmy.bluetooth import BLETransport, find_device
 from NiimPrintX.nimmy.exception import BLEException
 
-
 # ---------------------------------------------------------------------------
 # find_device tests
 # ---------------------------------------------------------------------------

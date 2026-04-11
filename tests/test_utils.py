@@ -5,8 +5,8 @@ from NiimPrintX.nimmy.helper import print_error, print_info, print_success
 from NiimPrintX.nimmy.logger_config import get_logger, logger_enable, setup_logger
 from NiimPrintX.nimmy.packet import NiimbotPacket, packet_to_int
 
-
 # ---------- exception.py ----------
+
 
 def test_ble_exception_is_exception():
     """BLEException should inherit from Exception."""
@@ -50,6 +50,7 @@ def test_exception_hierarchy():
 
 # ---------- helper.py ----------
 
+
 def test_print_success_no_crash():
     """print_success should not raise on a simple string."""
     print_success("test")
@@ -67,9 +68,11 @@ def test_print_info_no_crash():
 
 # ---------- logger_config.py ----------
 
+
 def test_get_logger_returns_logger():
     """get_logger() should return the loguru logger instance."""
     from loguru import logger as loguru_logger
+
     assert get_logger() is loguru_logger
 
 
@@ -96,6 +99,7 @@ def test_logger_enable_nonzero_changes_level():
 
 # ---------- packet.py — packet_to_int ----------
 
+
 def test_packet_to_int():
     """packet_to_int with two-byte data 0x0001 should return 1."""
     pkt = NiimbotPacket(0x00, b"\x00\x01")
@@ -104,5 +108,5 @@ def test_packet_to_int():
 
 def test_packet_to_int_single_byte():
     """packet_to_int with single byte 0xFF should return 255."""
-    pkt = NiimbotPacket(0x00, b"\xFF")
+    pkt = NiimbotPacket(0x00, b"\xff")
     assert packet_to_int(pkt) == 255

@@ -21,7 +21,7 @@ hidden_imports = collect_submodules('PIL')
 hidden_imports += collect_submodules('tkinter')
 hidden_imports += collect_submodules('bleak')
 hidden_imports += collect_submodules('wand')
-hidden_imports += ['platformdirs', 'sv_ttk']
+hidden_imports += ['platformdirs', 'sv_ttk', 'cairo']
 
 tcl_library = os.environ.get('TCL_LIBRARY', '/usr/share/tcltk/tcl8.6')
 tk_library = os.environ.get('TK_LIBRARY', '/usr/share/tcltk/tk8.6')

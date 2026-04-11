@@ -17,16 +17,18 @@ class CanvasSelector:
         device_label = tk.Label(self.frame, text="Device")
         device_label.pack(side=tk.LEFT, padx=10)
         self.selected_device = tk.StringVar(value="D110")
-        device_option = ttk.Combobox(self.frame, textvariable=self.selected_device,
-                                     values=[x.upper() for x in self.config.label_sizes],
-                                     state="readonly")
+        device_option = ttk.Combobox(
+            self.frame,
+            textvariable=self.selected_device,
+            values=[x.upper() for x in self.config.label_sizes],
+            state="readonly",
+        )
         device_option.pack(side=tk.LEFT, padx=10)
         device_option.bind("<<ComboboxSelected>>", self.update_device_label_size)
         label_size_label = tk.Label(self.frame, text="Label size")
         label_size_label.pack(side=tk.LEFT, padx=10)
         self.selected_label_size = tk.StringVar()
-        self.label_size_option = ttk.Combobox(self.frame, textvariable=self.selected_label_size,
-                                              state="readonly")
+        self.label_size_option = ttk.Combobox(self.frame, textvariable=self.selected_label_size, state="readonly")
         self.update_device_label_size()
         self.label_size_option.pack(side=tk.LEFT, padx=10)
         self.label_size_option.bind("<<ComboboxSelected>>", self.update_canvas_size)
@@ -39,15 +41,15 @@ class CanvasSelector:
             # Reset connection state when device changes
             if device != self.config.device:
                 self.config.printer_connected = False
-            label_sizes = list(self.config.label_sizes[device]['size'].keys())
+            label_sizes = list(self.config.label_sizes[device]["size"].keys())
             self.config.device = device
         else:
             label_sizes = []
-        self.label_size_option['values'] = label_sizes
+        self.label_size_option["values"] = label_sizes
         if label_sizes:
             self.label_size_option.current(0)
         else:
-            self.selected_label_size.set('')
+            self.selected_label_size.set("")
         self.update_canvas_size()
 
     def update_canvas_size(self, event=None):
@@ -58,7 +60,9 @@ class CanvasSelector:
             return
         self.config.device = device
         self.config.current_label_size = label_size
-        label_width_mm, label_height_mm = self.config.label_sizes[self.config.device]['size'][self.config.current_label_size]
+        label_width_mm, label_height_mm = self.config.label_sizes[self.config.device]["size"][
+            self.config.current_label_size
+        ]
 
         # Convert the label size to pixels
         self.bounding_box_width = self.mm_to_pixels(label_width_mm)
@@ -74,13 +78,12 @@ class CanvasSelector:
 
         # If a canvas exists, destroy it and clear stale items
         if hasattr(self.config, "canvas") and self.config.canvas is not None:
+            self.config.canvas.unbind("<Button-1>")
             self.config.canvas.destroy()
         for item in self.config.text_items.values():
-            if 'font_image' in item and hasattr(item['font_image'], 'close'):
-                try:
-                    item['font_image'].close()
-                except Exception:
-                    pass
+            if "font_image" in item and hasattr(item["font_image"], "close"):
+                with contextlib.suppress(Exception):
+                    item["font_image"].close()
         self.config.text_items = {}
         for item in self.config.image_items.values():
             orig = item.get("original_image")
@@ -93,8 +96,11 @@ class CanvasSelector:
 
         # Create a new canvas with updated dimensions
         self.config.canvas = tk.Canvas(
-            self.config.frames["top_frame"], width=self.canvas_width, height=self.canvas_height,
-            highlightthickness=0, bg="lightgray"
+            self.config.frames["top_frame"],
+            width=self.canvas_width,
+            height=self.canvas_height,
+            highlightthickness=0,
+            bg="lightgray",
         )
         self.config.canvas.pack(padx=0, pady=0)
 
@@ -111,7 +117,7 @@ class CanvasSelector:
             width=1,
             # dash=(4, 4),
             fill="white",
-            tags="label_box"
+            tags="label_box",
         )
 
         self.config.canvas.create_rectangle(
@@ -123,7 +129,7 @@ class CanvasSelector:
             width=1,
             dash=(4, 4),
             fill="white",
-            tags="label_box"
+            tags="label_box",
         )
 
         self.config.canvas.bind("<Button-1>", self.canvas_op.canvas_click_handler)

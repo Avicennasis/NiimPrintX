@@ -7,12 +7,12 @@ from PIL import Image
 from NiimPrintX.nimmy.bluetooth import find_device
 from NiimPrintX.nimmy.helper import print_error, print_info, print_success
 from NiimPrintX.nimmy.logger_config import get_logger, logger_enable, setup_logger
-from NiimPrintX.nimmy.printer import InfoEnum, PrinterClient
+from NiimPrintX.nimmy.printer import V2_MODELS, InfoEnum, PrinterClient
 
 logger = get_logger()
 
 
-@click.group(context_settings={"help_option_names": ['-h', '--help']})
+@click.group(context_settings={"help_option_names": ["-h", "--help"]})
 @click.option(
     "-v",
     "--verbose",
@@ -24,7 +24,7 @@ logger = get_logger()
 def niimbot_cli(ctx, verbose):
     ctx.ensure_object(dict)
     setup_logger()
-    ctx.obj['VERBOSE'] = verbose
+    ctx.obj["VERBOSE"] = verbose
     logger_enable(verbose)
 
 
@@ -56,6 +56,7 @@ def niimbot_cli(ctx, verbose):
 @click.option(
     "--vo",
     "vertical_offset",
+    type=int,
     default=0,
     show_default=True,
     help="Vertical offset in pixels",
@@ -63,6 +64,7 @@ def niimbot_cli(ctx, verbose):
 @click.option(
     "--ho",
     "horizontal_offset",
+    type=int,
     default=0,
     show_default=True,
     help="Horizontal offset in pixels",
@@ -78,17 +80,15 @@ def niimbot_cli(ctx, verbose):
 @click.option(
     "-i",
     "--image",
-    type=click.Path(exists=True),
+    type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True),
     required=True,
     help="Image path",
 )
 def print_command(model, density, rotate, image, quantity, vertical_offset, horizontal_offset):
     logger.info("Niimbot Printing Start")
 
-    if model in ("b1", "b18", "b21"):
+    if model in V2_MODELS:
         max_width_px = 384
-    elif model in ("d11", "d11_h", "d110", "d101", "d110_m"):
-        max_width_px = 240
     else:
         max_width_px = 240
 
@@ -97,19 +97,24 @@ def print_command(model, density, rotate, image, quantity, vertical_offset, hori
         print_info(f"Model {model.upper()} supports max density 3; capping {density} to 3")
         density = 3
     try:
-        image = Image.open(image)
-
-        if rotate != "0":
-            # PIL library rotates counterclockwise, so we need to multiply by -1
-            image = image.rotate(-int(rotate), expand=True)
-        if image.width > max_width_px:
-            print_error(f"Image width {image.width}px exceeds max {max_width_px}px for {model.upper()}")
-            sys.exit(1)
-        success = asyncio.run(_print(model, density, image, quantity, vertical_offset, horizontal_offset))
-        if not success:
-            sys.exit(1)
+        with Image.open(image) as image:
+            if rotate != "0":
+                # PIL library rotates counterclockwise, so we need to multiply by -1
+                image = image.rotate(-int(rotate), expand=True)
+            if image.width > max_width_px:
+                print_error(f"Image width {image.width}px exceeds max {max_width_px}px for {model.upper()}")
+                sys.exit(1)
+            if image.height > 65535:
+                print_error(f"Image height {image.height}px exceeds protocol limit")
+                sys.exit(1)
+            success = asyncio.run(_print(model, density, image, quantity, vertical_offset, horizontal_offset))
+            if not success:
+                sys.exit(1)
     except SystemExit:
         raise
+    except KeyboardInterrupt:
+        print_error("Interrupted")
+        sys.exit(1)
     except Exception as e:
         print_error(f"{e}")
         sys.exit(1)
@@ -125,14 +130,24 @@ async def _print(model, density, image, quantity, vertical_offset, horizontal_of
             print_error("Failed to connect to printer")
             return False
         print_info(f"Connected to {device.name}")
-        if model in ("b1", "b18", "b21"):
-            print_info("Printing with B1 model")
-            await printer.print_imageV2(image, density=density, quantity=quantity,
-                                        vertical_offset=vertical_offset, horizontal_offset=horizontal_offset)
+        if model in V2_MODELS:
+            print_info("Printing with V2 protocol")
+            await printer.print_imageV2(
+                image,
+                density=density,
+                quantity=quantity,
+                vertical_offset=vertical_offset,
+                horizontal_offset=horizontal_offset,
+            )
         else:
-            print_info("Printing with D model")
-            await printer.print_image(image, density=density, quantity=quantity, vertical_offset=vertical_offset,
-                                      horizontal_offset=horizontal_offset)
+            print_info("Printing with V1 protocol")
+            await printer.print_image(
+                image,
+                density=density,
+                quantity=quantity,
+                vertical_offset=vertical_offset,
+                horizontal_offset=horizontal_offset,
+            )
         print_success("Print job completed")
         return True
     except Exception as e:

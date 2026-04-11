@@ -39,7 +39,7 @@ unmount_all_disks() {
   echo "Unmounting all mounted disk images..."
   while read -r disk; do
     hdiutil detach "$disk" || true
-  done < <(hdiutil info | grep '/dev/' | awk '{print $1}')
+  done < <(hdiutil info | grep -B 20 "${VOLUME_NAME}" | grep '/dev/' | awk '{print $1}')
   echo "Unmounted all disk images."
 }
 
