@@ -140,5 +140,27 @@
 - [x] **Rotation UI control** (#38) — Rotation dropdown added to print preview popup
 - [x] **Screenshot for metainfo** — Extracted from NiimPrintX.gif
 - [x] **TextOperation cleanup** — Removed remaining commented-out code
-- [x] **Test expansion** — 113 tests (image encoding verification, CLI exit codes, utility modules, get_rfid, integration)
+- [x] **Test expansion** — 112 tests (image encoding verification, CLI exit codes, utility modules, get_rfid, integration)
 - [x] **Upstream issue triage** — Items documented as needing manual upstream access
+
+## Round 6 Deep Code Review (2026-04-11)
+
+- [x] **20-agent review** — 87 findings (25 critical, 42 important, 14 medium)
+- [x] **20-agent fix session** — 67 fixes across 47 files
+- [x] **BLE concurrency** — Image row writes now use _command_lock, notification_handler thread-safe
+- [x] **Build fixes** — macOS runtime hook registered, DMG casing fixed, set -euo pipefail
+- [x] **CI hardening** — ruff enforced (ruff.toml created), permissions blocks, pinned actions
+- [x] **Packaging** — poetry.lock regenerated, pycairo/wand optional, ruff added as dev dep
+- [x] **Ruff compliance** — All 52 lint findings fixed (import sorting, raise from, contextlib.suppress)
+- [x] **README overhaul** — Fork attribution to labbots, expanded features, development section
+
+## Round 7 Regression Review (2026-04-11)
+
+- [x] **20-agent regression review** — 34 findings (11 critical, 18 important)
+- [x] **14-agent fix session** — All critical regressions fixed
+- [x] **Text rendering restored** — base64 .decode('ascii') for tk.PhotoImage
+- [x] **B18/B21 protocol fixed** — Now correctly route to V2 with offset params
+- [x] **Shutdown safe** — Polling pattern, BLE disconnect, loop.stop, heartbeat stop
+- [x] **Print error feedback** — Error dialog shown to user on print failure
+- [x] **File load validation** — Cross-device .niim load validates before canvas rebuild
+- [x] **Test cleanup** — _make_client consolidated in conftest, imports sorted, 112 tests
