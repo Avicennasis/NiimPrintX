@@ -18,6 +18,7 @@ pycairo = "^1.26.0"
 wand = "^0.6.13"
 appdirs = "^1.4.4"
 rich = "^13.7.1"
+sv-ttk = {version = "^2.6", optional = true}
 
 [tool.poetry.group.dev.dependencies]
 devtools = "^0.12.2"

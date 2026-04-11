@@ -69,6 +69,13 @@ class LabelPrinterApp(tk.Tk):
         elif self.app_config.os_system == "Windows":
             style = ttk.Style(self)
             style.theme_use('xpnative')
+        else:
+            try:
+                import sv_ttk
+                sv_ttk.set_theme("light")
+            except ImportError:
+                style = ttk.Style(self)
+                style.theme_use('clam')
 
         self.create_widgets()
         self.create_menu()
