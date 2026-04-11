@@ -54,8 +54,8 @@ def main():
 
         app.mainloop()
     except Exception as e:
-        import contextlib
-        import tkinter.messagebox as mb
+        import contextlib  # noqa: PLC0415 — lazy import for error handling
+        import tkinter.messagebox as mb  # noqa: PLC0415 — lazy import for error handling
 
         with contextlib.suppress(Exception):
             mb.showerror("Startup Error", f"NiimPrintX failed to start:\n{e}")

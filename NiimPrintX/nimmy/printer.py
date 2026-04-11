@@ -77,14 +77,15 @@ class PrinterClient:
     async def find_characteristics(self):
         services = {}
         for service in self.transport.client.services:
-            s = []
-            for char in service.characteristics:
-                s.append({"id": char.uuid, "handle": char.handle, "properties": char.properties})
+            s = [
+                {"id": char.uuid, "handle": char.handle, "properties": char.properties}
+                for char in service.characteristics
+            ]
 
             services[service.uuid] = s
 
         candidates = []
-        for _service_id, characteristics in services.items():
+        for characteristics in services.values():
             if len(characteristics) == 1:  # Check if there's exactly one characteristic
                 props = characteristics[0]["properties"]
                 if "read" in props and "write-without-response" in props and "notify" in props:
@@ -95,13 +96,12 @@ class PrinterClient:
             logger.warning(f"Multiple matching characteristics found: {candidates}; using first")
         self.char_uuid = candidates[0]
 
-    async def send_command(self, request_code, data, timeout=10):
+    async def send_command(self, request_code, data, timeout=10):  # noqa: ASYNC109 — uses asyncio.wait_for internally
         async with self._command_lock:
             notifying = False
             try:
-                if not self.transport.client or not self.transport.client.is_connected:
-                    if not await self.connect():
-                        raise PrinterException("Failed to reconnect to printer")
+                if (not self.transport.client or not self.transport.client.is_connected) and not await self.connect():
+                    raise PrinterException("Failed to reconnect to printer")
                 # Clear stale state BEFORE arming notifications
                 self.notification_event.clear()
                 self.notification_data = None
@@ -129,16 +129,15 @@ class PrinterClient:
                 if notifying:
                     try:
                         await self.transport.stop_notification(self.char_uuid)
-                    except Exception as e:
+                    except Exception as e:  # noqa: BLE001 — best-effort cleanup during notification teardown
                         logger.warning(f"stop_notify failed: {e}")
                 self.notification_event.clear()
 
     async def write_raw(self, data):
         async with self._command_lock:
             try:
-                if not self.transport.client or not self.transport.client.is_connected:
-                    if not await self.connect():
-                        raise PrinterException("Failed to reconnect to printer")
+                if (not self.transport.client or not self.transport.client.is_connected) and not await self.connect():
+                    raise PrinterException("Failed to reconnect to printer")
                 await self.transport.write(data.to_bytes(), self.char_uuid)
             except (BLEException, ValueError, TypeError) as e:
                 logger.error(f"Write error: {e}")

@@ -13,7 +13,7 @@ logger = get_logger()
 def _run_font_list(cmd):
     """Run a font-listing command and return grouped fonts, or None on failure."""
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf8", timeout=10)
+        result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf8", timeout=10, check=False)
         if result.returncode != 0:
             return None
         output = result.stdout
@@ -85,7 +85,7 @@ def group_fonts_by_family(fonts_details):
 
     for font in fonts_details:
         family = font.get("family", "Unknown")
-        if family.startswith(".") or family.startswith("System"):
+        if family.startswith((".", "System")):
             continue
         name = font.get("name")
         if not name:

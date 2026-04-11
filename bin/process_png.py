@@ -23,9 +23,9 @@ def process_images(image_directory):
         shutil.copy(filename, resized_dir)
 
     # Run mogrify commands
-    subprocess.run(["mogrify", "-resize", "50x50", os.path.join(resized_dir, "*.png")])
-    subprocess.run(["mogrify", "-format", "png", "-alpha", "on", os.path.join(resized_dir, "*.png")])
-    subprocess.run(["mogrify", "-fill", "black", "-colorize", "100", os.path.join(resized_dir, "*.png")])
+    subprocess.run(["mogrify", "-resize", "50x50", os.path.join(resized_dir, "*.png")], check=False)
+    subprocess.run(["mogrify", "-format", "png", "-alpha", "on", os.path.join(resized_dir, "*.png")], check=False)
+    subprocess.run(["mogrify", "-fill", "black", "-colorize", "100", os.path.join(resized_dir, "*.png")], check=False)
 
     # Process images with PIL
     for image_path in glob.glob(os.path.join(resized_dir, "*.png")):

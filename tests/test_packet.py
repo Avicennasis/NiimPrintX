@@ -62,7 +62,7 @@ def test_packet_from_bytes_bad_checksum():
 def test_packet_from_bytes_length_exceeds_buffer():
     """Length field claiming more data than buffer holds must raise ValueError."""
     raw = b"\x55\x55\x40\x64\x01\x25\xaa\xaa"  # len=0x64=100, but only 1 data byte
-    with pytest.raises(ValueError, match="mismatch|exceeds"):
+    with pytest.raises(ValueError, match=r"mismatch|exceeds"):
         NiimbotPacket.from_bytes(raw)
 
 

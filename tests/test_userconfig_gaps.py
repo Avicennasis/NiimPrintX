@@ -34,9 +34,11 @@ def test_load_user_config_os_error():
         f.write("[devices]\n")
         tmp_path = f.name
     try:
-        with patch("NiimPrintX.ui.UserConfig.CONFIG_FILE", tmp_path):
-            with patch("builtins.open", side_effect=OSError("permission denied")):
-                result = load_user_config()
+        with (
+            patch("NiimPrintX.ui.UserConfig.CONFIG_FILE", tmp_path),
+            patch("builtins.open", side_effect=OSError("permission denied")),
+        ):
+            result = load_user_config()
         assert result == {}
     finally:
         os.unlink(tmp_path)

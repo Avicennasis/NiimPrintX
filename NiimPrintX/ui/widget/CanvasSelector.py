@@ -115,7 +115,6 @@ class CanvasSelector:
             y_center + self.bounding_box_height // 2,
             outline="blue",
             width=1,
-            # dash=(4, 4),
             fill="white",
             tags="label_box",
         )

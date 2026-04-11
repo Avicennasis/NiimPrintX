@@ -87,27 +87,23 @@ def niimbot_cli(ctx, verbose):
 def print_command(model, density, rotate, image, quantity, vertical_offset, horizontal_offset):
     logger.info("Niimbot Printing Start")
 
-    if model in V2_MODELS:
-        max_width_px = 384
-    else:
-        max_width_px = 240
+    max_width_px = 384 if model in V2_MODELS else 240
 
     # Cap density for models that only support 3 levels
     if model not in ("b21",) and density > 3:
         print_info(f"Model {model.upper()} supports max density 3; capping {density} to 3")
         density = 3
     try:
-        with Image.open(image) as image:
-            if rotate != "0":
-                # PIL library rotates counterclockwise, so we need to multiply by -1
-                image = image.rotate(-int(rotate), expand=True)
-            if image.width > max_width_px:
-                print_error(f"Image width {image.width}px exceeds max {max_width_px}px for {model.upper()}")
+        with Image.open(image) as raw_img:
+            # PIL library rotates counterclockwise, so we need to multiply by -1
+            prepared = raw_img.rotate(-int(rotate), expand=True) if rotate != "0" else raw_img
+            if prepared.width > max_width_px:
+                print_error(f"Image width {prepared.width}px exceeds max {max_width_px}px for {model.upper()}")
                 sys.exit(1)
-            if image.height > 65535:
-                print_error(f"Image height {image.height}px exceeds protocol limit")
+            if prepared.height > 65535:
+                print_error(f"Image height {prepared.height}px exceeds protocol limit")
                 sys.exit(1)
-            success = asyncio.run(_print(model, density, image, quantity, vertical_offset, horizontal_offset))
+            success = asyncio.run(_print(model, density, prepared, quantity, vertical_offset, horizontal_offset))
             if not success:
                 sys.exit(1)
     except SystemExit:

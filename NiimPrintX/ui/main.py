@@ -43,7 +43,7 @@ class LabelPrinterApp(tk.Tk):
             style.theme_use("xpnative")
         else:
             try:
-                import sv_ttk
+                import sv_ttk  # noqa: PLC0415 — lazy import; optional dependency
 
                 sv_ttk.set_theme("light")
             except ImportError:

@@ -110,9 +110,11 @@ async def test_print_job_calls_end_print_on_failure(make_client):
 
     img = Image.new("1", (16, 2), color=0)
 
-    with pytest.raises(PrinterException, match="end_page_print hardware error"):
-        with patch("asyncio.sleep", new_callable=AsyncMock):
-            await client.print_image(img, density=3, quantity=1)
+    with (
+        pytest.raises(PrinterException, match="end_page_print hardware error"),
+        patch("asyncio.sleep", new_callable=AsyncMock),
+    ):
+        await client.print_image(img, density=3, quantity=1)
 
     # end_print (0xF3) must appear in the call log after the failure,
     # proving the cleanup block executed.

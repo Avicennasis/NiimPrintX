@@ -5,6 +5,7 @@ import threading
 import tkinter as tk
 from tkinter import ttk
 
+import PIL
 from PIL import Image, ImageTk
 
 
@@ -118,8 +119,8 @@ class TabbedIconGrid(tk.Frame):
                     # thread via after() is safe (no lazy I/O or shared mutable state).
                     img.load()
                     pil_images.append((filename, img, subfolder_name))
-                except Exception:
-                    pass  # skip corrupt files
+                except (OSError, ValueError, PIL.UnidentifiedImageError):
+                    pass  # skip corrupt/unrecognized image files
         with contextlib.suppress(tk.TclError):
             self.after(0, lambda: self._create_icon_widgets(frame, pil_images, subfolder_name, canvas))
 

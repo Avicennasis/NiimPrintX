@@ -90,7 +90,7 @@ class FileMenu:
                 tmp_path = tf.name
                 json.dump(data, tf, indent=2)
             os.replace(tmp_path, file_path)
-        except Exception as e:
+        except (OSError, ValueError, TypeError, tk.TclError) as e:
             messagebox.showerror("Error", f"Failed to save: {e}")
 
     def load_from_file(self, file_path=None):
@@ -133,11 +133,11 @@ class FileMenu:
             self.root.canvas_selector.selected_label_size.set(data["current_label_size"])
 
             if data.get("text"):
-                for _text_id, item_data in data["text"].items():
+                for item_data in data["text"].values():
                     self.load_text(item_data)
 
             if data.get("image"):
-                for _image_id, item_data in data["image"].items():
+                for item_data in data["image"].values():
                     self.load_image(item_data)
 
     def load_text(self, data):
@@ -184,7 +184,7 @@ class FileMenu:
                 "handle": None,
                 "bbox": None,
             }
-        except Exception as e:
+        except (OSError, ValueError, TypeError, PIL.UnidentifiedImageError) as e:
             messagebox.showwarning("Warning", f"Failed to load text item: {e}")
 
     def load_image(self, data):
@@ -232,5 +232,5 @@ class FileMenu:
             self.config.canvas.tag_bind(
                 image_id, "<B1-Motion>", lambda e, img_id=image_id: self.root.icon_tab.image_op.move_image(e, img_id)
             )
-        except Exception as e:
+        except (OSError, ValueError, TypeError, PIL.UnidentifiedImageError) as e:
             messagebox.showwarning("Warning", f"Failed to load image item: {e}")

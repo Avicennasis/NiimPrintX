@@ -14,7 +14,7 @@ class ImageOperation:
             raw_image = Image.open(file_path)
             source_image = raw_image.convert("RGBA")
             raw_image.close()
-        except Exception as e:
+        except (OSError, ValueError, PIL.UnidentifiedImageError) as e:
             messagebox.showerror("Error", f"Failed to load image: {e}")
             return
 

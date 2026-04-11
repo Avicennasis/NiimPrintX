@@ -65,15 +65,15 @@ class PrintOption:
             future = asyncio.run_coroutine_threadsafe(
                 self.print_op.printer_connect(self.config.device), self.root.async_loop
             )
-            future.add_done_callback(lambda f: self._update_device_status(f))
+            future.add_done_callback(self._update_device_status)
         else:
             future = asyncio.run_coroutine_threadsafe(self.print_op.printer_disconnect(), self.root.async_loop)
-            future.add_done_callback(lambda f: self._update_device_status(f))
+            future.add_done_callback(self._update_device_status)
 
     def _update_device_status(self, future):
         try:
             result = future.result()
-        except Exception:
+        except Exception:  # noqa: BLE001 — GUI callback; any async failure means "not connected"
             result = False
 
         def _update():
@@ -173,7 +173,7 @@ class PrintOption:
                     resized_image = ImageTk.getimage(font_img_widget)
                 else:
                     # tk.PhotoImage (from Wand text) — extract via Tcl
-                    import base64 as b64
+                    import base64 as b64  # noqa: PLC0415 — lazy import; only needed for tk.PhotoImage path
 
                     png_b64 = font_img_widget.tk.call(str(font_img_widget), "data", "-format", "png")
                     resized_image = Image.open(io.BytesIO(b64.b64decode(png_b64)))
@@ -191,11 +191,9 @@ class PrintOption:
         cropped_ctx.paint()
         if output_filename:
             cropped_surface.write_to_png(output_filename)
-        else:
-            image_bytes = cropped_surface.get_data()
-            img = Image.frombuffer("RGBA", (int(bbox_width), int(bbox_height)), image_bytes, "raw", "BGRA", 0, 1)
-
-            return img
+            return None
+        image_bytes = cropped_surface.get_data()
+        return Image.frombuffer("RGBA", (int(bbox_width), int(bbox_height)), image_bytes, "raw", "BGRA", 0, 1)
 
     def display_image_in_popup(self, filename):
         # Create a new Toplevel window
@@ -354,12 +352,12 @@ class PrintOption:
         rotation = -rotation
         image = image.rotate(rotation, Image.NEAREST, expand=True)
         future = asyncio.run_coroutine_threadsafe(self.print_op.print(image, density, quantity), self.root.async_loop)
-        future.add_done_callback(lambda f: self._print_handler(f))
+        future.add_done_callback(self._print_handler)
 
     def _print_handler(self, future):
         try:
             result = future.result()
-        except BaseException:
+        except BaseException:  # noqa: BLE001 — catches CancelledError + any async failure; GUI must not crash
             result = False
 
         def _update():

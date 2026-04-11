@@ -17,7 +17,7 @@ async def find_device(device_name_prefix=None):
     # D110 appears as two BLE devices; the printing-capable one has no UUIDs.
     is_d110 = device_name_prefix.lower().startswith("d110")
     fallback = None
-    for _address, (device, adv_data) in devices.items():
+    for device, adv_data in devices.values():
         if device.name and device.name.lower().startswith(device_name_prefix.lower()):
             if is_d110:
                 if len(adv_data.service_uuids) == 0:
@@ -63,7 +63,7 @@ class BLETransport:
         self.client = None
         self._notifying_uuids.clear()
 
-    async def write(self, data, char_uuid, timeout=10.0):
+    async def write(self, data, char_uuid, timeout=10.0):  # noqa: ASYNC109 — uses asyncio.wait_for internally
         if self.client and self.client.is_connected:
             try:
                 await asyncio.wait_for(self.client.write_gatt_char(char_uuid, data, response=False), timeout=timeout)

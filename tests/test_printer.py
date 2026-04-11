@@ -395,7 +395,7 @@ async def test_notification_handler_sets_data(make_client):
     mock_loop = MagicMock()
     # Capture the callback passed to call_soon_threadsafe and execute it
     callbacks = []
-    mock_loop.call_soon_threadsafe = MagicMock(side_effect=lambda fn: callbacks.append(fn))
+    mock_loop.call_soon_threadsafe = MagicMock(side_effect=callbacks.append)
     client._loop = mock_loop
 
     sender = MagicMock()

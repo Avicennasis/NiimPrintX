@@ -7,9 +7,11 @@ from NiimPrintX.ui.AppConfig import AppConfig
 
 @pytest.fixture(autouse=True)
 def no_user_config():
-    with patch("NiimPrintX.ui.AppConfig.load_user_config", return_value={}):
-        with patch("NiimPrintX.ui.AppConfig.merge_label_sizes", side_effect=lambda b, u: b):
-            yield
+    with (
+        patch("NiimPrintX.ui.AppConfig.load_user_config", return_value={}),
+        patch("NiimPrintX.ui.AppConfig.merge_label_sizes", side_effect=lambda b, u: b),
+    ):
+        yield
 
 
 def test_all_devices_have_required_keys():

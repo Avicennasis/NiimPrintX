@@ -47,7 +47,7 @@ class TextTab:
         self.font_family_dropdown = ttk.Combobox(self.frame, values=list(self.fonts.keys()))
         self.font_family_dropdown.grid(row=1, column=1, sticky="ew", padx=5)
         self.font_family_dropdown.set("Arial")
-        self.font_family_dropdown.bind("<<ComboboxSelected>>", lambda event: self.update_text_properties(event))
+        self.font_family_dropdown.bind("<<ComboboxSelected>>", self.update_text_properties)
         # Initialize sample text label with default font
         self.sample_text_label.config(font=tk_font.Font(family="Arial", size=14), text="Text in Arial")
 
@@ -141,7 +141,7 @@ class TextTab:
         slant = "italic" if self.italic_var.get() else "roman"
         underline = self.underline_var.get()
 
-        font_props = {
+        return {
             "family": family,
             "size": size,
             "kerning": kerning,
@@ -149,7 +149,6 @@ class TextTab:
             "slant": slant,
             "underline": underline,
         }
-        return font_props
 
     def get_text_operation(self):
         return self.text_op

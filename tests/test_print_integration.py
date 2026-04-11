@@ -30,12 +30,7 @@ def _auto_respond(client):
         # For command packets, generate an appropriate response so that
         # send_command's notification_event wait completes.
         response_type = pkt.type
-        if pkt.type == RequestCodeEnum.GET_PRINT_STATUS:
-            # Return "done" status: page=1, progress1=100, progress2=100
-            response_data = struct.pack(">HBB", 1, 100, 100)
-        else:
-            # Generic success byte
-            response_data = b"\x01"
+        response_data = struct.pack(">HBB", 1, 100, 100) if pkt.type == RequestCodeEnum.GET_PRINT_STATUS else b"\x01"
 
         response_pkt = NiimbotPacket(response_type, response_data)
         client.notification_data = response_pkt.to_bytes()
@@ -114,10 +109,7 @@ async def test_print_image_v2_sends_correct_commands(make_client):
         if pkt.type == 0x85:
             return
         response_type = pkt.type
-        if pkt.type == RequestCodeEnum.GET_PRINT_STATUS:
-            response_data = struct.pack(">HBB", 2, 100, 100)
-        else:
-            response_data = b"\x01"
+        response_data = struct.pack(">HBB", 2, 100, 100) if pkt.type == RequestCodeEnum.GET_PRINT_STATUS else b"\x01"
         response_pkt = NiimbotPacket(response_type, response_data)
         client.notification_data = response_pkt.to_bytes()
         client.notification_event.set()
