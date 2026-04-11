@@ -30,11 +30,10 @@ gui = ["sv-ttk", "pycairo", "wand"]
 [tool.poetry.group.dev.dependencies]
 pyinstaller = "^6.19"
 pytest = "^8.0"
-pytest-asyncio = ">=0.23,<2"
+pytest-asyncio = ">=0.23,<1"
 ruff = "^0.15"
 pytest-cov = "^5.0"
 mypy = "^1.11"
-types-Pillow = "^10.2"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

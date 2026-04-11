@@ -232,12 +232,13 @@ class PrinterClient:
                 await self.end_print()
             except BaseException as e:
                 logger.error(f"Print job failed: {e}")
-                with contextlib.suppress(Exception):
-                    await self.end_print()
+                if self.transport.client and self.transport.client.is_connected:
+                    with contextlib.suppress(Exception):
+                        await self.end_print()
                 raise
 
     def _encode_image(self, image: Image.Image, vertical_offset=0, horizontal_offset=0):
-        if image.width > (255 - 7) * 8:
+        if image.width > (255 - 6) * 8:  # 6-byte header (>HBBBB): row_idx(2)+counts(3)+flag(1)
             raise PrinterException(f"Image width {image.width}px exceeds protocol limit")
 
         # Convert the image to monochrome, closing intermediate images

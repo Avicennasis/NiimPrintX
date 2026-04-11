@@ -510,3 +510,84 @@ async def test_get_print_status_short_response(make_client):
 
     with pytest.raises(PrinterException, match="short response"):
         await client.get_print_status()
+
+
+# ---------------------------------------------------------------------------
+# Coverage gap: get_info with empty response data raises PrinterException
+# ---------------------------------------------------------------------------
+
+
+async def test_get_info_empty_response_raises(make_client):
+    """get_info must raise PrinterException when the printer returns a packet
+    with zero-length data (tests the len(response.data) < 1 guard)."""
+    client = make_client()
+
+    empty_pkt = NiimbotPacket(RequestCodeEnum.GET_INFO, b"")
+
+    async def fake_write(data, char_uuid):
+        client.notification_data = empty_pkt.to_bytes()
+        client.notification_event.set()
+
+    client.transport.write = AsyncMock(side_effect=fake_write)
+
+    with pytest.raises(PrinterException, match="Empty response for GET_INFO"):
+        await client.get_info(InfoEnum.SOFTVERSION)
+
+
+# ---------------------------------------------------------------------------
+# Coverage gap: _encode_image rejects images wider than 1992px
+# ---------------------------------------------------------------------------
+
+
+async def test_encode_image_width_exceeds_limit(make_client):
+    """_encode_image must raise PrinterException when the image width exceeds
+    the protocol limit of (255-6)*8 = 1992 pixels."""
+    client = make_client()
+
+    # 1993px is one pixel over the 1992px limit
+    oversized = Image.new("1", (1993, 50), color=0)
+
+    with pytest.raises(PrinterException, match="exceeds protocol limit"):
+        # _encode_image is a generator; must consume it to trigger the check
+        list(client._encode_image(oversized))
+
+
+# ---------------------------------------------------------------------------
+# Coverage gap: print status poll exits when page > quantity (>= fix)
+# ---------------------------------------------------------------------------
+
+
+async def test_print_job_status_poll_greater_than(make_client):
+    """When get_print_status returns page=2 but quantity=1, the >= comparison
+    must still cause the poll to exit (tests the >= fix vs. == bug)."""
+    client = make_client()
+
+    call_count = 0
+
+    # Track which command is being sent to return the right mock response
+    async def fake_write(data, char_uuid):
+        nonlocal call_count
+        # Parse the outgoing packet to determine what command this is
+        pkt = NiimbotPacket.from_bytes(data)
+
+        if pkt.type == RequestCodeEnum.GET_PRINT_STATUS:
+            call_count += 1
+            # Return page=2 on the very first status check (overshoots qty=1)
+            status_data = struct.pack(">HBB", 2, 100, 100)
+            resp = NiimbotPacket(RequestCodeEnum.GET_PRINT_STATUS, status_data)
+        elif pkt.type == RequestCodeEnum.END_PAGE_PRINT:
+            resp = NiimbotPacket(RequestCodeEnum.END_PAGE_PRINT, b"\x01")
+        else:
+            # Generic success for all other commands (density, type, start, etc.)
+            resp = NiimbotPacket(pkt.type, b"\x01")
+
+        client.notification_data = resp.to_bytes()
+        client.notification_event.set()
+
+    client.transport.write = AsyncMock(side_effect=fake_write)
+
+    img = Image.new("1", (100, 50), color=0)
+    await client.print_image(img, quantity=1)
+
+    # The poll should have exited after a single status check (page 2 >= 1)
+    assert call_count == 1

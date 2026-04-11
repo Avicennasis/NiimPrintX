@@ -23,7 +23,7 @@ class NiimbotPacket:
         type_ = pkt[2]
         len_ = pkt[3]
         expected_end = 4 + len_ + 3  # header(4) + data(len_) + checksum(1) + footer(2)
-        if expected_end != len(pkt):
+        if expected_end > len(pkt):
             raise ValueError(f"Packet length mismatch: expected {expected_end}, got {len(pkt)}")
         if pkt[expected_end - 2 : expected_end] != b"\xaa\xaa":
             raise ValueError(f"Invalid packet footer: {pkt[expected_end - 2 : expected_end].hex()}")

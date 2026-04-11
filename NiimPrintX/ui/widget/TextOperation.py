@@ -147,8 +147,8 @@ class TextOperation:
             }
         )
 
-        self.config.canvas.tag_bind(text_id, "<Button1-Motion>", lambda e, tid=text_id: self.move_text(e, tid))
-        self.config.canvas.tag_bind(handle, "<Button1-Motion>", lambda e, tid=text_id: self.resize_text(e, tid))
+        self.config.canvas.tag_bind(text_id, "<B1-Motion>", lambda e, tid=text_id: self.move_text(e, tid))
+        self.config.canvas.tag_bind(handle, "<B1-Motion>", lambda e, tid=text_id: self.resize_text(e, tid))
         self.config.canvas.tag_bind(handle, "<Button-1>", lambda e: self.start_resize(e, text_id))
 
     def move_text(self, event, text_id):

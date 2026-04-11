@@ -22,6 +22,7 @@ class PrinterOperation:
             return False
         except Exception as e:
             logger.error(f"Cannot connect to printer {model}: {e}")
+            self.config.printer_connected = False
             self.printer = None
             return False
 

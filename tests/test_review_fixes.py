@@ -13,13 +13,14 @@ from NiimPrintX.nimmy.printer import RequestCodeEnum
 
 
 def test_packet_from_bytes_oversized_packet():
-    """Packets with trailing bytes after footer should still parse correctly."""
+    """Packets with trailing bytes after footer are accepted (BLE hardware compatibility)."""
     pkt = NiimbotPacket(0x01, b"\x02\x03")
     raw = bytearray(pkt.to_bytes())
     raw.extend(b"\xaa\xaa\xff\xff")  # extra trailing bytes
-    # Strict length check: trailing bytes are now rejected (Round 9 fix)
-    with pytest.raises(ValueError, match="mismatch"):
-        NiimbotPacket.from_bytes(bytes(raw))
+    # Trailing bytes are tolerated for BLE hardware compatibility
+    parsed = NiimbotPacket.from_bytes(bytes(raw))
+    assert parsed.type == 0x01
+    assert parsed.data == b"\x02\x03"
 
 
 # --- 2. set_quantity validation ---

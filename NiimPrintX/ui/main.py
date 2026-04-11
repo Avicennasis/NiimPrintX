@@ -101,7 +101,7 @@ class LabelPrinterApp(tk.Tk):
     def on_close(self):
         if self._shutting_down:
             return
-        if getattr(self, "config", None) and self.config.print_job:
+        if getattr(self, "app_config", None) and self.app_config.print_job:
             if not messagebox.askokcancel("Quit", "A print job is in progress. Quit anyway?"):
                 return
         elif not messagebox.askokcancel("Quit", "Do you want to quit?"):
