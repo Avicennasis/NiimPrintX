@@ -23,13 +23,58 @@
 ## Future Improvements
 
 - [ ] **CI/CD pipeline** — Add GitHub Actions workflow for linting + pytest on push
-- [ ] **Expand test suite** — Add async BLE mock tests for printer communication
+- [ ] **Expand test suite** — Add packet error-path tests, AppConfig isolation from filesystem, merge_label_sizes tests, CacheManager round-trip, _encode_image pixel verification
 - [ ] **User config documentation** — Document TOML config format in README
 - [ ] **Rotation UI control** (#38) — Add rotation slider/dropdown to the GUI for user-adjustable rotation
 - [ ] **Update Flatpak metadata** — Change developer_name from "labbots" to fork maintainer
 - [ ] **Screenshot for metainfo** — Add main-window.png (missing from PR #16 binary cherry-pick)
+- [ ] **README install instructions** — Fix contradictory venv + poetry install guidance
+- [ ] **Python version floor** — Document why >=3.12 (tomllib needs 3.11, bleak winrt needs 3.12)
 
-## Completed This Session (2026-04-11)
+## Code Review Fixes (2026-04-11, second session)
+
+### Round 1 — Initial audit (9 fixes)
+- [x] Removed leftover devtools import in cli/command.py
+- [x] Replaced deprecated device.metadata with bleak 0.22+ API
+- [x] Fixed struct.pack endianness in start_printV2
+- [x] Fixed B1 label dimension 14→15mm
+- [x] Switched .niim files from pickle to JSON
+- [x] Scoped D110 UUID filter to D110 variants only
+- [x] Synced requirements.txt with pyproject.toml
+
+### Round 2 — Deep dive (29 fixes)
+- [x] Fixed pyproject.toml packages config + entry points + extras
+- [x] Fixed all Tkinter threading violations (TabbedIconGrid, PrintOption, PrinterOperation)
+- [x] Added asyncio.Lock + finally to send_command
+- [x] Replaced CacheManager pickle with JSON, deleted module-level demo
+- [x] Replaced assert with raise ValueError in packet.py and printer.py
+- [x] Added BLE bounds checking to get_rfid
+- [x] Moved log path to user_log_dir
+- [x] Fixed StatusBar oval leak, default_bg, spinbox validation, resize_text order
+- [x] Fixed negative offset crash, find_device None guard, CLI connect handling
+- [x] Updated AppStream metainfo to v0.2.0
+
+### Round 3 — Final pass (29 fixes)
+- [x] Fixed heartbeat case 10 copy-paste bug (rfid_read_state index)
+- [x] Added 60s timeout to print_image status polling
+- [x] Guarded against zero-width image in _encode_image
+- [x] Replaced CLI assert with print_error for image width check
+- [x] Added finally block to _info() for BLE disconnect
+- [x] Fixed logger_enable(0) nuking all handlers
+- [x] Fixed heartbeat() returning None on race condition
+- [x] Moved ImageTk.PhotoImage to main thread in TabbedIconGrid
+- [x] Wrapped FontList subprocess in try/except for missing ImageMagick
+- [x] Validated TOML config values in UserConfig
+- [x] Clear stale canvas items on device/size change
+- [x] write_raw/write_no_notify now raise instead of swallowing errors
+- [x] File load validates keys, clears stale state before rebuild
+- [x] Reset printer_connected on device change
+- [x] update_text_properties now re-renders canvas image
+- [x] Removed dead code: scan_devices, CacheManager, __del__, commented blocks
+- [x] Removed pickle fallback entirely from FileMenu
+- [x] Updated pillow pin for CVE-2024-35655
+
+## Completed (2026-04-11, first session)
 
 ### Upstream PRs Merged (8)
 - [x] #28 — Encoding fix (Korean Windows crash)
