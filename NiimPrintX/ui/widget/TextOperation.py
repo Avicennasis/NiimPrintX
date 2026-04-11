@@ -40,7 +40,7 @@ class TextOperation:
                 img.alpha_channel = 'activate'  # Ensure alpha channel is active
                 img_blob = img.make_blob('png')
                 # Convert to format displayable in Tkinter
-                tk_image = tk.PhotoImage(data=base64.b64encode(img_blob))
+                tk_image = tk.PhotoImage(data=base64.b64encode(img_blob).decode('ascii'))
                 return tk_image
     def add_text_to_canvas(self):
         # Get the current text in the content_entry Entry widget

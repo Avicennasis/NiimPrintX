@@ -44,7 +44,8 @@ class PrintOption:
         if not connected and self.connect_button["state"] != tk.DISABLED:
             self.connect_button.config(text="Connect")
             self.connect_button.config(state=tk.NORMAL)
-        self.root.after(0, lambda: self.root.status_bar.update_status(connected))
+        with contextlib.suppress(tk.TclError):
+            self.root.status_bar.update_status(connected)
 
     def create_widgets(self):
         print_button = tk.Button(self.parent, text="Print", command=self.display_print)
@@ -153,7 +154,14 @@ class PrintOption:
         if self.config.text_items:
             for text_id, text_props in self.config.text_items.items():
                 coords = self.config.canvas.coords(text_id)
-                resized_image = ImageTk.getimage(text_props["font_image"])
+                font_img_widget = text_props["font_image"]
+                if isinstance(font_img_widget, ImageTk.PhotoImage):
+                    resized_image = ImageTk.getimage(font_img_widget)
+                else:
+                    # tk.PhotoImage (from Wand text) — extract via Tcl
+                    import base64 as b64
+                    png_b64 = font_img_widget.tk.call(str(font_img_widget), 'data', '-format', 'png')
+                    resized_image = Image.open(io.BytesIO(b64.b64decode(png_b64)))
                 with io.BytesIO() as buffer:
                     resized_image.save(buffer, format="PNG")
                     buffer.seek(0)
@@ -329,6 +337,10 @@ class PrintOption:
             if result:
                 with contextlib.suppress(tk.TclError):
                     self.root.status_bar.update_status(result)
+            else:
+                with contextlib.suppress(tk.TclError):
+                    import tkinter.messagebox as mb
+                    mb.showerror("Print Failed", "The print job failed. Check the printer connection and try again.")
             with contextlib.suppress(tk.TclError):
                 self.print_button.config(state=tk.NORMAL)
         self.root.after(0, _update)

@@ -1,8 +1,11 @@
-import pytest
+import struct
 from unittest.mock import AsyncMock, MagicMock
-from NiimPrintX.nimmy.printer import RequestCodeEnum, InfoEnum
-from NiimPrintX.nimmy.packet import NiimbotPacket
+
+import pytest
+
 from NiimPrintX.nimmy.exception import PrinterException
+from NiimPrintX.nimmy.packet import NiimbotPacket
+from NiimPrintX.nimmy.printer import InfoEnum, RequestCodeEnum
 
 
 @pytest.mark.asyncio
@@ -229,8 +232,6 @@ async def test_get_rfid_empty_data_returns_none(make_client):
 
 @pytest.mark.asyncio
 async def test_get_rfid_valid_data(make_client):
-    import struct
-
     client = make_client()
     uuid = b'\x01\x02\x03\x04\x05\x06\x07\x08'
     barcode = b'BC123'
@@ -300,8 +301,6 @@ async def test_end_print(make_client):
 
 @pytest.mark.asyncio
 async def test_get_print_status(make_client):
-    import struct
-
     client = make_client()
     status_data = struct.pack(">HBB", 3, 50, 75)
     response_pkt = NiimbotPacket(RequestCodeEnum.GET_PRINT_STATUS, status_data)

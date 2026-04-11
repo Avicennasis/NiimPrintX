@@ -1,12 +1,13 @@
 """Tests verifying critical fixes identified in the code review."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 from PIL import Image
 
+from NiimPrintX.nimmy.bluetooth import BLETransport
 from NiimPrintX.nimmy.packet import NiimbotPacket
 from NiimPrintX.nimmy.printer import RequestCodeEnum
-from NiimPrintX.nimmy.bluetooth import BLETransport
 
 
 # --- 1. Packet from_bytes with trailing bytes ---

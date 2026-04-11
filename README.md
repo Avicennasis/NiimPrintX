@@ -152,7 +152,7 @@ Options:
   -m, --model [b1|b18|b21|d11|d11_h|d110|d101|d110_m]
                                   Niimbot printer model  [default: d110]
   -d, --density INTEGER RANGE     Print density  [default: 3; 1<=x<=5]
-  -n, --quantity INTEGER          Print quantity  [default: 1]
+  -n, --quantity INTEGER RANGE    Print quantity  [default: 1; 1<=x<=65535]
   -r, --rotate [0|90|180|270]     Image rotation (clockwise)  [default: 0]
   --vo INTEGER                    Vertical offset in pixels  [default: 0]
   --ho INTEGER                    Horizontal offset in pixels  [default: 0]

@@ -1,9 +1,11 @@
 import struct
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 from PIL import Image
-from NiimPrintX.nimmy.printer import RequestCodeEnum
+
 from NiimPrintX.nimmy.packet import NiimbotPacket
+from NiimPrintX.nimmy.printer import RequestCodeEnum
 
 
 def _auto_respond(client):

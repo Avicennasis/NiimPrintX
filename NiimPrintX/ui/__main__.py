@@ -52,7 +52,10 @@ def main():
 
         app.mainloop()
     except Exception as e:
-        print(f"Error {e}")
+        import contextlib
+        import tkinter.messagebox as mb
+        with contextlib.suppress(Exception):
+            mb.showerror("Startup Error", f"NiimPrintX failed to start:\n{e}")
         raise
 
 

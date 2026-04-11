@@ -44,6 +44,7 @@ class BLETransport:
         if self.client is None:
             self.client = BleakClient(address)
         if not self.client.is_connected:
+            self._notifying_uuids.clear()
             try:
                 await self.client.connect()
             except Exception:

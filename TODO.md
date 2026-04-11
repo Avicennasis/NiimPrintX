@@ -140,5 +140,5 @@
 - [x] **Rotation UI control** (#38) — Rotation dropdown added to print preview popup
 - [x] **Screenshot for metainfo** — Extracted from NiimPrintX.gif
 - [x] **TextOperation cleanup** — Removed remaining commented-out code
-- [x] **Test expansion** — 75+ tests (image encoding verification, CLI exit codes, utility modules, get_rfid, integration)
+- [x] **Test expansion** — 113 tests (image encoding verification, CLI exit codes, utility modules, get_rfid, integration)
 - [x] **Upstream issue triage** — Items documented as needing manual upstream access

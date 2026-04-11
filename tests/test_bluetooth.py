@@ -1,6 +1,8 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from NiimPrintX.nimmy.bluetooth import find_device, BLETransport
+
+import pytest
+
+from NiimPrintX.nimmy.bluetooth import BLETransport, find_device
 from NiimPrintX.nimmy.exception import BLEException
 
 

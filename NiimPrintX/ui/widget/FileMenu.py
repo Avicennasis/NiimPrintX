@@ -106,7 +106,17 @@ class FileMenu:
                     messagebox.showerror("Error", f"Invalid .niim file: missing '{key}'")
                     return
 
+            device = data.get("device", "").lower()
+            label_size = data.get("current_label_size", "")
+            if device not in self.config.label_sizes:
+                messagebox.showerror("Error", f"Device '{device}' not found in configuration.")
+                return
+            if label_size not in self.config.label_sizes[device].get("size", {}):
+                messagebox.showerror("Error", f"Label size '{label_size}' not found for device '{device}'.")
+                return
+
             self.root.canvas_selector.selected_device.set(data["device"].upper())
+            self.root.canvas_selector.update_device_label_size()  # repopulate label dropdown
             self.root.canvas_selector.selected_label_size.set(data["current_label_size"])
             self.root.canvas_selector.update_canvas_size()
 
@@ -151,6 +161,7 @@ class FileMenu:
 
             image_data = base64.b64decode(data["image"])
             image = Image.open(io.BytesIO(image_data))
+            image.load()  # force decode before BytesIO is GC'd
             if image.width * image.height > _MAX_LABEL_PIXELS:
                 raise ValueError(f"Resized image too large: {image.width}x{image.height}")
             img_tk = ImageTk.PhotoImage(image)

@@ -125,9 +125,10 @@ async def _print(model, density, image, quantity, vertical_offset, horizontal_of
             print_error("Failed to connect to printer")
             return False
         print_info(f"Connected to {device.name}")
-        if model == "b1":
+        if model in ("b1", "b18", "b21"):
             print_info("Printing with B1 model")
-            await printer.print_imageV2(image, density=density, quantity=quantity)
+            await printer.print_imageV2(image, density=density, quantity=quantity,
+                                        vertical_offset=vertical_offset, horizontal_offset=horizontal_offset)
         else:
             print_info("Printing with D model")
             await printer.print_image(image, density=density, quantity=quantity, vertical_offset=vertical_offset,
@@ -184,6 +185,5 @@ async def _info(model):
             await printer.disconnect()
 
 
-cli = click.CommandCollection(sources=[niimbot_cli])
 if __name__ == "__main__":
     niimbot_cli(obj={})

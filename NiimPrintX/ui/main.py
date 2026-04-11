@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import threading
 import tkinter as tk
 from tkinter import messagebox, ttk
@@ -92,15 +93,34 @@ class LabelPrinterApp(tk.Tk):
 
     def on_close(self):
         if messagebox.askokcancel("Quit", "Do you want to quit?"):
+            self._shutdown_complete = threading.Event()
+
             async def _shutdown():
-                tasks = [t for t in asyncio.all_tasks(self.async_loop) if not t.done()]
+                # Disconnect printer if connected
+                if hasattr(self, 'print_option') and self.print_option.print_op.printer:
+                    with contextlib.suppress(Exception):
+                        await self.print_option.print_op.printer.disconnect()
+                # Stop heartbeat
+                if hasattr(self, 'print_option'):
+                    self.print_option._heartbeat_active = False
+                # Cancel remaining tasks
+                tasks = [t for t in asyncio.all_tasks(self.async_loop)
+                         if not t.done() and t is not asyncio.current_task()]
                 for t in tasks:
                     t.cancel()
                 if tasks:
                     await asyncio.gather(*tasks, return_exceptions=True)
+                self._shutdown_complete.set()
 
-            future = asyncio.run_coroutine_threadsafe(_shutdown(), self.async_loop)
-            future.add_done_callback(lambda _: self.after(0, self.destroy))
+            asyncio.run_coroutine_threadsafe(_shutdown(), self.async_loop)
+            self._poll_shutdown()
+
+    def _poll_shutdown(self):
+        if self._shutdown_complete.is_set():
+            self.async_loop.call_soon_threadsafe(self.async_loop.stop)
+            self.destroy()
+        else:
+            self.after(100, self._poll_shutdown)
 
 if __name__ == "__main__":
     app = LabelPrinterApp()

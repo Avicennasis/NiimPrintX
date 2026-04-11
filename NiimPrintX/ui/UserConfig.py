@@ -76,7 +76,7 @@ def merge_label_sizes(builtin_sizes, user_config):
             builtin_sizes[device_name] = {
                 "size": sizes,
                 "density": max(1, min(_safe_int(device_conf.get("density", 3), 3), 5)),
-                "print_dpi": _safe_int(device_conf.get("print_dpi", 203), 203),
+                "print_dpi": max(72, min(_safe_int(device_conf.get("print_dpi", 203), 203), 600)),
                 "rotation": _safe_int(device_conf.get("rotation", -90), -90),
             }
     return builtin_sizes

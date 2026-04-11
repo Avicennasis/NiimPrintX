@@ -40,7 +40,6 @@ class ImageOperation:
         self.config.canvas.tag_bind(image_id, "<Button1-Motion>", lambda e, img_id=image_id: self.move_image(e, img_id))
 
     def start_image_resize(self, event, image_id):
-        self.config.image_items[image_id]['initial_y'] = event.y
         self.config.image_items[image_id]['initial_x'] = event.x
 
     def select_image(self, event, image_id):
@@ -73,9 +72,10 @@ class ImageOperation:
     def deselect_image(self):
         """Deselect the current image."""
         if self.config.current_selected_image:
-            if "bbox" in self.config.image_items[self.config.current_selected_image]:
-                self.config.canvas.delete(self.config.image_items[self.config.current_selected_image]["bbox"])
-                self.config.canvas.delete(self.config.image_items[self.config.current_selected_image]["handle"])
+            item = self.config.image_items[self.config.current_selected_image]
+            if item.get("bbox") is not None:
+                self.config.canvas.delete(item["bbox"])
+                self.config.canvas.delete(item["handle"])
             self.config.current_selected_image = None
 
     def move_image(self, event, image_id):
@@ -95,11 +95,9 @@ class ImageOperation:
         # Get the initial bounding box
         current_bbox = self.config.canvas.bbox(image_id)
         initial_width = current_bbox[2] - current_bbox[0]
-        current_bbox[3] - current_bbox[1]
 
         # Calculate the movement since the last event
         dx = event.x - self.config.image_items[image_id]["initial_x"]
-        event.y - self.config.image_items[image_id]["initial_y"]
 
         # Always resize from the original image to maintain quality
         original_image = self.config.image_items[image_id]["original_image"]
@@ -108,7 +106,10 @@ class ImageOperation:
         orig_w, orig_h = original_image.size
         aspect = orig_w / orig_h
         new_width = max(initial_width + dx, 20)  # Ensure a minimum width
-        new_height = max(int(new_width / aspect), 20)  # Lock aspect ratio
+        new_height = int(new_width / aspect)
+        if new_height < 20:
+            new_height = 20
+            new_width = max(int(new_height * aspect), 20)
 
         # Resize the image to the new size
         resized_image = original_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
@@ -123,7 +124,6 @@ class ImageOperation:
 
         # Update the initial coordinates for the next resizing operation
         self.config.image_items[image_id]["initial_x"] = event.x
-        self.config.image_items[image_id]["initial_y"] = event.y
 
     def update_image_bbox_and_handle(self, image_id):
         """Update bounding box and handle for the image."""

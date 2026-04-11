@@ -49,14 +49,19 @@ class PrinterClient:
         self.transport = BLETransport()
         self.notification_event = asyncio.Event()
         self.notification_data = None
+        self._loop = None
         self._command_lock = asyncio.Lock()
         self._print_lock = asyncio.Lock()
 
     async def connect(self):
         if await self.transport.connect(self.device.address):
             if not self.char_uuid:
-                await self.find_characteristics()
-            self._loop = asyncio.get_event_loop()
+                try:
+                    await self.find_characteristics()
+                except PrinterException:
+                    await self.transport.disconnect()
+                    raise
+            self._loop = asyncio.get_running_loop()
             logger.info(f"Successfully connected to {self.device.name}")
             return True
         logger.error("Connection failed.")
@@ -133,14 +138,18 @@ class PrinterClient:
                 if not self.transport.client or not self.transport.client.is_connected:
                     await self.connect()
                 await self.transport.write(data.to_bytes(), self.char_uuid)
-            except BLEException as e:
+            except (BLEException, ValueError, TypeError) as e:
                 logger.error(f"Write error: {e}")
                 raise PrinterException(f"BLE write failed: {e}") from e
 
     def notification_handler(self, sender, data):
         logger.trace(f"Notification: {data}")
-        self.notification_data = data
-        self._loop.call_soon_threadsafe(self.notification_event.set)
+        if self._loop is None:
+            return
+        def _set():
+            self.notification_data = data
+            self.notification_event.set()
+        self._loop.call_soon_threadsafe(_set)
 
     async def print_image(self, image: Image.Image, density: int = 3, quantity: int = 1, vertical_offset=0,
                           horizontal_offset=0):
@@ -191,8 +200,8 @@ class PrinterClient:
                     raise PrinterException(f"Print status timeout: page {status['page']}/{quantity}")
 
                 await self.end_print()
-            except PrinterException:
-                logger.error("Print job failed")
+            except PrinterException as e:
+                logger.error(f"Print job failed: {e}")
                 with contextlib.suppress(Exception):
                     await self.end_print()
                 raise
@@ -246,8 +255,8 @@ class PrinterClient:
                     raise PrinterException(f"Print status timeout: page {status['page']}/{quantity}")
 
                 await self.end_print()
-            except PrinterException:
-                logger.error("B1 print job failed")
+            except PrinterException as e:
+                logger.error(f"B1 print job failed: {e}")
                 with contextlib.suppress(Exception):
                     await self.end_print()
                 raise
