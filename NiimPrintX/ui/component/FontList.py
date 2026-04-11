@@ -24,14 +24,16 @@ def fonts():
         else:
             magick_path = 'magick'
 
-    # magick_path = 'imagemagick/bin/magick'
-
-    # Path to the local ImageMagick binary within the collected data
-    result = subprocess.run([magick_path, '-list', 'font'], stdout=subprocess.PIPE, text=True, encoding='utf8')
-    output = result.stdout
-    fonts_details = parse_font_details(output)
-    grouped_fonts = group_fonts_by_family(fonts_details)
-    return grouped_fonts
+    try:
+        result = subprocess.run([magick_path, '-list', 'font'], stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE, text=True, encoding='utf8')
+        output = result.stdout
+        fonts_details = parse_font_details(output)
+        grouped_fonts = group_fonts_by_family(fonts_details)
+        return grouped_fonts
+    except (FileNotFoundError, OSError):
+        # ImageMagick not installed — return empty font list
+        return {}
 
 
 def parse_font_details(output):

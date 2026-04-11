@@ -154,11 +154,14 @@ class PrinterClient:
             while not await self.end_page_print():
                 await asyncio.sleep(0.05)
 
-            while True:
+            max_status_checks = 600  # ~60 seconds at 0.1s interval
+            for _ in range(max_status_checks):
                 status = await self.get_print_status()
                 if status['page'] == quantity:
                     break
                 await asyncio.sleep(0.1)
+            else:
+                raise PrinterException(f"Print status timeout: page {status['page']}/{quantity}")
 
             await self.end_print()
         except PrinterException:
@@ -200,6 +203,9 @@ class PrinterClient:
             img = ImageOps.expand(img, border=(0, vertical_offset, 0, 0), fill=1)
         elif vertical_offset < 0:
             img = img.crop((0, -vertical_offset, img.width, img.height))
+
+        if img.width == 0 or img.height == 0:
+            return
 
         for y in range(img.height):
             line_data = [img.getpixel((x, y)) for x in range(img.width)]
@@ -282,7 +288,7 @@ class PrinterClient:
             case 10:
                 closing_state = packet.data[8]
                 power_level = packet.data[9]
-                rfid_read_state = packet.data[8]
+                rfid_read_state = packet.data[9]
             case 9:
                 closing_state = packet.data[8]
 

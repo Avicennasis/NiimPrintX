@@ -88,29 +88,33 @@ class TabbedIconGrid(tk.Frame):
         return canvas
 
     def load_icons(self, frame, folder, subfolder_name):
-        """Load icon images in background thread, then create widgets on main thread."""
+        """Load PIL images in background thread, then create PhotoImages + widgets on main thread."""
         icon_folder = f"{folder}/50x50"
-        icons = []
+        pil_images = []
         for filename in os.listdir(icon_folder):
             if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
                 image_path = os.path.join(icon_folder, filename)
-                photo = ImageTk.PhotoImage(Image.open(image_path))
-                icons.append((filename, photo, subfolder_name))
+                pil_images.append((filename, Image.open(image_path), subfolder_name))
+
+        # Schedule PhotoImage creation + widget creation on the main thread
+        frame.after(0, lambda: self._create_icon_widgets(frame, pil_images, subfolder_name))
+
+    def _create_icon_widgets(self, frame, pil_images, subfolder_name):
+        """Create PhotoImages and icon grid widgets — must run on main thread."""
+        icons = []
+        for filename, pil_img, sub_name in pil_images:
+            photo = ImageTk.PhotoImage(pil_img)
+            icons.append((filename, photo, sub_name))
 
         # Retain references to prevent GC
         self.icon_references[subfolder_name] = [photo for _, photo, _ in icons]
 
-        # Schedule widget creation on the main thread
-        frame.after(0, lambda: self._create_icon_widgets(frame, icons))
-
-    def _create_icon_widgets(self, frame, icons):
-        """Create icon grid widgets — must run on main thread."""
         grid_rows = math.ceil(len(icons) / self.columns)
         for row in range(grid_rows):
             for col in range(self.columns):
                 index = row * self.columns + col
                 if index < len(icons):
-                    filename, photo, subfolder_name = icons[index]
+                    filename, photo, sub_name = icons[index]
                     icon_label = tk.Label(
                         frame,
                         image=photo,

@@ -32,22 +32,24 @@ def setup_logger():
 # | CRITICAL   | 50             | logger.critical() |
 # ---------------------------------------------------
 def logger_enable(verbose: int):
+    # At verbose=0, keep the handlers setup_logger() already configured
+    if verbose == 0:
+        return
+
     # Mapping verbosity level to Loguru levels
-    levels = {0: "INFO", 1: "INFO", 2: "DEBUG", 3: "TRACE"}
+    levels = {1: "INFO", 2: "DEBUG", 3: "TRACE"}
     new_level = levels.get(verbose, "DEBUG")
 
-    # Iterate over all handlers and update the level
+    # Remove existing handlers and re-add with new level
     for handler_id in list(logger._core.handlers):
         logger.remove(handler_id)
 
-    if verbose != 0:
-        # Re-adding handlers with new levels
-        logger.add(sys.stdout, colorize=True, format="<blue>{time}</blue> | <level>{level}</level> | {message}",
-                   level=new_level)
-        try:
-            logger.add(_get_log_path(), rotation="100 MB", compression="zip", level=new_level)
-        except (PermissionError, OSError):
-            pass
+    logger.add(sys.stdout, colorize=True, format="<blue>{time}</blue> | <level>{level}</level> | {message}",
+               level=new_level)
+    try:
+        logger.add(_get_log_path(), rotation="100 MB", compression="zip", level=new_level)
+    except (PermissionError, OSError):
+        pass
 
 
 def get_logger():

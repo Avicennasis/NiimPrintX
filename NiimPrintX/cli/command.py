@@ -84,10 +84,13 @@ def print_command(model, density, rotate, image, quantity, vertical_offset, hori
 
     if model in ("b1", "b18", "b21"):
         max_width_px = 384
-    if model in ("d11", "d11_h", "d110", "d101", "d110_m"):
+    elif model in ("d11", "d11_h", "d110", "d101", "d110_m"):
+        max_width_px = 240
+    else:
         max_width_px = 240
 
-    if model in ("b18", "d11", "d11_h", "d110", "d101", "d110_m") and density > 3:
+    # Cap density for models that only support 3 levels
+    if model not in ("b21",) and density > 3:
         density = 3
     try:
         image = Image.open(image)
@@ -95,10 +98,12 @@ def print_command(model, density, rotate, image, quantity, vertical_offset, hori
         if rotate != "0":
             # PIL library rotates counterclockwise, so we need to multiply by -1
             image = image.rotate(-int(rotate), expand=True)
-        assert image.width <= max_width_px, f"Image width too big for {model.upper()}"
+        if image.width > max_width_px:
+            print_error(f"Image width {image.width}px exceeds max {max_width_px}px for {model.upper()}")
+            return
         asyncio.run(_print(model, density, image, quantity, vertical_offset, horizontal_offset))
     except Exception as e:
-        logger.info(f"{e}")
+        print_error(f"{e}")
 
 
 async def _print(model, density, image, quantity, vertical_offset, horizontal_offset):
@@ -143,21 +148,25 @@ def info_command(model):
 
 
 async def _info(model):
+    printer = None
     try:
         device = await find_device(model)
         printer = PrinterClient(device)
-        await printer.connect()
+        if not await printer.connect():
+            print_error("Failed to connect to printer")
+            return
         device_serial = await printer.get_info(InfoEnum.DEVICESERIAL)
         software_version = await printer.get_info(InfoEnum.SOFTVERSION)
         hardware_version = await printer.get_info(InfoEnum.HARDVERSION)
         print(f"Device Serial : {device_serial}")
         print(f"Software Version : {software_version}")
         print(f"Hardware Version : {hardware_version}")
-        await printer.disconnect()
     except Exception as e:
         logger.debug(f"{e}")
         print_error(e)
-        # await printer.disconnect()
+    finally:
+        if printer:
+            await printer.disconnect()
 
 
 cli = click.CommandCollection(sources=[niimbot_cli])

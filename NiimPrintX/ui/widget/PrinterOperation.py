@@ -52,7 +52,8 @@ class PrinterOperation:
             if self.printer:
                 hb = await self.printer.heartbeat()
                 return True, hb
+            return False, {}
         except Exception as e:
-            # print(f"Error {e}")
+            logger.error(f"Heartbeat error: {e}")
             self.printer = None
             return False, {}

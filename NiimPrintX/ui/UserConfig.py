@@ -20,21 +20,42 @@ def load_user_config():
         return {}
 
 
+def _validate_dims(dims):
+    """Validate that dims is a list/tuple of 2 numbers."""
+    if not isinstance(dims, (list, tuple)) or len(dims) != 2:
+        return None
+    try:
+        return (float(dims[0]), float(dims[1]))
+    except (TypeError, ValueError):
+        return None
+
+
 def merge_label_sizes(builtin_sizes, user_config):
     """Merge user device configs into built-in label sizes."""
     user_devices = user_config.get("devices", {})
     for device_name, device_conf in user_devices.items():
+        if not isinstance(device_conf, dict):
+            continue
         if device_name in builtin_sizes:
             # Merge sizes into existing device
-            if "size" in device_conf:
+            if "size" in device_conf and isinstance(device_conf["size"], dict):
                 for label, dims in device_conf["size"].items():
-                    builtin_sizes[device_name]["size"][label] = tuple(dims)
+                    validated = _validate_dims(dims)
+                    if validated:
+                        builtin_sizes[device_name]["size"][label] = validated
         else:
-            # Add entirely new device
+            # Add entirely new device — require at least one valid size
+            sizes = {}
+            for k, v in device_conf.get("size", {}).items() if isinstance(device_conf.get("size", {}), dict) else []:
+                validated = _validate_dims(v)
+                if validated:
+                    sizes[k] = validated
+            if not sizes:
+                continue
             builtin_sizes[device_name] = {
-                "size": {k: tuple(v) for k, v in device_conf.get("size", {}).items()},
-                "density": device_conf.get("density", 3),
-                "print_dpi": device_conf.get("print_dpi", 203),
-                "rotation": device_conf.get("rotation", -90),
+                "size": sizes,
+                "density": int(device_conf.get("density", 3)),
+                "print_dpi": int(device_conf.get("print_dpi", 203)),
+                "rotation": int(device_conf.get("rotation", -90)),
             }
     return builtin_sizes

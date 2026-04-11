@@ -71,9 +71,13 @@ class CanvasSelector:
         self.canvas_width = self.bounding_box_width + padding
         self.canvas_height = self.bounding_box_height + padding
 
-        # If a canvas exists, destroy it before creating a new one
+        # If a canvas exists, destroy it and clear stale items
         if hasattr(self.config, "canvas") and self.config.canvas is not None:
             self.config.canvas.destroy()
+        self.config.text_items = {}
+        self.config.image_items = {}
+        self.config.current_selected = None
+        self.config.current_selected_image = None
 
         # Create a new canvas with updated dimensions
         self.config.canvas = tk.Canvas(
