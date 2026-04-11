@@ -35,9 +35,18 @@ class FileMenu:
         }
         if self.config.text_items:
             for text_id, properties in self.config.text_items.items():
-                font_image = ImageTk.getimage(properties["font_image"])
+                font_image_widget = properties["font_image"]
+                # Handle both tk.PhotoImage (from Wand) and ImageTk.PhotoImage (from load)
+                if isinstance(font_image_widget, ImageTk.PhotoImage):
+                    pil_image = ImageTk.getimage(font_image_widget)
+                else:
+                    # tk.PhotoImage — convert via PPM data
+                    ppm_data = font_image_widget.data()
+                    if isinstance(ppm_data, str):
+                        ppm_data = ppm_data.encode('latin-1')
+                    pil_image = Image.open(io.BytesIO(ppm_data))
                 with io.BytesIO() as buffer:
-                    font_image.save(buffer, format="PNG")
+                    pil_image.save(buffer, format="PNG")
                     buffer.seek(0)
                     font_img_str = base64.b64encode(buffer.getvalue()).decode("utf-8")
 
@@ -72,8 +81,11 @@ class FileMenu:
         file_path = filedialog.asksaveasfilename(defaultextension=".niim",
                                                  filetypes=[("NIIM files", "*.niim")])
         if file_path:
-            with open(file_path, 'w') as f:
-                json.dump(data, f, indent=2)
+            try:
+                with open(file_path, 'w') as f:
+                    json.dump(data, f, indent=2)
+            except OSError as e:
+                messagebox.showerror("Error", f"Failed to save file: {e}")
 
     def load_from_file(self, file_path=None):
         if file_path is None:
