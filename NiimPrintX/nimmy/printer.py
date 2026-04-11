@@ -118,7 +118,8 @@ class PrinterClient:
                 await self.connect()
             await self.transport.write(data.to_bytes(), self.char_uuid)
         except BLEException as e:
-            logger.error(f"An error occurred: {e}")
+            logger.error(f"Write error: {e}")
+            raise PrinterException(f"BLE write failed: {e}")
 
     async def write_no_notify(self, request_code, data):
         try:
@@ -127,7 +128,8 @@ class PrinterClient:
             packet = NiimbotPacket(request_code, data)
             await self.transport.write(packet.to_bytes(), self.char_uuid)
         except BLEException as e:
-            logger.error(f"An error occurred: {e}")
+            logger.error(f"Write error: {e}")
+            raise PrinterException(f"BLE write failed: {e}")
 
     def notification_handler(self, sender, data):
         # print(f"Notification from {sender}: {data}")

@@ -118,10 +118,9 @@ class TextTab:
         self.sample_text_label.config(font=label_font,
                                       text=f"{content} in {font_props['family'].replace('-', ' ')}")
         if self.config.current_selected:
-            # self.config.canvas.itemconfig(self.config.current_selected, font=font_obj)
-            # self.config.text_items[self.config.current_selected]['font'] = font_obj
             self.config.text_items[self.config.current_selected]['font_props'] = font_props
-            self.text_op.update_bbox_and_handle(self.config.current_selected)
+            self.config.text_items[self.config.current_selected]['content'] = content
+            self.text_op.update_canvas_text(self.config.current_selected)
 
         # if widget_name == "font_dropdown":
         #     self.bold_var.set(False)

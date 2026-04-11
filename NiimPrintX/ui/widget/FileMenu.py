@@ -94,18 +94,27 @@ class FileMenu:
                 with open(file_path, 'rb') as f:
                     data = pickle.load(f)
 
-            self.root.canvas_selector.selected_device.set(data["device"].upper())
-            self.root.canvas_selector.selected_label_size.set(data["current_label_size"])
-            self.config.canvas.delete("all")
-            self.root.canvas_selector.update_canvas_size()
+            # Validate required keys
+            for key in ("device", "current_label_size", "text", "image"):
+                if key not in data:
+                    messagebox.showerror("Error", f"Invalid .niim file: missing '{key}'")
+                    return
+
+            # Clear stale state before rebuilding canvas
             self.config.text_items = {}
             self.config.image_items = {}
+            self.config.current_selected = None
+            self.config.current_selected_image = None
 
-            if data["text"]:
+            self.root.canvas_selector.selected_device.set(data["device"].upper())
+            self.root.canvas_selector.selected_label_size.set(data["current_label_size"])
+            self.root.canvas_selector.update_canvas_size()
+
+            if data.get("text"):
                 for text_id, item_data in data["text"].items():
                     self.load_text(item_data)
 
-            if data["image"]:
+            if data.get("image"):
                 for image_id, item_data in data["image"].items():
                     self.load_image(item_data)
 

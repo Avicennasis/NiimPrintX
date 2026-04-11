@@ -38,6 +38,9 @@ class CanvasSelector:
     def update_device_label_size(self, event=None):
         device = self.selected_device.get().lower()
         if device:
+            # Reset connection state when device changes
+            if device != self.config.device:
+                self.config.printer_connected = False
             label_sizes = list(self.config.label_sizes[device]['size'].keys())
             self.config.device = device
         else:
