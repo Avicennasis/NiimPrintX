@@ -24,7 +24,8 @@ class AppConfig:
                     "109mm x 12.5mm": (109, 12.5),
                 },
                 "density": 3,
-                "print_dpi": 203
+                "print_dpi": 203,
+                "rotation": -90
             },
             "d11": {
                 "size": {
@@ -35,7 +36,8 @@ class AppConfig:
                     "109mm x 12.5mm": (109, 12.5),
                 },
                 "density": 3,
-                "print_dpi": 203
+                "print_dpi": 203,
+                "rotation": -90
             },
             "d11_h": {
                 "size": {
@@ -46,7 +48,8 @@ class AppConfig:
                     "109mm x 12.5mm": (109, 12.5),
                 },
                 "density": 3,
-                "print_dpi": 300
+                "print_dpi": 300,
+                "rotation": -90
             },
             "d101": {
                 "size": {
@@ -57,7 +60,8 @@ class AppConfig:
                     "109mm x 12.5mm": (109, 12.5),
                 },
                 "density": 3,
-                "print_dpi": 203
+                "print_dpi": 203,
+                "rotation": -90
             },
             "d110_m": {
                 "size": {
@@ -68,7 +72,8 @@ class AppConfig:
                     "109mm x 12.5mm": (109, 12.5),
                 },
                 "density": 3,
-                "print_dpi": 300
+                "print_dpi": 300,
+                "rotation": -90
             },
             "b18": {
                 "size": {
@@ -77,7 +82,8 @@ class AppConfig:
                     "120mm x 14mm": (120, 14),
                 },
                 "density": 3,
-                "print_dpi": 203
+                "print_dpi": 203,
+                "rotation": 0
             },
             "b21": {
                 "size": {
@@ -87,7 +93,8 @@ class AppConfig:
                     "30mm x 15mm": (30, 15),
                 },
                 "density": 5,
-                "print_dpi": 203
+                "print_dpi": 203,
+                "rotation": 0
             },
             "b1": {
                 "size": {
@@ -97,7 +104,8 @@ class AppConfig:
                     "40mm x 30mm": (40, 30),
                 },
                 "density": 3,
-                "print_dpi": 203
+                "print_dpi": 203,
+                "rotation": 0
             }
         }
         self.current_label_size = None
