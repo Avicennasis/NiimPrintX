@@ -28,7 +28,7 @@ class PrintOption:
         while True:
             if self.print_op.printer and not self.config.print_job:
                 state, hb = await self.print_op.heartbeat()
-                self.root.after(0, lambda: self.update_status(state, hb))
+                self.root.after(0, lambda s=state, h=hb: self.update_status(s, h))
             elif not self.config.print_job:
                 self.root.after(0, lambda: self.update_status(False))
             await asyncio.sleep(5)
@@ -288,6 +288,12 @@ class PrintOption:
         def _update():
             self.config.print_job = False
             if result:
-                self.root.status_bar.update_status(result)
-            self.print_button.config(state=tk.NORMAL)
+                try:
+                    self.root.status_bar.update_status(result)
+                except tk.TclError:
+                    pass
+            try:
+                self.print_button.config(state=tk.NORMAL)
+            except tk.TclError:
+                pass  # popup was closed before print finished
         self.root.after(0, _update)
