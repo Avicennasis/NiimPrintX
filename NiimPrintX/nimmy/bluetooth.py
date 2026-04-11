@@ -1,3 +1,5 @@
+import contextlib
+
 from bleak import BleakClient, BleakScanner
 
 from .exception import BLEException
@@ -14,7 +16,7 @@ async def find_device(device_name_prefix=None):
     # D110 appears as two BLE devices; the printing-capable one has no UUIDs.
     is_d110 = device_name_prefix.lower().startswith("d110")
     fallback = None
-    for address, (device, adv_data) in devices.items():
+    for _address, (device, adv_data) in devices.items():
         if device.name and device.name.lower().startswith(device_name_prefix.lower()):
             if is_d110:
                 if len(adv_data.service_uuids) == 0:
@@ -52,10 +54,8 @@ class BLETransport:
 
     async def disconnect(self):
         if self.client:
-            try:
+            with contextlib.suppress(Exception):
                 await self.client.disconnect()
-            except Exception:
-                pass
         self.client = None
         self._notifying_uuids.clear()
 

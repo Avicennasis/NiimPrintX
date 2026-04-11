@@ -1,8 +1,9 @@
 import tkinter as tk
-from tkinter import ttk
-from tkinter import filedialog
+from tkinter import filedialog, ttk
+
 from .ImageOperation import ImageOperation
 from .TabbedIconGrid import TabbedIconGrid
+
 
 class IconTab:
     def __init__(self, parent, config):

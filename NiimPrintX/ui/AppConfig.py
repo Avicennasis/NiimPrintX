@@ -1,8 +1,10 @@
 import os
-import platformdirs
 import platform
 
+import platformdirs
+
 from NiimPrintX.ui.UserConfig import load_user_config, merge_label_sizes
+
 
 class AppConfig:
     def __init__(self):

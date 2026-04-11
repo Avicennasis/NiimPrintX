@@ -1,10 +1,10 @@
 import tkinter as tk
-from tkinter import ttk
 from tkinter import font as tk_font
-import tkinter.messagebox as messagebox
+from tkinter import ttk
 
-from .TextOperation import TextOperation
 from ..component.FontList import fonts
+from .TextOperation import TextOperation
+
 
 class TextTab:
     def __init__(self, parent, config):

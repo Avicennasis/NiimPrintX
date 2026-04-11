@@ -1,5 +1,7 @@
+import contextlib
 import os
 import sys
+
 import platformdirs
 from loguru import logger
 
@@ -15,10 +17,8 @@ def setup_logger():
     default_level = "INFO"
     logger.add(sys.stderr, colorize=True, format="<blue>{time}</blue> | <level>{level}</level> | {message}",
                level=default_level)
-    try:
+    with contextlib.suppress(PermissionError, OSError):
         logger.add(_get_log_path(), rotation="100 MB", compression="zip", level=default_level)
-    except (PermissionError, OSError):
-        pass
 
 
 # | Level name | Severity value | Logger method     |
@@ -45,10 +45,8 @@ def logger_enable(verbose: int):
 
     logger.add(sys.stderr, colorize=True, format="<blue>{time}</blue> | <level>{level}</level> | {message}",
                level=new_level)
-    try:
+    with contextlib.suppress(PermissionError, OSError):
         logger.add(_get_log_path(), rotation="100 MB", compression="zip", level=new_level)
-    except (PermissionError, OSError):
-        pass
 
 
 def get_logger():

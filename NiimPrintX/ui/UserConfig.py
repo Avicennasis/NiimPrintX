@@ -1,8 +1,8 @@
 import os
 import tomllib
 
-from platformdirs import user_config_dir
 from loguru import logger
+from platformdirs import user_config_dir
 
 CONFIG_DIR = user_config_dir("NiimPrintX")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "config.toml")

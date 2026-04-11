@@ -1,5 +1,6 @@
 from PIL import Image, ImageTk
 
+
 class ImageOperation:
     def __init__(self, config):
         self.config = config
@@ -94,11 +95,11 @@ class ImageOperation:
         # Get the initial bounding box
         current_bbox = self.config.canvas.bbox(image_id)
         initial_width = current_bbox[2] - current_bbox[0]
-        initial_height = current_bbox[3] - current_bbox[1]
+        current_bbox[3] - current_bbox[1]
 
         # Calculate the movement since the last event
         dx = event.x - self.config.image_items[image_id]["initial_x"]
-        dy = event.y - self.config.image_items[image_id]["initial_y"]
+        event.y - self.config.image_items[image_id]["initial_y"]
 
         # Always resize from the original image to maintain quality
         original_image = self.config.image_items[image_id]["original_image"]

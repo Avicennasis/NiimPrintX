@@ -1,9 +1,12 @@
-import os
+import contextlib
 import math
+import os
+import threading
 import tkinter as tk
 from tkinter import ttk
+
 from PIL import Image, ImageTk
-import threading
+
 
 class TabbedIconGrid(tk.Frame):
     def __init__(self, parent, base_folder, icon_size=(50, 50), columns=8, on_icon_selected=None, **kwargs):
@@ -111,10 +114,8 @@ class TabbedIconGrid(tk.Frame):
                     pil_images.append((filename, img, subfolder_name))
                 except Exception:
                     pass  # skip corrupt files
-        try:
+        with contextlib.suppress(tk.TclError):
             frame.after(0, lambda: self._create_icon_widgets(frame, pil_images, subfolder_name, canvas))
-        except tk.TclError:
-            pass  # widget destroyed before thread completed
 
     def _create_icon_widgets(self, frame, pil_images, subfolder_name, canvas):
         """Create PhotoImages and icon grid widgets — must run on main thread."""

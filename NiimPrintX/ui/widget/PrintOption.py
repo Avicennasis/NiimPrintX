@@ -1,15 +1,17 @@
 import asyncio
+import contextlib
 import io
 import os
-import tkinter as tk
-from tkinter import ttk
-from tkinter import filedialog
-from PIL import Image, ImageTk
-import PIL
-import cairo
 import tempfile
+import tkinter as tk
+from tkinter import filedialog, ttk
+
+import cairo
+import PIL
+from PIL import Image, ImageTk
 
 from .PrinterOperation import PrinterOperation
+
 
 class PrintOption:
     def __init__(self, root, parent, config):
@@ -325,12 +327,8 @@ class PrintOption:
         def _update():
             self.config.print_job = False
             if result:
-                try:
+                with contextlib.suppress(tk.TclError):
                     self.root.status_bar.update_status(result)
-                except tk.TclError:
-                    pass
-            try:
+            with contextlib.suppress(tk.TclError):
                 self.print_button.config(state=tk.NORMAL)
-            except tk.TclError:
-                pass  # popup was closed before print finished
         self.root.after(0, _update)

@@ -1,18 +1,17 @@
+import asyncio
+import threading
 import tkinter as tk
-from tkinter import ttk
-from tkinter import messagebox
-
-from .AppConfig import AppConfig
-from .widget.TextTab import TextTab
-from .widget.IconTab import IconTab
-from .widget.StatusBar import StatusBar
-from .widget.PrintOption import PrintOption
+from tkinter import messagebox, ttk
 
 from NiimPrintX.ui.widget.CanvasSelector import CanvasSelector
 from NiimPrintX.ui.widget.FileMenu import FileMenu
 
-import asyncio
-import threading
+from .AppConfig import AppConfig
+from .widget.IconTab import IconTab
+from .widget.PrintOption import PrintOption
+from .widget.StatusBar import StatusBar
+from .widget.TextTab import TextTab
+
 
 class LabelPrinterApp(tk.Tk):
     def __init__(self):

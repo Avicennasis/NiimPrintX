@@ -1,9 +1,9 @@
-import platform
-import subprocess
-import re
-from collections import defaultdict
 import os
+import platform
+import re
+import subprocess
 import sys
+from collections import defaultdict
 
 
 def fonts():
@@ -19,14 +19,11 @@ def fonts():
         else:
             magick_path = 'magick'
     else:
-        if platform.system() == "Linux":
-            magick_path = 'magick'
-        else:
-            magick_path = 'magick'
+        magick_path = 'magick'
 
     try:
-        result = subprocess.run([magick_path, '-list', 'font'], stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE, text=True, encoding='utf8')
+        result = subprocess.run([magick_path, '-list', 'font'], capture_output=True,
+                                text=True, encoding='utf8')
         if result.returncode != 0:
             raise FileNotFoundError("magick failed")
         output = result.stdout
@@ -37,8 +34,8 @@ def fonts():
         if magick_path == 'magick':
             # Fallback to IM6 'convert' command
             try:
-                result = subprocess.run(['convert', '-list', 'font'], stdout=subprocess.PIPE,
-                                        stderr=subprocess.PIPE, text=True, encoding='utf8')
+                result = subprocess.run(['convert', '-list', 'font'], capture_output=True,
+                                        text=True, encoding='utf8')
                 if result.returncode != 0:
                     return {}
                 output = result.stdout

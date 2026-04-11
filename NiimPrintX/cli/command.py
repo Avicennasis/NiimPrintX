@@ -1,11 +1,13 @@
 import asyncio
 import sys
+
 import click
 from PIL import Image
+
 from NiimPrintX.nimmy.bluetooth import find_device
-from NiimPrintX.nimmy.printer import PrinterClient, InfoEnum
-from NiimPrintX.nimmy.logger_config import setup_logger, get_logger, logger_enable
-from NiimPrintX.nimmy.helper import print_info, print_error, print_success
+from NiimPrintX.nimmy.helper import print_error, print_info, print_success
+from NiimPrintX.nimmy.logger_config import get_logger, logger_enable, setup_logger
+from NiimPrintX.nimmy.printer import InfoEnum, PrinterClient
 
 setup_logger()
 logger = get_logger()
@@ -81,7 +83,7 @@ def niimbot_cli(ctx, verbose):
     help="Image path",
 )
 def print_command(model, density, rotate, image, quantity, vertical_offset, horizontal_offset):
-    logger.info(f"Niimbot Printing Start")
+    logger.info("Niimbot Printing Start")
 
     if model in ("b1", "b18", "b21"):
         max_width_px = 384

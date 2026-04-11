@@ -2,9 +2,8 @@ import base64
 import io
 import json
 import tkinter as tk
-from tkinter import ttk
-from tkinter import messagebox
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
+
 from PIL import Image, ImageTk
 
 _MAX_LABEL_PIXELS = 5_000_000  # well above any real label dimensions
@@ -93,7 +92,7 @@ class FileMenu:
             file_path = filedialog.askopenfilename(filetypes=[("NIIM files", "*.niim")])
         if file_path:
             try:
-                with open(file_path, 'r') as f:
+                with open(file_path) as f:
                     data = json.load(f)
             except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as e:
                 messagebox.showerror("Error", f"Failed to open file: {e}\n\n"
@@ -112,11 +111,11 @@ class FileMenu:
             self.root.canvas_selector.update_canvas_size()
 
             if data.get("text"):
-                for text_id, item_data in data["text"].items():
+                for _text_id, item_data in data["text"].items():
                     self.load_text(item_data)
 
             if data.get("image"):
-                for image_id, item_data in data["image"].items():
+                for _image_id, item_data in data["image"].items():
                     self.load_image(item_data)
 
     def load_text(self, data):

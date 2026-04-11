@@ -1,4 +1,5 @@
 import os
+
 from rich.console import Console
 
 # Check environment variable to determine ANSI color support

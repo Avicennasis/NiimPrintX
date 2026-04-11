@@ -1,8 +1,8 @@
 import os
-import sys
 import platform
-from NiimPrintX.ui.main import LabelPrinterApp
+import sys
 
+from NiimPrintX.ui.main import LabelPrinterApp
 from NiimPrintX.ui.SplashScreen import SplashScreen
 
 

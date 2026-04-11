@@ -1,6 +1,6 @@
 from NiimPrintX.nimmy.bluetooth import find_device
-from NiimPrintX.nimmy.printer import PrinterClient
 from NiimPrintX.nimmy.logger_config import get_logger
+from NiimPrintX.nimmy.printer import PrinterClient
 
 logger = get_logger()
 

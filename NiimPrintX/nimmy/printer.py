@@ -1,10 +1,13 @@
-import enum
 import asyncio
-import struct
+import contextlib
+import enum
 import math
+import struct
+
 from PIL import Image, ImageOps
-from .exception import BLEException, PrinterException
+
 from .bluetooth import BLETransport
+from .exception import BLEException, PrinterException
 from .logger_config import get_logger
 from .packet import NiimbotPacket, packet_to_int
 
@@ -78,7 +81,7 @@ class PrinterClient:
             services[service.uuid] = s
 
         candidates = []
-        for service_id, characteristics in services.items():
+        for _service_id, characteristics in services.items():
             if len(characteristics) == 1:  # Check if there's exactly one characteristic
                 props = characteristics[0]['properties']
                 if 'read' in props and 'write-without-response' in props and 'notify' in props:
@@ -102,20 +105,20 @@ class PrinterClient:
                 await self.transport.start_notification(self.char_uuid, self.notification_handler)
                 notifying = True
                 await self.transport.write(packet.to_bytes(), self.char_uuid)
-                logger.debug(f"Printer command sent - {RequestCodeEnum(request_code).name}:{request_code} - {[b for b in data]}")
+                logger.debug(f"Printer command sent - {RequestCodeEnum(request_code).name}:{request_code} - {list(data)}")
                 await asyncio.wait_for(self.notification_event.wait(), timeout)
                 response = NiimbotPacket.from_bytes(self.notification_data)
-                logger.debug(f"Printer response received - {[b for b in response.data]} - {len(response.data)} bytes")
+                logger.debug(f"Printer response received - {list(response.data)} - {len(response.data)} bytes")
                 return response
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 logger.error(f"Timeout occurred for request {RequestCodeEnum(request_code).name}")
-                raise PrinterException(f"Printer timed out on {RequestCodeEnum(request_code).name}")
+                raise PrinterException(f"Printer timed out on {RequestCodeEnum(request_code).name}") from None
             except BLEException as e:
                 logger.error(f"An error occurred: {e}")
-                raise PrinterException(f"BLE error during {RequestCodeEnum(request_code).name}: {e}")
+                raise PrinterException(f"BLE error during {RequestCodeEnum(request_code).name}: {e}") from e
             except (ValueError, TypeError) as e:
                 logger.error(f"Malformed response for {RequestCodeEnum(request_code).name}: {e}")
-                raise PrinterException(f"Malformed printer response: {e}")
+                raise PrinterException(f"Malformed printer response: {e}") from e
             finally:
                 if notifying:
                     try:
@@ -132,7 +135,7 @@ class PrinterClient:
                 await self.transport.write(data.to_bytes(), self.char_uuid)
             except BLEException as e:
                 logger.error(f"Write error: {e}")
-                raise PrinterException(f"BLE write failed: {e}")
+                raise PrinterException(f"BLE write failed: {e}") from e
 
     def notification_handler(self, sender, data):
         logger.trace(f"Notification: {data}")
@@ -190,10 +193,8 @@ class PrinterClient:
                 await self.end_print()
             except PrinterException:
                 logger.error("Print job failed")
-                try:
+                with contextlib.suppress(Exception):
                     await self.end_print()
-                except Exception:
-                    pass
                 raise
 
     async def print_imageV2(self, image: Image.Image, density: int = 3, quantity: int = 1, vertical_offset=0,
@@ -247,10 +248,8 @@ class PrinterClient:
                 await self.end_print()
             except PrinterException:
                 logger.error("B1 print job failed")
-                try:
+                with contextlib.suppress(Exception):
                     await self.end_print()
-                except Exception:
-                    pass
                 raise
 
     def _encode_image(self, image: Image.Image, vertical_offset=0, horizontal_offset=0):

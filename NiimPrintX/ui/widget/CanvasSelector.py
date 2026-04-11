@@ -1,3 +1,4 @@
+import contextlib
 import tkinter as tk
 from tkinter import ttk
 
@@ -17,7 +18,7 @@ class CanvasSelector:
         device_label.pack(side=tk.LEFT, padx=10)
         self.selected_device = tk.StringVar(value="D110")
         device_option = ttk.Combobox(self.frame, textvariable=self.selected_device,
-                                     values=list(map(lambda x: x.upper(), self.config.label_sizes.keys())),
+                                     values=[x.upper() for x in self.config.label_sizes],
                                      state="readonly")
         device_option.pack(side=tk.LEFT, padx=10)
         device_option.bind("<<ComboboxSelected>>", self.update_device_label_size)
@@ -78,10 +79,8 @@ class CanvasSelector:
         for item in self.config.image_items.values():
             orig = item.get("original_image")
             if orig is not None:
-                try:
+                with contextlib.suppress(Exception):
                     orig.close()
-                except Exception:
-                    pass
         self.config.image_items = {}
         self.config.current_selected = None
         self.config.current_selected_image = None

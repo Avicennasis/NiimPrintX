@@ -1,9 +1,11 @@
 import base64
 import tkinter as tk
 import tkinter.messagebox as messagebox
-from wand.image import Image as WandImage
-from wand.drawing import Drawing as WandDrawing
+
 from wand.color import Color
+from wand.drawing import Drawing as WandDrawing
+from wand.image import Image as WandImage
+
 
 class TextOperation:
     def __init__(self, parent, config):
@@ -46,7 +48,7 @@ class TextOperation:
 
         font_props = self.parent.get_font_properties()
         if not text:
-            messagebox.showerror("Error", f"Please enter text in content to add.")
+            messagebox.showerror("Error", "Please enter text in content to add.")
             return
 
         tk_image = self.create_text_image(font_props, text)
