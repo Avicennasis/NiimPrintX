@@ -46,7 +46,7 @@ def make_client():
         try:
             client._loop = asyncio.get_running_loop()
         except RuntimeError:
-            client._loop = asyncio.new_event_loop()
+            client._loop = None  # sync tests don't need the event loop
         return client
 
     return _make_client

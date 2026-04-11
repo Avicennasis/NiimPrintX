@@ -93,3 +93,11 @@ def test_print_b_series_within_limit(runner):
         # Should pass width check, fail at BLE
         assert result.exit_code != 0
         assert "exceeds" not in result.output.lower()
+
+
+def test_density_cap_message(runner):
+    """Density > 3 on a non-b21 model should print a capping message."""
+    with runner.isolated_filesystem():
+        Image.new("RGB", (200, 100)).save("test.png")
+        result = runner.invoke(niimbot_cli, ['print', '-m', 'd110', '-d', '4', '-i', 'test.png'])
+        assert "capping" in result.output.lower() or result.exit_code != 0

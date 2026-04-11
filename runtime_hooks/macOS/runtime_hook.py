@@ -13,7 +13,7 @@ def extract_bundled_files():
     if dest_dir.exists():
         # Check if already current by comparing mtime
         if dest_dir.stat().st_mtime >= temp_dir.stat().st_mtime:
-            os.environ["MAGICK_HOME"] = str(dest_dir)
+            os.environ["MAGICK_HOME"] = str(dest_dir / 'imagemagick')
             return
         shutil.rmtree(dest_dir)
     shutil.copytree(temp_dir, dest_dir)

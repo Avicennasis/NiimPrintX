@@ -68,13 +68,19 @@ class CanvasSelector:
         self.print_area_height = self.bounding_box_height - self.mm_to_pixels(4)
 
         # Set the new canvas dimensions with padding
-        padding = 150  # 50 pixels padding on each side
+        padding = 150  # total canvas padding
         self.canvas_width = self.bounding_box_width + padding
         self.canvas_height = self.bounding_box_height + padding
 
         # If a canvas exists, destroy it and clear stale items
         if hasattr(self.config, "canvas") and self.config.canvas is not None:
             self.config.canvas.destroy()
+        for item in self.config.text_items.values():
+            if 'font_image' in item and hasattr(item['font_image'], 'close'):
+                try:
+                    item['font_image'].close()
+                except Exception:
+                    pass
         self.config.text_items = {}
         for item in self.config.image_items.values():
             orig = item.get("original_image")

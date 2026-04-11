@@ -92,7 +92,10 @@ class LabelPrinterApp(tk.Tk):
         self.async_loop.run_forever()
 
     def on_close(self):
+        if getattr(self, '_shutting_down', False):
+            return
         if messagebox.askokcancel("Quit", "Do you want to quit?"):
+            self._shutting_down = True
             self._shutdown_complete = threading.Event()
 
             async def _shutdown():
@@ -115,14 +118,11 @@ class LabelPrinterApp(tk.Tk):
             asyncio.run_coroutine_threadsafe(_shutdown(), self.async_loop)
             self._poll_shutdown()
 
-    def _poll_shutdown(self):
-        if self._shutdown_complete.is_set():
+    def _poll_shutdown(self, attempts=0):
+        if self._shutdown_complete.is_set() or attempts >= 30:
             self.async_loop.call_soon_threadsafe(self.async_loop.stop)
             self.destroy()
         else:
-            self.after(100, self._poll_shutdown)
+            self.after(100, lambda: self._poll_shutdown(attempts + 1))
 
-if __name__ == "__main__":
-    app = LabelPrinterApp()
-    app.load_resources()
-    app.mainloop()
+# Entry point: use __main__.main() which handles ImageMagick setup and splash screen

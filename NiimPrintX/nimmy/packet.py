@@ -9,6 +9,8 @@ class NiimbotPacket:
 
     @classmethod
     def from_bytes(cls, pkt):
+        if not isinstance(pkt, (bytes, bytearray, memoryview)):
+            raise TypeError(f"from_bytes requires bytes-like object, got {type(pkt).__name__}")
         if pkt is None or len(pkt) < 7:
             raise ValueError(
                 f"Packet too short: {len(pkt) if pkt else 0} bytes "
@@ -23,7 +25,7 @@ class NiimbotPacket:
             raise ValueError(f"Packet length field {len_} exceeds actual data: buffer is {len(pkt)} bytes")
         if pkt[expected_end - 2 : expected_end] != b"\xaa\xaa":
             raise ValueError(f"Invalid packet footer: {pkt[expected_end-2:expected_end].hex()}")
-        data = pkt[4 : 4 + len_]
+        data = bytes(pkt[4 : 4 + len_])
 
         checksum = type_ ^ len_
         for i in data:

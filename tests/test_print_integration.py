@@ -1,7 +1,6 @@
 import struct
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from PIL import Image
 
 from NiimPrintX.nimmy.packet import NiimbotPacket
@@ -46,7 +45,6 @@ def _auto_respond(client):
     return commands_sent
 
 
-@pytest.mark.asyncio
 async def test_print_image_sends_correct_command_sequence(make_client):
     """print_image should send commands in the correct order."""
     client = make_client()
@@ -72,7 +70,6 @@ async def test_print_image_sends_correct_command_sequence(make_client):
     assert commands.count(0x85) == 4  # 4 rows
 
 
-@pytest.mark.asyncio
 async def test_print_image_command_ordering(make_client):
     """Commands must appear in the protocol-required order."""
     client = make_client()
@@ -104,7 +101,6 @@ async def test_print_image_command_ordering(make_client):
     assert status_idx < end_idx
 
 
-@pytest.mark.asyncio
 async def test_print_image_v2_sends_correct_commands(make_client):
     """print_imageV2 should use V2 start/dimension commands and end with status polling + end_print."""
     client = make_client()
@@ -146,7 +142,6 @@ async def test_print_image_v2_sends_correct_commands(make_client):
     assert RequestCodeEnum.SET_QUANTITY not in commands_sent
 
 
-@pytest.mark.asyncio
 async def test_print_image_small_image(make_client):
     """Printing a 1x1 image should work without errors."""
     client = make_client()
@@ -160,7 +155,6 @@ async def test_print_image_small_image(make_client):
     assert commands.count(0x85) == 1
 
 
-@pytest.mark.asyncio
 async def test_print_image_with_offsets(make_client):
     """Printing with offsets should not crash."""
     client = make_client()

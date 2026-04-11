@@ -11,12 +11,14 @@ DIST_FOLDER="dist"
 
 cd "${DIST_FOLDER}"
 
-if [[ -d "${APP_NAME}.app" ]]
-then
-  [[ -d "${SOURCE_FOLDER_PATH}" ]] && rm -rf "${SOURCE_FOLDER_PATH}"
-  mkdir "${SOURCE_FOLDER_PATH}"
-  cp -r "${APP_NAME}.app" "${SOURCE_FOLDER_PATH}"
+if [[ ! -d "${APP_NAME}.app" ]]; then
+  echo "ERROR: ${APP_NAME}.app not found — PyInstaller may have failed."
+  exit 1
 fi
+
+[[ -d "${SOURCE_FOLDER_PATH}" ]] && rm -rf "${SOURCE_FOLDER_PATH}"
+mkdir "${SOURCE_FOLDER_PATH}"
+cp -r "${APP_NAME}.app" "${SOURCE_FOLDER_PATH}"
 
 # Since create-dmg does not clobber, be sure to delete previous DMG
 [[ -f "${DMG_FILE_NAME}" ]] && rm "${DMG_FILE_NAME}"

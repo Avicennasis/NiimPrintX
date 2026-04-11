@@ -10,8 +10,14 @@ class CanvasOperation:
             text_bbox = self.config.text_items[self.config.current_selected]["bbox"]
             text_bbox_handler = self.config.text_items[self.config.current_selected]["handle"]
             if text_bbox is not None and text_bbox_handler is not None:
-                x1, y1, x2, y2 = self.config.canvas.coords(text_bbox)
-                hx1, hy1, hx2, hy2 = self.config.canvas.coords(text_bbox_handler)
+                coords = self.config.canvas.coords(text_bbox)
+                if len(coords) != 4:
+                    return
+                x1, y1, x2, y2 = coords
+                h_coords = self.config.canvas.coords(text_bbox_handler)
+                if len(h_coords) != 4:
+                    return
+                hx1, hy1, hx2, hy2 = h_coords
 
                 # Check if the click is on the handler
                 if hx1 <= event.x <= hx2 and hy1 <= event.y <= hy2:
@@ -25,8 +31,14 @@ class CanvasOperation:
             img_bbox = self.config.image_items[self.config.current_selected_image]["bbox"]
             img_bbox_handler = self.config.image_items[self.config.current_selected_image]["handle"]
             if img_bbox is not None and img_bbox_handler is not None:
-                x1, y1, x2, y2 = self.config.canvas.coords(img_bbox)
-                hx1, hy1, hx2, hy2 = self.config.canvas.coords(img_bbox_handler)
+                coords = self.config.canvas.coords(img_bbox)
+                if len(coords) != 4:
+                    return
+                x1, y1, x2, y2 = coords
+                h_coords = self.config.canvas.coords(img_bbox_handler)
+                if len(h_coords) != 4:
+                    return
+                hx1, hy1, hx2, hy2 = h_coords
 
                 # Check if the click is on the handler
                 if hx1 <= event.x <= hx2 and hy1 <= event.y <= hy2:

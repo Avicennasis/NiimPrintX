@@ -8,7 +8,7 @@ from NiimPrintX.ui.SplashScreen import SplashScreen
 
 def load_libraries():
     if hasattr(sys, '_MEIPASS'):
-        base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
+        base_path = sys._MEIPASS
         magick_path = os.path.join(base_path, 'imagemagick')
 
         if platform.system() == "Linux" or platform.system() == "Darwin":

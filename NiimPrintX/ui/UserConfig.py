@@ -15,8 +15,11 @@ def load_user_config():
     try:
         with open(CONFIG_FILE, "rb") as f:
             return tomllib.load(f)
-    except Exception as e:
-        logger.warning(f"Failed to load user config: {e}")
+    except tomllib.TOMLDecodeError as e:
+        logger.warning(f"User config is malformed (TOML parse error): {e}")
+        return {}
+    except OSError as e:
+        logger.warning(f"Could not read user config file: {e}")
         return {}
 
 
@@ -52,6 +55,10 @@ def merge_label_sizes(builtin_sizes, user_config):
         if not isinstance(device_conf, dict):
             continue
         if device_name in builtin_sizes:
+            # Warn about ignored keys for built-in devices
+            ignored = {k for k in device_conf if k != "size"}
+            if ignored:
+                logger.warning(f"Config keys {ignored} for built-in device '{device_name}' are ignored; only 'size' can be extended")
             # Merge sizes into existing device
             if "size" in device_conf and isinstance(device_conf["size"], dict):
                 for label, dims in device_conf["size"].items():
@@ -73,10 +80,14 @@ def merge_label_sizes(builtin_sizes, user_config):
                         logger.warning(f"Skipping invalid dims for {device_name!r} label {k!r}: {v!r}")
             if not sizes:
                 continue
+            raw_rot = _safe_int(device_conf.get("rotation", -90), -90) % 360
+            if raw_rot not in (0, 90, 180, 270):
+                logger.warning(f"Invalid rotation {raw_rot} for '{device_name}'; defaulting to 270")
+                raw_rot = 270
             builtin_sizes[device_name] = {
                 "size": sizes,
                 "density": max(1, min(_safe_int(device_conf.get("density", 3), 3), 5)),
                 "print_dpi": max(72, min(_safe_int(device_conf.get("print_dpi", 203), 203), 600)),
-                "rotation": _safe_int(device_conf.get("rotation", -90), -90),
+                "rotation": raw_rot,
             }
     return builtin_sizes

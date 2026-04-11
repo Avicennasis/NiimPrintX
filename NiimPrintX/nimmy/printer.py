@@ -102,7 +102,8 @@ class PrinterClient:
             notifying = False
             try:
                 if not self.transport.client or not self.transport.client.is_connected:
-                    await self.connect()
+                    if not await self.connect():
+                        raise PrinterException("Failed to reconnect to printer")
                 # Clear stale state BEFORE arming notifications
                 self.notification_event.clear()
                 self.notification_data = None
@@ -136,7 +137,8 @@ class PrinterClient:
         async with self._command_lock:
             try:
                 if not self.transport.client or not self.transport.client.is_connected:
-                    await self.connect()
+                    if not await self.connect():
+                        raise PrinterException("Failed to reconnect to printer")
                 await self.transport.write(data.to_bytes(), self.char_uuid)
             except (BLEException, ValueError, TypeError) as e:
                 logger.error(f"Write error: {e}")
@@ -153,11 +155,24 @@ class PrinterClient:
 
     async def print_image(self, image: Image.Image, density: int = 3, quantity: int = 1, vertical_offset=0,
                           horizontal_offset=0):
+        await self._print_job(image, density, quantity, vertical_offset, horizontal_offset, v2=False)
+
+    async def print_imageV2(self, image: Image.Image, density: int = 3, quantity: int = 1, vertical_offset=0,
+                            horizontal_offset=0):
+        await self._print_job(image, density, quantity, vertical_offset, horizontal_offset, v2=True)
+
+    async def _print_job(self, image: Image.Image, density: int, quantity: int,
+                         vertical_offset: int, horizontal_offset: int, *, v2: bool = False):
         async with self._print_lock:
             try:
                 await self.set_label_density(density)
                 await self.set_label_type(1)
-                await self.start_print()
+
+                if v2:
+                    await self.start_printV2(quantity=quantity)
+                else:
+                    await self.start_print()
+
                 await self.start_page_print()
 
                 # Calculate post-offset dimensions
@@ -175,8 +190,11 @@ class PrinterClient:
                 if effective_width == 0 or effective_height == 0:
                     raise PrinterException("Image produces no data after applying offsets")
 
-                await self.set_dimension(effective_height, effective_width)
-                await self.set_quantity(quantity)
+                if v2:
+                    await self.set_dimensionV2(effective_height, effective_width, quantity)
+                else:
+                    await self.set_dimension(effective_height, effective_width)
+                    await self.set_quantity(quantity)
 
                 for pkt in self._encode_image(image, vertical_offset, horizontal_offset):
                     await self.write_raw(pkt)
@@ -206,89 +224,49 @@ class PrinterClient:
                     await self.end_print()
                 raise
 
-    async def print_imageV2(self, image: Image.Image, density: int = 3, quantity: int = 1, vertical_offset=0,
-                            horizontal_offset=0):
-        async with self._print_lock:
-            try:
-                await self.set_label_density(density)
-                await self.set_label_type(1)
-                await self.start_printV2(quantity=quantity)
-                await self.start_page_print()
-
-                # Calculate post-offset dimensions
-                effective_height = image.height
-                effective_width = image.width
-                if horizontal_offset > 0:
-                    effective_width += horizontal_offset
-                elif horizontal_offset < 0:
-                    effective_width = max(0, effective_width + horizontal_offset)
-                if vertical_offset > 0:
-                    effective_height += vertical_offset
-                elif vertical_offset < 0:
-                    effective_height = max(0, effective_height + vertical_offset)
-
-                if effective_width == 0 or effective_height == 0:
-                    raise PrinterException("Image produces no data after applying offsets")
-
-                await self.set_dimensionV2(effective_height, effective_width, quantity)
-
-                for pkt in self._encode_image(image, vertical_offset, horizontal_offset):
-                    logger.debug(f"Sending packet: {pkt}")
-                    await self.write_raw(pkt)
-                    await asyncio.sleep(0.01)
-
-                for _ in range(200):
-                    if await self.end_page_print():
-                        break
-                    await asyncio.sleep(0.05)
-                else:
-                    raise PrinterException("end_page_print timed out")
-
-                max_status_checks = 600
-                status = {"page": 0, "progress1": 0, "progress2": 0}
-                for _ in range(max_status_checks):
-                    status = await self.get_print_status()
-                    if status['page'] == quantity:
-                        break
-                    await asyncio.sleep(0.1)
-                else:
-                    raise PrinterException(f"Print status timeout: page {status['page']}/{quantity}")
-
-                await self.end_print()
-            except PrinterException as e:
-                logger.error(f"B1 print job failed: {e}")
-                with contextlib.suppress(Exception):
-                    await self.end_print()
-                raise
-
     def _encode_image(self, image: Image.Image, vertical_offset=0, horizontal_offset=0):
-        # Convert the image to monochrome
-        img = ImageOps.invert(image.convert("L")).convert("1")
+        # Convert the image to monochrome, closing intermediate images
+        gray = image.convert("L")
+        inverted = ImageOps.invert(gray)
+        gray.close()
+        img = inverted.convert("1")
+        inverted.close()
 
-        # Apply horizontal offset
-        if horizontal_offset > 0:
-            img = ImageOps.expand(img, border=(horizontal_offset, 0, 0, 0), fill=0)
-        elif horizontal_offset < 0:
-            img = img.crop((-horizontal_offset, 0, img.width, img.height))
+        try:
+            # Apply horizontal offset
+            if horizontal_offset > 0:
+                old = img
+                img = ImageOps.expand(img, border=(horizontal_offset, 0, 0, 0), fill=0)
+                old.close()
+            elif horizontal_offset < 0:
+                old = img
+                img = img.crop((-horizontal_offset, 0, img.width, img.height))
+                old.close()
 
-        # Apply vertical offset
-        if vertical_offset > 0:
-            img = ImageOps.expand(img, border=(0, vertical_offset, 0, 0), fill=0)
-        elif vertical_offset < 0:
-            img = img.crop((0, -vertical_offset, img.width, img.height))
+            # Apply vertical offset
+            if vertical_offset > 0:
+                old = img
+                img = ImageOps.expand(img, border=(0, vertical_offset, 0, 0), fill=0)
+                old.close()
+            elif vertical_offset < 0:
+                old = img
+                img = img.crop((0, -vertical_offset, img.width, img.height))
+                old.close()
 
-        if img.width == 0 or img.height == 0:
-            return
+            if img.width == 0 or img.height == 0:
+                raise PrinterException("Image produces no data after applying offsets")
 
-        for y in range(img.height):
-            # Get row as packed bits (mode "1" tobytes gives MSB-first packed format)
-            row_bytes = img.crop((0, y, img.width, y + 1)).tobytes()
             byte_count = math.ceil(img.width / 8)
-            line_data = row_bytes[:byte_count]
-            counts = (0, 0, 0)  # It seems like you can always send zeros
-            header = struct.pack(">H3BB", y, *counts, 1)
-            pkt = NiimbotPacket(0x85, header + line_data)
-            yield pkt
+            all_bytes = img.tobytes()
+
+            for y in range(img.height):
+                line_data = all_bytes[y * byte_count : (y + 1) * byte_count]
+                counts = (0, 0, 0)  # It seems like you can always send zeros
+                header = struct.pack(">HBBBB", y, *counts, 1)
+                pkt = NiimbotPacket(0x85, header + line_data)
+                yield pkt
+        finally:
+            img.close()
 
     async def get_info(self, key):
         response = await self.send_command(RequestCodeEnum.GET_INFO, bytes((key,)))
@@ -376,16 +354,22 @@ class PrinterClient:
         if not 1 <= n <= 3:
             raise ValueError(f"Label type must be 1-3, got {n}")
         packet = await self.send_command(RequestCodeEnum.SET_LABEL_TYPE, bytes((n,)))
+        if len(packet.data) < 1:
+            raise PrinterException("Empty response from printer")
         return bool(packet.data[0])
 
     async def set_label_density(self, n):
         if not 1 <= n <= 5:
             raise ValueError(f"Label density must be 1-5, got {n}")
         packet = await self.send_command(RequestCodeEnum.SET_LABEL_DENSITY, bytes((n,)))
+        if len(packet.data) < 1:
+            raise PrinterException("Empty response from printer")
         return bool(packet.data[0])
 
     async def start_print(self):
         packet = await self.send_command(RequestCodeEnum.START_PRINT, b"\x01")
+        if len(packet.data) < 1:
+            raise PrinterException("Empty response from printer")
         return bool(packet.data[0])
 
     async def start_printV2(self, quantity):
@@ -393,24 +377,34 @@ class PrinterClient:
             raise ValueError(f"Quantity must be 1-65535, got {quantity}")
         command = struct.pack('>H', quantity)
         packet = await self.send_command(RequestCodeEnum.START_PRINT, b'\x00' + command + b'\x00\x00\x00\x00')
+        if len(packet.data) < 1:
+            raise PrinterException("Empty response from printer")
         return bool(packet.data[0])
 
     async def end_print(self):
         packet = await self.send_command(RequestCodeEnum.END_PRINT, b"\x01")
+        if len(packet.data) < 1:
+            raise PrinterException("Empty response from printer")
         return bool(packet.data[0])
 
     async def start_page_print(self):
         packet = await self.send_command(RequestCodeEnum.START_PAGE_PRINT, b"\x01")
+        if len(packet.data) < 1:
+            raise PrinterException("Empty response from printer")
         return bool(packet.data[0])
 
     async def end_page_print(self):
         packet = await self.send_command(RequestCodeEnum.END_PAGE_PRINT, b"\x01")
+        if len(packet.data) < 1:
+            raise PrinterException("Empty response from printer")
         return bool(packet.data[0])
 
     async def set_dimension(self, height, width):
         packet = await self.send_command(
             RequestCodeEnum.SET_DIMENSION, struct.pack(">HH", height, width)
         )
+        if len(packet.data) < 1:
+            raise PrinterException("Empty response from printer")
         return bool(packet.data[0])
 
     async def set_dimensionV2(self, height, width, copies):
@@ -418,12 +412,16 @@ class PrinterClient:
         packet = await self.send_command(
             RequestCodeEnum.SET_DIMENSION, struct.pack(">HHH", height, width, copies)
         )
+        if len(packet.data) < 1:
+            raise PrinterException("Empty response from printer")
         return bool(packet.data[0])
 
     async def set_quantity(self, n):
         if not 1 <= n <= 65535:
             raise ValueError(f"Quantity must be 1-65535, got {n}")
         packet = await self.send_command(RequestCodeEnum.SET_QUANTITY, struct.pack(">H", n))
+        if len(packet.data) < 1:
+            raise PrinterException("Empty response from printer")
         return bool(packet.data[0])
 
     async def get_print_status(self):

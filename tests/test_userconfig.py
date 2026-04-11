@@ -1,6 +1,9 @@
 import copy
+import os
+import tempfile
+from unittest.mock import patch
 
-from NiimPrintX.ui.UserConfig import _validate_dims, merge_label_sizes
+from NiimPrintX.ui.UserConfig import _validate_dims, load_user_config, merge_label_sizes
 
 
 # --- _validate_dims tests ---
@@ -131,3 +134,66 @@ def test_merge_empty_user_config():
     original = copy.deepcopy(builtin)
     result = merge_label_sizes(builtin, {})
     assert result == original
+
+
+# --- Clamping / validation tests for new devices ---
+
+
+def test_density_clamping_new_device():
+    """density: 10 for a new device should be clamped to the max of 5."""
+    builtin = _make_builtin()
+    user_config = {
+        "devices": {
+            "z999": {
+                "size": {"10x20": [10, 20]},
+                "density": 10,
+            },
+        },
+    }
+    result = merge_label_sizes(builtin, user_config)
+    assert result["z999"]["density"] == 5
+
+
+def test_print_dpi_clamping_new_device():
+    """print_dpi: 1000 for a new device should be clamped to the max of 600."""
+    builtin = _make_builtin()
+    user_config = {
+        "devices": {
+            "z999": {
+                "size": {"10x20": [10, 20]},
+                "print_dpi": 1000,
+            },
+        },
+    }
+    result = merge_label_sizes(builtin, user_config)
+    assert result["z999"]["print_dpi"] == 600
+
+
+def test_rotation_validation():
+    """rotation: 45 for a new device should be normalized to a valid value."""
+    builtin = _make_builtin()
+    user_config = {
+        "devices": {
+            "z999": {
+                "size": {"10x20": [10, 20]},
+                "rotation": 45,
+            },
+        },
+    }
+    result = merge_label_sizes(builtin, user_config)
+    # 45 % 360 == 45, which is not in (0, 90, 180, 270), so it defaults to 270
+    assert result["z999"]["rotation"] in (0, 90, 180, 270)
+    assert result["z999"]["rotation"] == 270
+
+
+def test_toml_decode_error_handling():
+    """An invalid TOML file should cause load_user_config to return {} with a warning."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+        f.write("this is not valid toml = = = [[[")
+        tmp_path = f.name
+    try:
+        with patch("NiimPrintX.ui.UserConfig.CONFIG_FILE", tmp_path):
+            result = load_user_config()
+        assert result == {}
+    finally:
+        os.unlink(tmp_path)

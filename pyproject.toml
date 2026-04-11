@@ -3,7 +3,7 @@ name = "NiimPrintX"
 version = "0.4.0"
 description = "App to print labels using NiimBot printer"
 authors = ["Labbots <labbots@gmail.com>"]
-license = "GNU GPLv3"
+license = "GPL-3.0-only"
 readme = "README.md"
 packages = [{include = "NiimPrintX"}]
 
@@ -14,6 +14,7 @@ niimprintx-ui = "NiimPrintX.ui.__main__:main"
 [tool.poetry.dependencies]
 python = ">=3.12,<3.14"
 click = "^8.1.7"
+# TODO: bleak 0.22.x is end-of-life; plan migration to bleak >=1.0 (API breaking changes in connect/disconnect return types)
 bleak = "^0.22.3"
 loguru = "^0.7.2"
 pillow = "^12.1.1"
@@ -27,10 +28,10 @@ sv-ttk = {version = "^2.6", optional = true}
 gui = ["sv-ttk", "pycairo", "wand"]
 
 [tool.poetry.group.dev.dependencies]
-pyinstaller = "^6.6.0"
+pyinstaller = "^6.19"
 pytest = "^8.0"
-pytest-asyncio = "^0.23"
-ruff = ">=0.4"
+pytest-asyncio = ">=0.23"
+ruff = "^0.15"
 pytest-cov = "^5.0"
 
 [tool.pytest.ini_options]

@@ -2,9 +2,12 @@ import base64
 import tkinter as tk
 import tkinter.messagebox as messagebox
 
-from wand.color import Color
-from wand.drawing import Drawing as WandDrawing
-from wand.image import Image as WandImage
+try:
+    from wand.color import Color
+    from wand.drawing import Drawing as WandDrawing
+    from wand.image import Image as WandImage
+except ImportError:
+    WandImage = None
 
 
 class TextOperation:
@@ -14,6 +17,10 @@ class TextOperation:
 
     # Function to add text to canvas and make it draggable
     def create_text_image(self, font_props, text):
+        if WandImage is None:
+            raise ImportError("GUI extras not installed. Run: pip install NiimPrintX[gui]")
+        if not text or not text.strip():
+            return None
         with WandDrawing() as draw:
             draw.font_family = font_props["family"]
             draw.font_size = font_props["size"]
@@ -29,7 +36,7 @@ class TextOperation:
             with WandImage(width=1, height=1) as probe:
                 metrics = draw.get_font_metrics(probe, text, multiline=True)
             text_width = int(metrics.text_width) + 5
-            text_height = int(metrics.text_height) + int(abs(metrics.descender)) + 2
+            text_height = int(metrics.text_height) + 2
 
             with WandImage(width=text_width, height=text_height, background=Color('transparent')) as img:
                 draw.text(x=2, y=int(metrics.ascender), body=text)
@@ -52,6 +59,8 @@ class TextOperation:
             return
 
         tk_image = self.create_text_image(font_props, text)
+        if tk_image is None:
+            return
         text_id = self.config.canvas.create_image(0, 0, image=tk_image, anchor="nw", )
 
         self.config.canvas.tag_bind(text_id, "<Button-1>", lambda event, tid=text_id: self.select_text(event, tid))
@@ -67,8 +76,9 @@ class TextOperation:
     def delete_text(self):
         if self.config.current_selected:
             self.config.canvas.delete(self.config.current_selected)
-            self.config.canvas.delete(self.config.text_items[self.config.current_selected]['bbox'])
-            self.config.canvas.delete(self.config.text_items[self.config.current_selected]['handle'])
+            if self.config.text_items[self.config.current_selected].get('bbox') is not None:
+                self.config.canvas.delete(self.config.text_items[self.config.current_selected]['bbox'])
+                self.config.canvas.delete(self.config.text_items[self.config.current_selected]['handle'])
             del self.config.text_items[self.config.current_selected]
             self.config.current_selected = None
             self.parent.add_button.config(text="Add", command=self.add_text_to_canvas)
@@ -110,9 +120,11 @@ class TextOperation:
     def update_canvas_text(self, text_id):
         text = self.parent.content_entry.get("1.0", "end-1c")
         font_props = self.parent.get_font_properties()
+        tk_image = self.create_text_image(font_props, text)
+        if tk_image is None:
+            return
         self.config.text_items[text_id]['content'] = text
         self.config.text_items[text_id]['font_props'] = font_props
-        tk_image = self.create_text_image(font_props, text)
         self.config.canvas.itemconfig(text_id, image=tk_image)
         self.config.text_items[text_id]['font_image'] = tk_image
         self.update_bbox_and_handle(text_id)
@@ -130,6 +142,7 @@ class TextOperation:
             "handle": handle,
             "initial_x": event.x,
             "initial_y": event.y,
+            "initial_size": self.config.text_items[text_id]['font_props']['size'],
         })
 
         self.config.canvas.tag_bind(text_id, "<Button1-Motion>", lambda e, tid=text_id: self.move_text(e, tid))
@@ -159,6 +172,8 @@ class TextOperation:
         self.config.text_items[text_id]["font_props"]['size'] = new_size
         tk_image = self.create_text_image(self.config.text_items[text_id]["font_props"],
                                           self.config.text_items[text_id]['content'])
+        if tk_image is None:
+            return
         self.config.canvas.itemconfig(text_id, image=tk_image)
         self.config.text_items[text_id]['font_image'] = tk_image
         self.update_bbox_and_handle(text_id)

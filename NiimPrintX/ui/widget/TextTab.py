@@ -49,7 +49,9 @@ class TextTab:
         self.font_family_dropdown.set("Arial")
         self.font_family_dropdown.bind("<<ComboboxSelected>>",
                                        lambda event: self.update_text_properties(event))
-        self.update_font_list()
+        # Initialize sample text label with default font
+        self.sample_text_label.config(font=tk_font.Font(family="Arial", size=14),
+                                      text="Text in Arial")
 
         self.bold_var = tk.BooleanVar()
         bold_button = tk.Checkbutton(self.frame, text="Bold", variable=self.bold_var, bg=default_bg,
@@ -89,14 +91,6 @@ class TextTab:
         self.add_button.pack(side=tk.LEFT)
         self.delete_button.pack(side=tk.LEFT)
         button_frame.grid(row=4, column=1, sticky="w")
-
-    def update_font_list(self, event=None):
-        font_family = self.font_family_dropdown.get()
-
-        content = self.content_entry.get("1.0", "end-1c")
-        label_font = tk_font.Font(family=font_family, size=14)
-        self.sample_text_label.config(font=label_font,
-                                      text=f"{content} in {font_family}")
 
     def update_text_properties(self, event=None):
         font_props = self.get_font_properties()

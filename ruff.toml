@@ -2,8 +2,8 @@ target-version = "py312"
 line-length = 120
 
 [lint]
-select = ["E", "F", "W", "I", "B", "UP", "C4", "RUF", "SIM"]
-ignore = ["E501", "B008"]
+select = ["E", "F", "W", "I", "B", "UP", "C4", "RUF", "SIM", "S", "PT", "DTZ"]
+ignore = ["E501", "B008"]  # E501: line length enforced by formatter only
 
 [lint.isort]
 known-first-party = ["NiimPrintX"]

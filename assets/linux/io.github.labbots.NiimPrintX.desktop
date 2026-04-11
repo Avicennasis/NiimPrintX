@@ -2,7 +2,7 @@
 Name=NiimPrintX
 Comment=Create and print labels on Niimbot printers
 Keywords=label;card;print;office;barcode;bluetooth;
-Exec=niimprintx %f
+Exec=niimprintx-ui %f
 Icon=io.github.labbots.NiimPrintX
 MimeType=application/x-niim;
 Terminal=false

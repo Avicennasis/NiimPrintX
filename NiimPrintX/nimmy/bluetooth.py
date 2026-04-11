@@ -1,3 +1,4 @@
+import asyncio
 import contextlib
 
 from bleak import BleakClient, BleakScanner
@@ -41,9 +42,12 @@ class BLETransport:
             # Address changed — disconnect old client first
             await self.disconnect()
         self.address = address
+        if self.client is not None and not self.client.is_connected:
+            # Bleak 0.22+ clients are single-use; discard stale instance
+            self.client = None
+            self._notifying_uuids.clear()
         if self.client is None:
             self.client = BleakClient(address)
-        if not self.client.is_connected:
             self._notifying_uuids.clear()
             try:
                 await self.client.connect()
@@ -60,9 +64,15 @@ class BLETransport:
         self.client = None
         self._notifying_uuids.clear()
 
-    async def write(self, data, char_uuid):
+    async def write(self, data, char_uuid, timeout=10.0):
         if self.client and self.client.is_connected:
-            await self.client.write_gatt_char(char_uuid, data)
+            try:
+                await asyncio.wait_for(
+                    self.client.write_gatt_char(char_uuid, data),
+                    timeout=timeout
+                )
+            except TimeoutError:
+                raise BLEException(f"BLE write timed out after {timeout}s") from None
         else:
             raise BLEException("BLE client is not connected.")
 
@@ -74,8 +84,7 @@ class BLETransport:
             self._notifying_uuids.add(char_uuid)
 
     async def stop_notification(self, char_uuid):
-        if not (self.client and self.client.is_connected):
-            raise BLEException("BLE client is not connected.")
-        if char_uuid in self._notifying_uuids:
+        was_notifying = char_uuid in self._notifying_uuids
+        self._notifying_uuids.discard(char_uuid)
+        if was_notifying and self.client and self.client.is_connected:
             await self.client.stop_notify(char_uuid)
-            self._notifying_uuids.discard(char_uuid)

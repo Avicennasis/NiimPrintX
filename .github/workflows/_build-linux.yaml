@@ -26,14 +26,21 @@ jobs:
         id: get_architecture
         run: echo "ARCH=$(uname -m)" >> $GITHUB_OUTPUT
 
+      - name: Validate tag
+        run: |
+          if [[ -z "${{ steps.get_tag_name.outputs.VERSION }}" ]]; then
+            echo "ERROR: VERSION is empty — this workflow must be triggered from a v* tag."
+            exit 1
+          fi
+
       - name: Checkout source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4
 
       - name: Install poetry
-        run: pipx install poetry
+        run: pipx install poetry==1.8.3
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b  # v5
         with:
           python-version: '3.12'
           cache: 'poetry'
@@ -62,14 +69,14 @@ jobs:
         run: cd dist && tar -czf NiimPrintX-CLI-${{ steps.get_tag_name.outputs.VERSION }}-Linux-${{ steps.get_architecture.outputs.ARCH }}.tar.gz niimprintx
 
       - name: Upload GUI package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08  # v4
         with:
           name: NiimPrintX-App-${{ steps.get_tag_name.outputs.VERSION }}-Linux-${{ steps.get_architecture.outputs.ARCH }}.tar.gz
           path: dist/NiimPrintX-App-${{ steps.get_tag_name.outputs.VERSION }}-Linux-${{ steps.get_architecture.outputs.ARCH }}.tar.gz
           retention-days: 1
 
       - name: Upload CLI package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08  # v4
         with:
           name: NiimPrintX-CLI-${{ steps.get_tag_name.outputs.VERSION }}-Linux-${{ steps.get_architecture.outputs.ARCH }}.tar.gz
           path: dist/NiimPrintX-CLI-${{ steps.get_tag_name.outputs.VERSION }}-Linux-${{ steps.get_architecture.outputs.ARCH }}.tar.gz

@@ -4,6 +4,7 @@ import json
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
+import PIL
 from PIL import Image, ImageTk
 
 _MAX_LABEL_PIXELS = 5_000_000  # well above any real label dimensions
@@ -106,6 +107,10 @@ class FileMenu:
                     messagebox.showerror("Error", f"Invalid .niim file: missing '{key}'")
                     return
 
+            if not isinstance(data.get("device"), str) or not isinstance(data.get("current_label_size"), str):
+                messagebox.showerror("Error", "Invalid .niim file: 'device' and 'current_label_size' must be strings.")
+                return
+
             device = data.get("device", "").lower()
             label_size = data.get("current_label_size", "")
             if device not in self.config.label_sizes:
@@ -118,7 +123,6 @@ class FileMenu:
             self.root.canvas_selector.selected_device.set(data["device"].upper())
             self.root.canvas_selector.update_device_label_size()  # repopulate label dropdown
             self.root.canvas_selector.selected_label_size.set(data["current_label_size"])
-            self.root.canvas_selector.update_canvas_size()
 
             if data.get("text"):
                 for _text_id, item_data in data["text"].items():
@@ -131,6 +135,7 @@ class FileMenu:
     def load_text(self, data):
         try:
             font_img_data = base64.b64decode(data["font_image"])
+            PIL.Image.MAX_IMAGE_PIXELS = _MAX_LABEL_PIXELS
             font_image = Image.open(io.BytesIO(font_img_data))
             font_image.load()
             if font_image.width * font_image.height > _MAX_LABEL_PIXELS:
@@ -154,12 +159,14 @@ class FileMenu:
     def load_image(self, data):
         try:
             original_image_data = base64.b64decode(data["original_image"])
+            PIL.Image.MAX_IMAGE_PIXELS = _MAX_LABEL_PIXELS
             original_image = Image.open(io.BytesIO(original_image_data))
             original_image.load()
             if original_image.width * original_image.height > _MAX_LABEL_PIXELS:
                 raise ValueError(f"Image too large: {original_image.width}x{original_image.height}")
 
             image_data = base64.b64decode(data["image"])
+            PIL.Image.MAX_IMAGE_PIXELS = _MAX_LABEL_PIXELS
             image = Image.open(io.BytesIO(image_data))
             image.load()  # force decode before BytesIO is GC'd
             if image.width * image.height > _MAX_LABEL_PIXELS:

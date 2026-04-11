@@ -13,37 +13,43 @@ jobs:
   test:
     name: "Tests"
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.12', '3.13']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4
 
       - name: Install poetry
         run: pipx install poetry==1.8.3
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b  # v5
         with:
-          python-version: '3.12'
+          python-version: ${{ matrix.python-version }}
           cache: 'poetry'
 
       - name: Install dependencies
         run: poetry install
 
       - name: Run tests
-        run: poetry run pytest -v
+        run: poetry run pytest -v --cov=NiimPrintX --cov-report=term-missing
 
   lint:
     name: "Lint"
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.12', '3.13']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4
 
       - name: Install poetry
         run: pipx install poetry==1.8.3
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b  # v5
         with:
-          python-version: '3.12'
+          python-version: ${{ matrix.python-version }}
           cache: 'poetry'
 
       - name: Install dependencies
@@ -53,4 +59,7 @@ jobs:
         run: python -m compileall NiimPrintX/ -q
 
       - name: Lint with ruff
-        run: poetry run ruff check NiimPrintX/
+        run: poetry run ruff check NiimPrintX/ tests/
+
+      - name: Format check with ruff
+        run: poetry run ruff format --check NiimPrintX/ tests/

@@ -34,7 +34,7 @@ jobs:
     if: ${{ needs.macos.result == 'success' && needs.windows.result == 'success' && needs.linux.result == 'success' }}
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@fa0a91b85d4f404e444306234d5b658d6ef34a3  # v4
         with:
           path: release
           merge-multiple: true

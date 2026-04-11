@@ -27,14 +27,12 @@ def test_packet_from_bytes_oversized_packet():
 # --- 2. set_quantity validation ---
 
 
-@pytest.mark.asyncio
 async def test_set_quantity_negative_raises(make_client):
     client = make_client()
     with pytest.raises(ValueError, match="Quantity must be"):
         await client.set_quantity(-1)
 
 
-@pytest.mark.asyncio
 async def test_set_quantity_overflow_raises(make_client):
     client = make_client()
     with pytest.raises(ValueError, match="Quantity must be"):
@@ -59,7 +57,6 @@ def test_encode_image_positive_offset_blank_border(make_client):
 # --- 4. heartbeat unknown length logs warning (no crash) ---
 
 
-@pytest.mark.asyncio
 async def test_heartbeat_unknown_length_returns_all_none(make_client):
     """Unknown heartbeat length should return all-None dict without crashing."""
     client = make_client()
@@ -94,7 +91,6 @@ def test_validate_dims_negative_rejected():
 # --- 6. BLETransport disconnect clears client ---
 
 
-@pytest.mark.asyncio
 async def test_transport_disconnect_clears_client():
     transport = BLETransport(address="AA:BB:CC:DD:EE:FF")
     transport.client = MagicMock()

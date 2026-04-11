@@ -1,9 +1,12 @@
+import logging
 import os
 import platform
 import re
 import subprocess
 import sys
 from collections import defaultdict
+
+logger = logging.getLogger(__name__)
 
 
 def fonts():
@@ -27,11 +30,14 @@ def fonts():
         if result.returncode != 0:
             raise FileNotFoundError("magick failed")
         output = result.stdout
+        if not output.strip():
+            logger.warning("ImageMagick returned no font data")
+            return {}
         fonts_details = parse_font_details(output)
         grouped_fonts = group_fonts_by_family(fonts_details)
         return grouped_fonts
     except (FileNotFoundError, OSError):
-        if magick_path == 'magick':
+        if magick_path == 'magick' and platform.system() != "Windows":
             # Fallback to IM6 'convert' command
             try:
                 result = subprocess.run(['convert', '-list', 'font'], capture_output=True,
@@ -44,6 +50,7 @@ def fonts():
                 return grouped_fonts
             except (FileNotFoundError, OSError):
                 return {}
+        logger.warning(f"Bundled ImageMagick at {magick_path} failed. Font list unavailable.")
         return {}
 
 

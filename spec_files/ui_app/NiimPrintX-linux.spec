@@ -5,8 +5,10 @@ from PyInstaller.utils.hooks import collect_submodules
 current_path = os.getcwd()
 if os.path.basename(current_path) == "ui_app":
     src_path = os.path.join(current_path, '..', '..', 'NiimPrintX', 'ui')
-if os.path.basename(current_path) == "NiimPrintX":
+elif os.path.basename(current_path) == "NiimPrintX":
     src_path = os.path.join(current_path, 'NiimPrintX', 'ui')
+else:
+    src_path = os.path.join(current_path, 'ui')
 
 # Add custom assets
 datas = [
@@ -14,9 +16,12 @@ datas = [
     (os.path.join(src_path, 'assets'), 'NiimPrintX/ui/assets')
 ]
 
-# Include all submodules from PIL and tkinter
+# Include all submodules from PIL, tkinter, bleak, and wand
 hidden_imports = collect_submodules('PIL')
 hidden_imports += collect_submodules('tkinter')
+hidden_imports += collect_submodules('bleak')
+hidden_imports += collect_submodules('wand')
+hidden_imports += ['platformdirs', 'sv_ttk']
 
 tcl_library = os.environ.get('TCL_LIBRARY', '/usr/share/tcltk/tcl8.6')
 tk_library = os.environ.get('TK_LIBRARY', '/usr/share/tcltk/tk8.6')
@@ -67,5 +72,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=os.path.join(src_path, 'assets', 'icon.ico'),
+    icon=os.path.join(src_path, 'assets', 'nimx-512.png'),
 )

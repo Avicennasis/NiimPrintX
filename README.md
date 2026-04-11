@@ -213,6 +213,34 @@ Automated builds for Linux, macOS (Intel and Apple Silicon), and Windows are han
 ## Credits
 
 * Special thanks to [labbots](https://github.com/labbots) for creating the original NiimPrintX project. The vision, architecture, and initial implementation are all theirs -- this fork simply carries the torch forward.
+
+### Community Contributors
+
+This fork incorporates pull requests and addresses issues submitted by the original project's community. Thank you to everyone who contributed code, bug reports, and feature requests:
+
+**Merged Pull Requests:**
+* [@LorisPolenz](https://github.com/LorisPolenz) — B1 printer support via V2 protocol ([#6](https://github.com/labbots/NiimPrintX/pull/6))
+* [@hadess](https://github.com/hadess) — Linux desktop and metainfo files for Flatpak ([#16](https://github.com/labbots/NiimPrintX/pull/16))
+* [@kwon0408](https://github.com/kwon0408) — Encoding crash fix for non-ASCII font names ([#28](https://github.com/labbots/NiimPrintX/pull/28))
+* [@uab2411](https://github.com/uab2411) — Device selection propagation fix ([#30](https://github.com/labbots/NiimPrintX/pull/30))
+* [@teambob](https://github.com/teambob) — D110 BLE connection discovery fix ([#33](https://github.com/labbots/NiimPrintX/pull/33))
+* [@corpix](https://github.com/corpix) — D11_H (300 DPI) support ([#36](https://github.com/labbots/NiimPrintX/pull/36))
+* [@CMGeorge](https://github.com/CMGeorge) — Multi-line text label support ([#39](https://github.com/labbots/NiimPrintX/pull/39))
+* [@atanarro](https://github.com/atanarro) — Python 3.13 dependency updates ([#41](https://github.com/labbots/NiimPrintX/pull/41))
+
+**Issues that informed our work:**
+* [@cropse](https://github.com/cropse) — D101 support request ([#2](https://github.com/labbots/NiimPrintX/issues/2))
+* [@raenye](https://github.com/raenye) — Per-device DPI for 2024 models ([#4](https://github.com/labbots/NiimPrintX/issues/4))
+* [@parisneto](https://github.com/parisneto) — B1 label size correction ([#5](https://github.com/labbots/NiimPrintX/issues/5))
+* [@Cvaniak](https://github.com/Cvaniak) — Config file for custom label sizes ([#7](https://github.com/labbots/NiimPrintX/issues/7))
+* [@Adrian-Grimm](https://github.com/Adrian-Grimm) — D11_H print bug report ([#8](https://github.com/labbots/NiimPrintX/issues/8))
+* [@x1klim](https://github.com/x1klim) — macOS Bluetooth plist crash report ([#9](https://github.com/labbots/NiimPrintX/issues/9))
+* [@hadess](https://github.com/hadess) — Linux theme, Flatpak, CLI file open, multi-line labels ([#14](https://github.com/labbots/NiimPrintX/issues/14), [#15](https://github.com/labbots/NiimPrintX/issues/15), [#17](https://github.com/labbots/NiimPrintX/issues/17), [#21](https://github.com/labbots/NiimPrintX/issues/21))
+* [@quistuipater](https://github.com/quistuipater) — B21 GUI visibility ([#19](https://github.com/labbots/NiimPrintX/issues/19))
+* [@krp-ulag](https://github.com/krp-ulag) — D11 rotation orientation fix ([#24](https://github.com/labbots/NiimPrintX/issues/24))
+* [@kwon0408](https://github.com/kwon0408) — Korean Windows encoding crash ([#26](https://github.com/labbots/NiimPrintX/issues/26))
+* [@verglor](https://github.com/verglor) — Rotation feature request ([#38](https://github.com/labbots/NiimPrintX/issues/38))
+
 * Icons made by [Dave Gandy](https://www.flaticon.com/authors/dave-gandy) from [www.flaticon.com](https://www.flaticon.com/)
 * Icons made by [Pixel perfect](https://www.flaticon.com/authors/pixel-perfect) from [www.flaticon.com](https://www.flaticon.com/)
 * Icons made by [Freepik](https://www.freepik.com) from [www.flaticon.com](https://www.flaticon.com/)

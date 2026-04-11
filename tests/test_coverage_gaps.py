@@ -18,7 +18,6 @@ from NiimPrintX.ui.UserConfig import _safe_int
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.asyncio
 async def test_find_characteristics_no_match_raises(make_client):
     """When no service has exactly one char with read+write-without-response+notify,
     find_characteristics must raise PrinterException."""
@@ -45,7 +44,6 @@ async def test_find_characteristics_no_match_raises(make_client):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.asyncio
 async def test_transport_connect_address_change_disconnects_old():
     """Connecting to a new address should disconnect the old client first."""
     transport = BLETransport(address="OLD:AD:DR:ES:S0:00")
@@ -78,7 +76,6 @@ async def test_transport_connect_address_change_disconnects_old():
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.asyncio
 async def test_print_image_zero_dimension_raises(make_client):
     """When negative horizontal_offset equals the image width, effective_width
     becomes 0 and print_image must raise PrinterException."""
@@ -127,7 +124,6 @@ def test_encode_image_negative_horizontal_offset_crops(make_client):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.asyncio
 async def test_send_command_start_notification_failure_skips_stop(make_client):
     """If start_notification raises, stop_notification must NOT be called
     (notifying flag was never set)."""

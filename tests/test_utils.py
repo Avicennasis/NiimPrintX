@@ -1,6 +1,6 @@
 import pytest
 
-from NiimPrintX.nimmy.exception import BLEException, PrinterException
+from NiimPrintX.nimmy.exception import BLEException, NiimPrintXException, PrinterException
 from NiimPrintX.nimmy.helper import print_error, print_info, print_success
 from NiimPrintX.nimmy.logger_config import get_logger, logger_enable, setup_logger
 from NiimPrintX.nimmy.packet import NiimbotPacket, packet_to_int
@@ -33,6 +33,19 @@ def test_printer_exception_message():
 def test_exceptions_are_distinct():
     """BLEException and PrinterException must be different classes."""
     assert BLEException is not PrinterException
+
+
+def test_exception_hierarchy():
+    """BLEException and PrinterException should be subclasses of NiimPrintXException."""
+    assert issubclass(BLEException, NiimPrintXException)
+    assert issubclass(PrinterException, NiimPrintXException)
+
+    # Verify instances are caught by the base class
+    with pytest.raises(NiimPrintXException):
+        raise BLEException("test ble")
+
+    with pytest.raises(NiimPrintXException):
+        raise PrinterException("test printer")
 
 
 # ---------- helper.py ----------

@@ -9,10 +9,9 @@ from PIL import Image, ImageTk
 
 
 class TabbedIconGrid(tk.Frame):
-    def __init__(self, parent, base_folder, icon_size=(50, 50), columns=8, on_icon_selected=None, **kwargs):
+    def __init__(self, parent, base_folder, columns=8, on_icon_selected=None, **kwargs):
         super().__init__(parent, **kwargs)
         self.base_folder = base_folder
-        self.icon_size = icon_size
         self.columns = columns
         self.on_icon_selected = on_icon_selected
         self.icon_cache = {}  # Store loaded icons to avoid redundant processing
@@ -45,8 +44,7 @@ class TabbedIconGrid(tk.Frame):
         """Load icons when a tab is selected."""
         notebook = event.widget
         selected_tab_index = notebook.index(notebook.select())
-        subfolder_name = self.tab_names.get(selected_tab_index,
-                                             notebook.tab(selected_tab_index, "text").lower())
+        subfolder_name = self.tab_names[selected_tab_index]
         self._load_tab_by_index(selected_tab_index, subfolder_name)
 
     def _load_tab_by_index(self, tab_index, subfolder_name):
@@ -115,7 +113,7 @@ class TabbedIconGrid(tk.Frame):
                 except Exception:
                     pass  # skip corrupt files
         with contextlib.suppress(tk.TclError):
-            frame.after(0, lambda: self._create_icon_widgets(frame, pil_images, subfolder_name, canvas))
+            self.after(0, lambda: self._create_icon_widgets(frame, pil_images, subfolder_name, canvas))
 
     def _create_icon_widgets(self, frame, pil_images, subfolder_name, canvas):
         """Create PhotoImages and icon grid widgets — must run on main thread."""
@@ -142,10 +140,10 @@ class TabbedIconGrid(tk.Frame):
                         bg="white"
                     )
                     icon_label.grid(row=row, column=col, padx=5, pady=5)
-                    icon_label.bind("<Button-1>", lambda event, idx=index: self.on_icon_click(idx, icons))
+                    icon_label.bind("<Button-1>", lambda event, idx=index, ic=icons: self.on_icon_click(idx, ic))
 
         # M13: Configure scrollregion AFTER all widgets are placed, not before the bg thread completes
-        canvas.after_idle(lambda: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.after_idle(lambda: canvas.configure(scrollregion=canvas.bbox("all")) if canvas.bbox("all") else None)
 
     def on_mouse_wheel(self, event, canvas):
         """Handle mouse wheel scrolling."""

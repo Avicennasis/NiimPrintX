@@ -1,3 +1,4 @@
+import os
 import tkinter as tk
 from tkinter import filedialog, ttk
 
@@ -47,7 +48,7 @@ class IconTab:
         # Create the TabbedIconGrid and align it to the right
         tabbed_icon_grid = TabbedIconGrid(
             icon_tab_frame, self.config.icon_folder,
-            on_icon_selected=lambda sub_path: self.image_op.load_image(f"{self.config.icon_folder}/{sub_path}")
+            on_icon_selected=lambda sub_path: self.image_op.load_image(os.path.join(self.config.icon_folder, sub_path))
         )
 
         tabbed_icon_grid.grid(row=0, column=1, sticky='nsew', padx=10, pady=20)

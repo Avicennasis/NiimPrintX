@@ -9,7 +9,6 @@ from NiimPrintX.nimmy.helper import print_error, print_info, print_success
 from NiimPrintX.nimmy.logger_config import get_logger, logger_enable, setup_logger
 from NiimPrintX.nimmy.printer import InfoEnum, PrinterClient
 
-setup_logger()
 logger = get_logger()
 
 
@@ -24,6 +23,7 @@ logger = get_logger()
 @click.pass_context
 def niimbot_cli(ctx, verbose):
     ctx.ensure_object(dict)
+    setup_logger()
     ctx.obj['VERBOSE'] = verbose
     logger_enable(verbose)
 
@@ -32,7 +32,7 @@ def niimbot_cli(ctx, verbose):
 @click.option(
     "-m",
     "--model",
-    type=click.Choice(["b1", "b18", "b21", "d11", "d11_h", "d110", "d101", "d110_m"], False),
+    type=click.Choice(["b1", "b18", "b21", "d11", "d11_h", "d110", "d101", "d110_m"], case_sensitive=False),
     default="d110",
     show_default=True,
     help="Niimbot printer model",
@@ -94,7 +94,7 @@ def print_command(model, density, rotate, image, quantity, vertical_offset, hori
 
     # Cap density for models that only support 3 levels
     if model not in ("b21",) and density > 3:
-        print_info(f"Model {model.upper()} supports max density 3; capping from {density}")
+        print_info(f"Model {model.upper()} supports max density 3; capping {density} to 3")
         density = 3
     try:
         image = Image.open(image)
@@ -148,7 +148,7 @@ async def _print(model, density, image, quantity, vertical_offset, horizontal_of
 @click.option(
     "-m",
     "--model",
-    type=click.Choice(["b1", "b18", "b21", "d11", "d11_h", "d110", "d101", "d110_m"], False),
+    type=click.Choice(["b1", "b18", "b21", "d11", "d11_h", "d110", "d101", "d110_m"], case_sensitive=False),
     default="d110",
     show_default=True,
     help="Niimbot printer model",
@@ -156,7 +156,14 @@ async def _print(model, density, image, quantity, vertical_offset, horizontal_of
 def info_command(model):
     logger.info("Niimbot Information")
     print_info("Niimbot Information")
-    success = asyncio.run(_info(model))
+    try:
+        success = asyncio.run(_info(model))
+    except KeyboardInterrupt:
+        print_error("Interrupted")
+        sys.exit(1)
+    except Exception as e:
+        print_error(f"{e}")
+        sys.exit(1)
     if not success:
         sys.exit(1)
 
@@ -178,7 +185,7 @@ async def _info(model):
         return True
     except Exception as e:
         logger.debug(f"{e}")
-        print_error(e)
+        print_error(f"{e}")
         return False
     finally:
         if printer:
@@ -186,4 +193,4 @@ async def _info(model):
 
 
 if __name__ == "__main__":
-    niimbot_cli(obj={})
+    niimbot_cli()

@@ -1,6 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
 import os
-import subprocess
 
 # Function to collect files and adjust their target directory
 def collect_and_adjust_files(base_path, target_dir):
@@ -23,10 +22,10 @@ datas = collect_and_adjust_files(imagemagick_path, 'imagemagick')
 current_path = os.getcwd()
 if os.path.basename(current_path) == "ui_app":
     src_path = os.path.join(current_path, '..', '..', 'NiimPrintX', 'ui')
-    hook_path = os.path.join(current_path,'..', '..', 'runtime_hooks', 'windows')
-if os.path.basename(current_path) == "NiimPrintX":
+elif os.path.basename(current_path) == "NiimPrintX":
     src_path = os.path.join(current_path, 'NiimPrintX', 'ui')
-    hook_path = os.path.join(current_path, 'runtime_hooks', 'windows')
+else:
+    src_path = os.path.join(current_path, 'ui')
 
 # Add custom assets
 datas += [
@@ -79,11 +78,4 @@ coll = COLLECT(
     upx=True,
     upx_exclude=[],
     name='NiimPrintX',
-)
-
-app = BUNDLE(
-    coll,
-    name='NiimPrintX',
-    icon=os.path.join(src_path, 'assets', 'icon.ico'),  # Use .ico for Windows
-    bundle_identifier=None,
 )

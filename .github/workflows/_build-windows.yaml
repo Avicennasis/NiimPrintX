@@ -23,13 +23,13 @@ jobs:
           echo "VERSION=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
       - name: Checkout source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4
 
       - name: Install poetry
-        run: pipx install poetry
+        run: pipx install poetry==1.8.3
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b  # v5
         with:
           python-version: '3.12'
           cache: 'poetry'
@@ -48,9 +48,9 @@ jobs:
       - name: Extract ImageMagick
         run: |
           Expand-Archive -Path ImageMagick.zip -DestinationPath $env:GITHUB_WORKSPACE\resources\ImageMagick
-          $extractedFolder = "$env:GITHUB_WORKSPACE\resources\ImageMagick\ImageMagick-7.1.1-33-portable-Q16-HDRI-x64"
-                    Move-Item -Path "$extractedFolder\*" -Destination "$env:GITHUB_WORKSPACE\resources\ImageMagick" -Force
-                    Remove-Item -Path $extractedFolder -Recurse -Force
+          $extractedFolder = Get-ChildItem "$env:GITHUB_WORKSPACE\resources\ImageMagick" -Directory | Select-Object -First 1 -ExpandProperty FullName
+          Move-Item -Path "$extractedFolder\*" -Destination "$env:GITHUB_WORKSPACE\resources\ImageMagick" -Force
+          Remove-Item -Path $extractedFolder -Recurse -Force
           if (-not (Test-Path "$env:GITHUB_WORKSPACE\resources\ImageMagick")) {
               Write-Error "ImageMagick extraction failed"
               exit 1
@@ -112,14 +112,14 @@ jobs:
 #          Rename-Item -Path $cliExePath -NewName $newCliExePath
 
       - name: Upload GUI package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08  # v4
         with:
           name: NiimPrintX-App-${{ steps.get_tag_name.outputs.VERSION }}-Windows-X64.zip
           path: release\NiimPrintX-App-${{ steps.get_tag_name.outputs.VERSION }}-Windows-X64.zip
           retention-days: 1
 
       - name: Upload CLI package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08  # v4
         with:
           name: NiimPrintX-CLI-${{ steps.get_tag_name.outputs.VERSION }}-Windows-X64.zip
           path: release\NiimPrintX-CLI-${{ steps.get_tag_name.outputs.VERSION }}-Windows-X64.zip

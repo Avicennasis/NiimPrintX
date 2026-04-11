@@ -4,6 +4,7 @@ import io
 import os
 import tempfile
 import tkinter as tk
+import tkinter.messagebox as mb
 from tkinter import filedialog, ttk
 
 import cairo
@@ -21,6 +22,7 @@ class PrintOption:
         self.frame = ttk.Frame(parent)
         self.create_widgets()
         self.print_op = PrinterOperation(self.config)
+        self._heartbeat_active = False
         self.check_heartbeat()
 
     def check_heartbeat(self):
@@ -48,8 +50,8 @@ class PrintOption:
             self.root.status_bar.update_status(connected)
 
     def create_widgets(self):
-        print_button = tk.Button(self.parent, text="Print", command=self.display_print)
-        print_button.pack(side=tk.RIGHT, padx=10)
+        self.toolbar_print_button = tk.Button(self.parent, text="Print", command=self.display_print)
+        self.toolbar_print_button.pack(side=tk.RIGHT, padx=10)
         save_image_button = tk.Button(self.parent, text="Save Image", command=self.save_image)
         save_image_button.pack(side=tk.RIGHT, padx=10)
         self.connect_button = tk.Button(self.parent, text="Connect", command=self.printer_connect)
@@ -80,10 +82,14 @@ class PrintOption:
             else:
                 self.connect_button.config(text="Connect")
                 self.connect_button.config(state=tk.NORMAL)
-            self.root.status_bar.update_status(result if self.config.printer_connected else False)
+            with contextlib.suppress(tk.TclError):
+                self.root.status_bar.update_status(result if self.config.printer_connected else False)
         self.root.after(0, _update)
 
     def display_print(self):
+        if self.config.print_job:
+            return
+        self.toolbar_print_button.config(state=tk.DISABLED)
         # Export to PNG and display it in a pop-up window
         if self.config.os_system == "Windows":
             # Windows-specific logic using tempfile.mkstemp()
@@ -117,6 +123,8 @@ class PrintOption:
         return int(inches * self.config.label_sizes[self.config.device]["print_dpi"])
 
     def export_to_png(self, output_filename=None, horizontal_offset=0.0, vertical_offset=0.0):
+        if self.config.canvas is None or self.config.bounding_box is None:
+            return None
         width = self.config.canvas.winfo_reqwidth()
         height = self.config.canvas.winfo_reqheight()
 
@@ -330,7 +338,7 @@ class PrintOption:
     def _print_handler(self, future):
         try:
             result = future.result()
-        except Exception:
+        except BaseException:
             result = False
         def _update():
             self.config.print_job = False
@@ -339,8 +347,9 @@ class PrintOption:
                     self.root.status_bar.update_status(result)
             else:
                 with contextlib.suppress(tk.TclError):
-                    import tkinter.messagebox as mb
                     mb.showerror("Print Failed", "The print job failed. Check the printer connection and try again.")
             with contextlib.suppress(tk.TclError):
                 self.print_button.config(state=tk.NORMAL)
+            with contextlib.suppress(tk.TclError):
+                self.toolbar_print_button.config(state=tk.NORMAL)
         self.root.after(0, _update)

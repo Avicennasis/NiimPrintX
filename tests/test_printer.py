@@ -1,14 +1,15 @@
+import asyncio
 import struct
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from PIL import Image
 
 from NiimPrintX.nimmy.exception import PrinterException
 from NiimPrintX.nimmy.packet import NiimbotPacket
-from NiimPrintX.nimmy.printer import InfoEnum, RequestCodeEnum
+from NiimPrintX.nimmy.printer import InfoEnum, PrinterClient, RequestCodeEnum
 
 
-@pytest.mark.asyncio
 async def test_send_command_clears_event_before_wait(make_client):
     """notification_event must be cleared before waiting, not just after."""
     client = make_client()
@@ -30,7 +31,6 @@ async def test_send_command_clears_event_before_wait(make_client):
     assert result.data == b"\x01"
 
 
-@pytest.mark.asyncio
 async def test_send_command_catches_valueerror_from_malformed_packet(make_client):
     """ValueError from from_bytes must be wrapped as PrinterException."""
     client = make_client()
@@ -45,7 +45,6 @@ async def test_send_command_catches_valueerror_from_malformed_packet(make_client
         await client.send_command(RequestCodeEnum.GET_INFO, b"\x01")
 
 
-@pytest.mark.asyncio
 async def test_heartbeat_case_10_no_rfid(make_client):
     """10-byte heartbeat should not set rfid_read_state (only 2 useful fields)."""
     client = make_client()
@@ -63,7 +62,6 @@ async def test_heartbeat_case_10_no_rfid(make_client):
     assert result["rfid_read_state"] is None
 
 
-@pytest.mark.asyncio
 async def test_send_command_timeout_raises_printer_exception(make_client):
     """Timeout must be wrapped as PrinterException."""
     client = make_client()
@@ -72,7 +70,6 @@ async def test_send_command_timeout_raises_printer_exception(make_client):
         await client.send_command(RequestCodeEnum.GET_INFO, b"\x01", timeout=0.1)
 
 
-@pytest.mark.asyncio
 async def test_heartbeat_case_20(make_client):
     """20-byte heartbeat sets paper_state and rfid_read_state from tail bytes."""
     client = make_client()
@@ -93,7 +90,6 @@ async def test_heartbeat_case_20(make_client):
     assert result["rfid_read_state"] == 0x03
 
 
-@pytest.mark.asyncio
 async def test_heartbeat_case_13(make_client):
     """13-byte heartbeat extracts closing_state, power, paper, and rfid."""
     client = make_client()
@@ -116,7 +112,6 @@ async def test_heartbeat_case_13(make_client):
     assert result["rfid_read_state"] == 0x0B
 
 
-@pytest.mark.asyncio
 async def test_heartbeat_case_19(make_client):
     """19-byte heartbeat reads state fields from higher offsets."""
     client = make_client()
@@ -139,7 +134,6 @@ async def test_heartbeat_case_19(make_client):
     assert result["rfid_read_state"] == 0x0D
 
 
-@pytest.mark.asyncio
 async def test_heartbeat_case_9(make_client):
     """9-byte heartbeat only sets closing_state; paper and rfid are None."""
     client = make_client()
@@ -159,7 +153,6 @@ async def test_heartbeat_case_9(make_client):
     assert result["rfid_read_state"] is None
 
 
-@pytest.mark.asyncio
 async def test_set_label_type_invalid_raises(make_client):
     """set_label_type(0) must raise ValueError (valid range is 1-3)."""
     client = make_client()
@@ -167,7 +160,6 @@ async def test_set_label_type_invalid_raises(make_client):
         await client.set_label_type(0)
 
 
-@pytest.mark.asyncio
 async def test_set_label_density_invalid_raises(make_client):
     """set_label_density(6) must raise ValueError (valid range is 1-5)."""
     client = make_client()
@@ -175,7 +167,6 @@ async def test_set_label_density_invalid_raises(make_client):
         await client.set_label_density(6)
 
 
-@pytest.mark.asyncio
 async def test_start_printV2_quantity_validation(make_client):
     """start_printV2(quantity=-1) must raise ValueError."""
     client = make_client()
@@ -183,7 +174,6 @@ async def test_start_printV2_quantity_validation(make_client):
         await client.start_printV2(quantity=-1)
 
 
-@pytest.mark.asyncio
 async def test_get_info_device_serial(make_client):
     """get_info(DEVICESERIAL) should return the response data as a hex string."""
     client = make_client()
@@ -199,7 +189,6 @@ async def test_get_info_device_serial(make_client):
     assert result == "deadbeef"
 
 
-@pytest.mark.asyncio
 async def test_get_info_soft_version(make_client):
     """get_info(SOFTVERSION) should return big-endian int / 100."""
     client = make_client()
@@ -216,7 +205,6 @@ async def test_get_info_soft_version(make_client):
     assert result == 5.0
 
 
-@pytest.mark.asyncio
 async def test_get_rfid_empty_data_returns_none(make_client):
     client = make_client()
     response_pkt = NiimbotPacket(RequestCodeEnum.GET_RFID, b'\x00')
@@ -230,7 +218,6 @@ async def test_get_rfid_empty_data_returns_none(make_client):
     assert result is None
 
 
-@pytest.mark.asyncio
 async def test_get_rfid_valid_data(make_client):
     client = make_client()
     uuid = b'\x01\x02\x03\x04\x05\x06\x07\x08'
@@ -255,7 +242,6 @@ async def test_get_rfid_valid_data(make_client):
     assert result["type"] == 2
 
 
-@pytest.mark.asyncio
 async def test_get_rfid_malformed_returns_none(make_client):
     """Truncated RFID data should return None, not crash."""
     client = make_client()
@@ -271,7 +257,6 @@ async def test_get_rfid_malformed_returns_none(make_client):
     assert result is None
 
 
-@pytest.mark.asyncio
 async def test_set_quantity(make_client):
     client = make_client()
     response_pkt = NiimbotPacket(RequestCodeEnum.SET_QUANTITY, b'\x01')
@@ -285,7 +270,6 @@ async def test_set_quantity(make_client):
     assert result is True
 
 
-@pytest.mark.asyncio
 async def test_end_print(make_client):
     client = make_client()
     response_pkt = NiimbotPacket(RequestCodeEnum.END_PRINT, b'\x01')
@@ -299,7 +283,6 @@ async def test_end_print(make_client):
     assert result is True
 
 
-@pytest.mark.asyncio
 async def test_get_print_status(make_client):
     client = make_client()
     status_data = struct.pack(">HBB", 3, 50, 75)
@@ -314,3 +297,215 @@ async def test_get_print_status(make_client):
     assert result["page"] == 3
     assert result["progress1"] == 50
     assert result["progress2"] == 75
+
+
+# ---------------------------------------------------------------------------
+# Coverage gap: connect() success path
+# ---------------------------------------------------------------------------
+
+
+async def test_connect_success(make_client):
+    """When BLETransport.connect() returns True and find_characteristics sets
+    char_uuid, connect() should return True and _loop should be set."""
+    client = make_client()
+    client.char_uuid = None  # Force the find_characteristics path
+
+    client.transport.connect = AsyncMock(return_value=True)
+
+    # Build a mock service with a single characteristic that has the right props
+    char = MagicMock()
+    char.uuid = "0000ae01-0000-1000-8000-00805f9b34fb"
+    char.handle = 1
+    char.properties = ["read", "write-without-response", "notify"]
+
+    service = MagicMock()
+    service.uuid = "0000ae00-0000-1000-8000-00805f9b34fb"
+    service.characteristics = [char]
+
+    client.transport.client.services = [service]
+
+    result = await client.connect()
+
+    assert result is True
+    assert client.char_uuid == char.uuid
+    assert client._loop is not None
+
+
+# ---------------------------------------------------------------------------
+# Coverage gap: connect() failure cleans up
+# ---------------------------------------------------------------------------
+
+
+async def test_connect_failure_cleans_up(make_client):
+    """When find_characteristics raises PrinterException, connect() must call
+    disconnect() and re-raise the exception."""
+    client = make_client()
+    client.char_uuid = None  # Force the find_characteristics path
+
+    client.transport.connect = AsyncMock(return_value=True)
+    client.transport.disconnect = AsyncMock()
+
+    # Mock services to produce no matching characteristics -> raises
+    char = MagicMock()
+    char.uuid = "0000ae01-0000-1000-8000-00805f9b34fb"
+    char.handle = 1
+    char.properties = ["read"]  # Missing write-without-response and notify
+
+    service = MagicMock()
+    service.uuid = "0000ae00-0000-1000-8000-00805f9b34fb"
+    service.characteristics = [char]
+
+    client.transport.client.services = [service]
+
+    with pytest.raises(PrinterException, match="Cannot find bluetooth characteristics"):
+        await client.connect()
+
+    client.transport.disconnect.assert_awaited_once()
+
+
+# ---------------------------------------------------------------------------
+# Coverage gap: disconnect() clears state
+# ---------------------------------------------------------------------------
+
+
+async def test_disconnect_clears_state(make_client):
+    """disconnect() should set char_uuid to None and call transport.disconnect()."""
+    client = make_client()
+    assert client.char_uuid == "test-uuid"
+
+    client.transport.disconnect = AsyncMock()
+
+    await client.disconnect()
+
+    assert client.char_uuid is None
+    client.transport.disconnect.assert_awaited_once()
+
+
+# ---------------------------------------------------------------------------
+# Coverage gap: notification_handler sets data via call_soon_threadsafe
+# ---------------------------------------------------------------------------
+
+
+async def test_notification_handler_sets_data(make_client):
+    """notification_handler should schedule _set via call_soon_threadsafe,
+    which sets notification_data and fires the event."""
+    client = make_client()
+
+    mock_loop = MagicMock()
+    # Capture the callback passed to call_soon_threadsafe and execute it
+    callbacks = []
+    mock_loop.call_soon_threadsafe = MagicMock(side_effect=lambda fn: callbacks.append(fn))
+    client._loop = mock_loop
+
+    sender = MagicMock()
+    client.notification_handler(sender, b"\x01\x02")
+
+    mock_loop.call_soon_threadsafe.assert_called_once()
+    # Execute the captured callback to verify it sets the data
+    assert len(callbacks) == 1
+    callbacks[0]()
+    assert client.notification_data == b"\x01\x02"
+    assert client.notification_event.is_set()
+
+
+# ---------------------------------------------------------------------------
+# Coverage gap: notification_handler with _loop = None returns early
+# ---------------------------------------------------------------------------
+
+
+async def test_notification_handler_none_loop(make_client):
+    """When _loop is None, notification_handler should return early without
+    setting notification_data or crashing."""
+    client = make_client()
+    client._loop = None
+
+    sender = MagicMock()
+    client.notification_handler(sender, b"\x01\x02")
+
+    assert client.notification_data is None
+    assert not client.notification_event.is_set()
+
+
+# ---------------------------------------------------------------------------
+# Coverage gap: set_label_type / set_label_density with empty response data
+# ---------------------------------------------------------------------------
+
+
+async def test_response_parser_empty_data(make_client):
+    """set_label_type and set_label_density must raise PrinterException when
+    send_command returns a packet with empty data."""
+    client = make_client()
+
+    # Build a valid packet with zero-length data
+    empty_pkt = NiimbotPacket(RequestCodeEnum.SET_LABEL_TYPE, b"")
+
+    async def fake_write(data, char_uuid):
+        client.notification_data = empty_pkt.to_bytes()
+        client.notification_event.set()
+
+    client.transport.write = AsyncMock(side_effect=fake_write)
+
+    with pytest.raises(PrinterException, match="Empty response"):
+        await client.set_label_type(1)
+
+    # Also verify set_label_density with the same empty-response scenario
+    empty_pkt2 = NiimbotPacket(RequestCodeEnum.SET_LABEL_DENSITY, b"")
+
+    async def fake_write2(data, char_uuid):
+        client.notification_data = empty_pkt2.to_bytes()
+        client.notification_event.set()
+
+    client.transport.write = AsyncMock(side_effect=fake_write2)
+
+    with pytest.raises(PrinterException, match="Empty response"):
+        await client.set_label_density(2)
+
+
+# ---------------------------------------------------------------------------
+# Coverage gap: print_imageV2 with zero-dimension offset
+# ---------------------------------------------------------------------------
+
+
+async def test_print_imageV2_zero_dimension(make_client):
+    """When negative horizontal_offset equals the image width, effective_width
+    becomes 0 and print_imageV2 must raise PrinterException (mirroring the
+    print_image test in test_coverage_gaps.py)."""
+    client = make_client()
+
+    # Mock the commands that execute before the dimension check
+    ok_pkt = NiimbotPacket(RequestCodeEnum.SET_LABEL_DENSITY, b"\x01")
+    ok_bytes = ok_pkt.to_bytes()
+
+    async def fake_write(data, char_uuid):
+        client.notification_data = ok_bytes
+        client.notification_event.set()
+
+    client.transport.write = AsyncMock(side_effect=fake_write)
+
+    img = Image.new("1", (100, 50), color=0)
+
+    with pytest.raises(PrinterException, match="no data after applying offsets"):
+        await client.print_imageV2(img, horizontal_offset=-100)
+
+
+# ---------------------------------------------------------------------------
+# Coverage gap: get_print_status with short response
+# ---------------------------------------------------------------------------
+
+
+async def test_get_print_status_short_response(make_client):
+    """get_print_status must raise PrinterException when the response packet
+    contains fewer than 4 bytes of data."""
+    client = make_client()
+
+    # Build a packet with only 2 bytes of data (need 4 for HBB unpack)
+    short_pkt = NiimbotPacket(RequestCodeEnum.GET_PRINT_STATUS, b"\x00\x01")
+
+    async def fake_write(data, char_uuid):
+        client.notification_data = short_pkt.to_bytes()
+        client.notification_event.set()
+
+    client.transport.write = AsyncMock(side_effect=fake_write)
+
+    with pytest.raises(PrinterException, match="short response"):
+        await client.get_print_status()

@@ -4,6 +4,7 @@ import tkinter as tk
 class SplashScreen(tk.Toplevel):
     def __init__(self, image_path, master, **kwargs):
         super().__init__(master, **kwargs)
+        self.withdraw()
         self.overrideredirect(True)  # Remove window decorations
 
         # Load the image

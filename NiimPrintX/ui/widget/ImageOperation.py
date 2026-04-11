@@ -1,3 +1,5 @@
+import tkinter.messagebox as messagebox
+
 from PIL import Image, ImageTk
 
 
@@ -11,7 +13,6 @@ class ImageOperation:
             source_image = raw_image.convert("RGBA")
             raw_image.close()
         except Exception as e:
-            import tkinter.messagebox as messagebox
             messagebox.showerror("Error", f"Failed to load image: {e}")
             return
 
@@ -26,7 +27,9 @@ class ImageOperation:
         resized_image = source_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
         img_tk = ImageTk.PhotoImage(resized_image)
 
-        image_id = self.config.canvas.create_image(0, 0, image=img_tk, anchor="nw")
+        cx = self.config.canvas.winfo_reqwidth() // 2
+        cy = self.config.canvas.winfo_reqheight() // 2
+        image_id = self.config.canvas.create_image(cx, cy, image=img_tk, anchor="center")
         self.config.image_items[image_id] = {
             "image": img_tk,
             "original_image": source_image,  # Full-res, not resized
@@ -37,7 +40,7 @@ class ImageOperation:
         # Make the image draggable and resizable
         self.config.canvas.tag_bind(image_id, "<Button-1>",
                                     lambda event, img_id=image_id: self.select_image(event, img_id))
-        self.config.canvas.tag_bind(image_id, "<Button1-Motion>", lambda e, img_id=image_id: self.move_image(e, img_id))
+        self.config.canvas.tag_bind(image_id, "<B1-Motion>", lambda e, img_id=image_id: self.move_image(e, img_id))
 
     def start_image_resize(self, event, image_id):
         self.config.image_items[image_id]['initial_x'] = event.x
@@ -65,7 +68,7 @@ class ImageOperation:
             "initial_y": event.y
         })
         self.config.canvas.tag_bind(
-            handle, "<Button1-Motion>", lambda e, img_id=image_id: self.resize_image(e, img_id)
+            handle, "<B1-Motion>", lambda e, img_id=image_id: self.resize_image(e, img_id)
         )
         self.config.canvas.tag_bind(handle, "<Button-1>", lambda e: self.start_image_resize(e, image_id))
 
@@ -112,7 +115,9 @@ class ImageOperation:
             new_width = max(int(new_height * aspect), 20)
 
         # Resize the image to the new size
-        resized_image = original_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        if new_width <= 0 or new_height <= 0:
+            return
+        resized_image = original_image.resize((new_width, new_height), Image.Resampling.BILINEAR)
         img_tk = ImageTk.PhotoImage(resized_image)
 
         # Update the canvas with the resized image

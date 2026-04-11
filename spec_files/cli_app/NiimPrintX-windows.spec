@@ -29,17 +29,20 @@ a = Analysis(
 # PYZ step
 pyz = PYZ(a.pure)
 
-# EXE step
+# EXE step (one-file build)
 exe = EXE(
     pyz,
     a.scripts,
+    a.binaries,
+    a.datas,
     [],
-    exclude_binaries=True,
     name='niimprintx',
     debug=False,
     bootloader_ignore_signals=False,
     strip=True,
     upx=True,
+    upx_exclude=[],
+    runtime_tmpdir=None,
     console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
@@ -47,16 +50,4 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=None,  # Add path to .ico file if you have an icon
-)
-
-# COLLECT step for onefile build
-coll = COLLECT(
-    exe,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
-    strip=False,
-    upx=True,
-    upx_exclude=[],
-    name='niimprintx',
 )
