@@ -20,7 +20,7 @@ pyobjc-framework-Cocoa==9.2
 pyobjc-framework-CoreBluetooth==9.2
 pyobjc-framework-libdispatch==9.2
 rich==13.7.1
-setuptools==69.5.1
+setuptools==70.0.0
 six==1.16.0
 Wand==0.6.13
-wheel==0.37.1
+wheel==0.38.1
