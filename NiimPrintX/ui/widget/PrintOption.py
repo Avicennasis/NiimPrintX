@@ -277,7 +277,10 @@ class PrintOption:
         self.print_button.config(state=tk.DISABLED)
         self.config.print_job = True
 
-        image = image.rotate(-int(90), PIL.Image.NEAREST, expand=True)
+        if self.config.device == "b1":
+            image = image.rotate(0, PIL.Image.NEAREST, expand=True)
+        else:
+            image = image.rotate(-90, PIL.Image.NEAREST, expand=True)
         future = asyncio.run_coroutine_threadsafe(
             self.print_op.print(image, density, quantity), self.root.async_loop
         )
