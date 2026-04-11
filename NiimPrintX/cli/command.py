@@ -102,12 +102,15 @@ def print_command(model, density, rotate, image, quantity, vertical_offset, hori
 
 
 async def _print(model, density, image, quantity, vertical_offset, horizontal_offset):
+    printer = None
     try:
         print_info("Starting print job")
         device = await find_device(model)
         printer = PrinterClient(device)
-        if await printer.connect():
-            print(f"Connected to {device.name}")
+        if not await printer.connect():
+            print_error("Failed to connect to printer")
+            return
+        print(f"Connected to {device.name}")
         if model == "b1":
             print_info("Printing with B1 model")
             await printer.print_imageV2(image, density=density, quantity=quantity)
@@ -116,10 +119,12 @@ async def _print(model, density, image, quantity, vertical_offset, horizontal_of
             await printer.print_image(image, density=density, quantity=quantity, vertical_offset=vertical_offset,
                                       horizontal_offset=horizontal_offset)
         print_success("Print job completed")
-        await printer.disconnect()
     except Exception as e:
         logger.debug(f"{e}")
-        await printer.disconnect()
+        print_error(f"{e}")
+    finally:
+        if printer:
+            await printer.disconnect()
 
 
 @niimbot_cli.command("info")

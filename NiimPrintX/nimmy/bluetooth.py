@@ -8,6 +8,8 @@ logger = get_logger()
 
 
 async def find_device(device_name_prefix=None):
+    if not device_name_prefix:
+        raise BLEException("No device name prefix specified")
     devices = await BleakScanner.discover(return_adv=True)
     # For D110 variants, prefer the device without service UUIDs.
     # D110 appears as two BLE devices; the printing-capable one has no UUIDs.

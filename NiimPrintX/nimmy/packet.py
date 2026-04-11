@@ -9,8 +9,12 @@ class NiimbotPacket:
 
     @classmethod
     def from_bytes(cls, pkt):
-        assert pkt[:2] == b"\x55\x55"
-        assert pkt[-2:] == b"\xaa\xaa"
+        if pkt is None or len(pkt) < 7:
+            raise ValueError(f"Packet too short: {len(pkt) if pkt else 0} bytes")
+        if pkt[:2] != b"\x55\x55":
+            raise ValueError(f"Invalid packet header: {pkt[:2].hex()}")
+        if pkt[-2:] != b"\xaa\xaa":
+            raise ValueError(f"Invalid packet footer: {pkt[-2:].hex()}")
         type_ = pkt[2]
         len_ = pkt[3]
         data = pkt[4 : 4 + len_]
@@ -18,11 +22,14 @@ class NiimbotPacket:
         checksum = type_ ^ len_
         for i in data:
             checksum ^= i
-        assert checksum == pkt[-3]
+        if checksum != pkt[-3]:
+            raise ValueError(f"Checksum mismatch: expected {checksum:#x}, got {pkt[-3]:#x}")
 
         return cls(type_, data)
 
     def to_bytes(self):
+        if len(self.data) > 255:
+            raise ValueError(f"Packet data too long: {len(self.data)} bytes (max 255)")
         checksum = self.type ^ len(self.data)
         for i in self.data:
             checksum ^= i

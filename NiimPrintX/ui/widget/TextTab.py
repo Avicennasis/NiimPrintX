@@ -18,10 +18,10 @@ class TextTab:
     def create_widgets(self):
         if self.config.os_system == "Darwin":
             default_bg = 'systemWindowBackgroundColor1'
-        elif self.config.os_system == "Linux":
-            default_bg = "grey85"
         elif self.config.os_system == "Windows":
             default_bg = 'systemButtonFace'
+        else:
+            default_bg = "grey85"
 
         # Content label and multi-line text entry with scrollbar
         tk.Label(self.frame, text="Content", bg=default_bg).grid(row=0, column=0, sticky='nw')
@@ -130,9 +130,16 @@ class TextTab:
 
     def get_font_properties(self):
         family = self.font_family_dropdown.get()
-        # font = self.font_dropdown.get()
-        size = int(self.font_size_dropdown.get())
-        kerning = float(self.font_kerning_dropdown.get())
+        try:
+            size = int(self.font_size_dropdown.get())
+        except (ValueError, tk.TclError):
+            size = 16
+            self.size_var.set(size)
+        try:
+            kerning = float(self.font_kerning_dropdown.get())
+        except (ValueError, tk.TclError):
+            kerning = 0.0
+            self.kerning_var.set('0')
         weight = 'bold' if self.bold_var.get() else 'normal'
         slant = 'italic' if self.italic_var.get() else 'roman'
         underline = self.underline_var.get()

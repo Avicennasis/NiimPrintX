@@ -47,6 +47,7 @@ class PrinterClient:
         self.transport = BLETransport()
         self.notification_event = asyncio.Event()
         self.notification_data = None
+        self._command_lock = asyncio.Lock()
 
     async def connect(self):
         if await self.transport.connect(self.device.address):
@@ -83,25 +84,33 @@ class PrinterClient:
             raise PrinterException("Cannot find bluetooth characteristics.")
 
     async def send_command(self, request_code, data, timeout=10):
-        try:
-            if not self.transport.client or not self.transport.client.is_connected:
-                await self.connect()
-            packet = NiimbotPacket(request_code, data)
-            await self.transport.start_notification(self.char_uuid, self.notification_handler)
-            await self.transport.write(packet.to_bytes(), self.char_uuid)
-            logger.debug(f"Printer command sent - {RequestCodeEnum(request_code).name}:{request_code} - {[b for b in data]}")
-            await asyncio.wait_for(self.notification_event.wait(), timeout)  # Wait until the notification event is set
-            response = NiimbotPacket.from_bytes(self.notification_data)
-            logger.debug(f"Printer response received - {[b for b in response.data]} - {len(response.data)} bytes")
-            await self.transport.stop_notification(self.char_uuid)
-            self.notification_event.clear()  # Reset the event for the next notification
-            return response
-        except asyncio.TimeoutError:
-            logger.error(f"Timeout occurred for request {RequestCodeEnum(request_code).name}")
-            raise PrinterException(f"Printer timed out on {RequestCodeEnum(request_code).name}")
-        except BLEException as e:
-            logger.error(f"An error occurred: {e}")
-            raise PrinterException(f"BLE error during {RequestCodeEnum(request_code).name}: {e}")
+        async with self._command_lock:
+            notifying = False
+            try:
+                if not self.transport.client or not self.transport.client.is_connected:
+                    await self.connect()
+                packet = NiimbotPacket(request_code, data)
+                await self.transport.start_notification(self.char_uuid, self.notification_handler)
+                notifying = True
+                await self.transport.write(packet.to_bytes(), self.char_uuid)
+                logger.debug(f"Printer command sent - {RequestCodeEnum(request_code).name}:{request_code} - {[b for b in data]}")
+                await asyncio.wait_for(self.notification_event.wait(), timeout)
+                response = NiimbotPacket.from_bytes(self.notification_data)
+                logger.debug(f"Printer response received - {[b for b in response.data]} - {len(response.data)} bytes")
+                return response
+            except asyncio.TimeoutError:
+                logger.error(f"Timeout occurred for request {RequestCodeEnum(request_code).name}")
+                raise PrinterException(f"Printer timed out on {RequestCodeEnum(request_code).name}")
+            except BLEException as e:
+                logger.error(f"An error occurred: {e}")
+                raise PrinterException(f"BLE error during {RequestCodeEnum(request_code).name}: {e}")
+            finally:
+                if notifying:
+                    try:
+                        await self.transport.stop_notification(self.char_uuid)
+                    except Exception:
+                        pass
+                self.notification_event.clear()
 
     async def write_raw(self, data):
         try:
@@ -183,11 +192,14 @@ class PrinterClient:
         # Apply horizontal offset
         if horizontal_offset > 0:
             img = ImageOps.expand(img, border=(horizontal_offset, 0, 0, 0), fill=1)
-        else:
+        elif horizontal_offset < 0:
             img = img.crop((-horizontal_offset, 0, img.width, img.height))
 
-        # Add vertical padding for vertical offset
-        img = ImageOps.expand(img, border=(0, vertical_offset, 0, 0), fill=1)
+        # Apply vertical offset
+        if vertical_offset > 0:
+            img = ImageOps.expand(img, border=(0, vertical_offset, 0, 0), fill=1)
+        elif vertical_offset < 0:
+            img = img.crop((0, -vertical_offset, img.width, img.height))
 
         for y in range(img.height):
             line_data = [img.getpixel((x, y)) for x in range(img.width)]
@@ -217,30 +229,34 @@ class PrinterClient:
         packet = await self.send_command(RequestCodeEnum.GET_RFID, b"\x01")
         data = packet.data
 
-        if data[0] == 0:
+        try:
+            if not data or data[0] == 0:
+                return None
+            uuid = data[0:8].hex()
+            idx = 8
+
+            barcode_len = data[idx]
+            idx += 1
+            barcode = data[idx: idx + barcode_len].decode("utf-8", errors="replace")
+
+            idx += barcode_len
+            serial_len = data[idx]
+            idx += 1
+            serial = data[idx: idx + serial_len].decode("utf-8", errors="replace")
+
+            idx += serial_len
+            total_len, used_len, type_ = struct.unpack(">HHB", data[idx:idx + 5])
+            return {
+                "uuid": uuid,
+                "barcode": barcode,
+                "serial": serial,
+                "used_len": used_len,
+                "total_len": total_len,
+                "type": type_,
+            }
+        except (IndexError, struct.error) as e:
+            logger.error(f"Malformed RFID response: {e}")
             return None
-        uuid = data[0:8].hex()
-        idx = 8
-
-        barcode_len = data[idx]
-        idx += 1
-        barcode = data[idx: idx + barcode_len].decode()
-
-        idx += barcode_len
-        serial_len = data[idx]
-        idx += 1
-        serial = data[idx: idx + serial_len].decode()
-
-        idx += serial_len
-        total_len, used_len, type_ = struct.unpack(">HHB", data[idx:])
-        return {
-            "uuid": uuid,
-            "barcode": barcode,
-            "serial": serial,
-            "used_len": used_len,
-            "total_len": total_len,
-            "type": type_,
-        }
 
     async def heartbeat(self):
         packet = await self.send_command(RequestCodeEnum.HEARTBEAT, b"\x01")
@@ -278,12 +294,14 @@ class PrinterClient:
         }
 
     async def set_label_type(self, n):
-        assert 1 <= n <= 3
+        if not 1 <= n <= 3:
+            raise ValueError(f"Label type must be 1-3, got {n}")
         packet = await self.send_command(RequestCodeEnum.SET_LABEL_TYPE, bytes((n,)))
         return bool(packet.data[0])
 
     async def set_label_density(self, n):
-        assert 1 <= n <= 5  # B21 has 5 levels, not sure for D11
+        if not 1 <= n <= 5:
+            raise ValueError(f"Label density must be 1-5, got {n}")
         packet = await self.send_command(RequestCodeEnum.SET_LABEL_DENSITY, bytes((n,)))
         return bool(packet.data[0])
 
@@ -292,7 +310,8 @@ class PrinterClient:
         return bool(packet.data[0])
 
     async def start_printV2(self, quantity):
-        assert 0 <= quantity <= 65535
+        if not 0 <= quantity <= 65535:
+            raise ValueError(f"Quantity must be 0-65535, got {quantity}")
         command = struct.pack('>H', quantity)
         packet = await self.send_command(RequestCodeEnum.START_PRINT, b'\x00' + command + b'\x00\x00\x00\x00')
         return bool(packet.data[0])
@@ -336,9 +355,9 @@ class PrinterClient:
         return {"page": page, "progress1": progress1, "progress2": progress2}
 
     def __del__(self):
-        if self.transport.client.is_connected:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
+        try:
+            if self.transport.client and self.transport.client.is_connected:
+                loop = asyncio.get_running_loop()
                 loop.create_task(self.disconnect())
-            else:
-                loop.run_until_complete(self.disconnect())
+        except (RuntimeError, AttributeError):
+            pass

@@ -5,8 +5,11 @@ description = "App to print labels using NiimBot printer"
 authors = ["Labbots <labbots@gmail.com>"]
 license = "GNU GPLv3"
 readme = "README.md"
-packages = [{include = "*", from="NiimPrintX"}]
+packages = [{include = "NiimPrintX"}]
 
+[tool.poetry.scripts]
+niimprintx = "NiimPrintX.cli.command:cli"
+niimprintx-ui = "NiimPrintX.ui.__main__:main"
 
 [tool.poetry.dependencies]
 python = ">=3.12,<3.14"
@@ -19,6 +22,9 @@ wand = "^0.6.13"
 appdirs = "^1.4.4"
 rich = "^13.7.1"
 sv-ttk = {version = "^2.6", optional = true}
+
+[tool.poetry.extras]
+gui = ["sv-ttk"]
 
 [tool.poetry.group.dev.dependencies]
 devtools = "^0.12.2"

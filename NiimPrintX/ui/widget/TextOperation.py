@@ -154,11 +154,11 @@ class TextOperation:
     def resize_text(self, event, text_id):
         dy = event.y - self.config.text_items[text_id]['initial_y']
         new_size = max(8, self.config.text_items[text_id]['initial_size'] + dy // 10)
+        self.config.text_items[text_id]["font_props"]['size'] = new_size
         tk_image = self.create_text_image(self.config.text_items[text_id]["font_props"],
                                           self.config.text_items[text_id]['content'])
         self.config.canvas.itemconfig(text_id, image=tk_image)
         self.config.text_items[text_id]['font_image'] = tk_image
-        self.config.text_items[text_id]["font_props"]['size'] = new_size
         self.update_bbox_and_handle(text_id)
 
         self.parent.size_var.set(new_size)

@@ -37,7 +37,7 @@ def resource_path(relative_path):
     return os.path.realpath(os.path.join(base_path, relative_path))
 
 
-if __name__ == "__main__":
+def main():
     try:
         app = LabelPrinterApp()
         image_path = resource_path('NiimPrintX/ui/assets/Niimprintx.png')
@@ -56,4 +56,8 @@ if __name__ == "__main__":
         app.mainloop()
     except Exception as e:
         print(f"Error {e}")
-        raise e
+        raise
+
+
+if __name__ == "__main__":
+    main()

@@ -84,7 +84,13 @@ class FileMenu:
                 with open(file_path, 'r') as f:
                     data = json.load(f)
             except (json.JSONDecodeError, UnicodeDecodeError):
-                # Legacy pickle format — warn user about untrusted files
+                # Legacy pickle format — require user confirmation
+                if not messagebox.askokcancel(
+                    "Legacy File Format",
+                    "This file uses a legacy format. Only open files you trust.\n\n"
+                    "Re-save after opening to convert to the safe JSON format.\n\n"
+                    "Continue?"):
+                    return
                 with open(file_path, 'rb') as f:
                     data = pickle.load(f)
 

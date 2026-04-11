@@ -67,15 +67,19 @@ class PrintOption:
             future.add_done_callback(lambda f: self._update_device_status(f))
 
     def _update_device_status(self, future):
-        result = future.result()
-        if self.config.printer_connected:
-            self.connect_button.config(text="Disconnect")
-            self.connect_button.config(state=tk.NORMAL)
-        else:
-            self.connect_button.config(text="Connect")
-            self.connect_button.config(state=tk.NORMAL)
+        try:
+            result = future.result()
+        except Exception:
             result = False
-        self.root.after(0, lambda: self.root.status_bar.update_status(result))
+        def _update():
+            if self.config.printer_connected:
+                self.connect_button.config(text="Disconnect")
+                self.connect_button.config(state=tk.NORMAL)
+            else:
+                self.connect_button.config(text="Connect")
+                self.connect_button.config(state=tk.NORMAL)
+            self.root.status_bar.update_status(result if self.config.printer_connected else False)
+        self.root.after(0, _update)
 
     def display_print(self):
         # Export to PNG and display it in a pop-up window
@@ -256,8 +260,11 @@ class PrintOption:
         offset_frame.grid_columnconfigure(3, weight=1)
 
     def update_image_offset(self):
-        horizontal_offset = self.horizontal_offset.get()
-        vertical_offset = self.vertical_offset.get()
+        try:
+            horizontal_offset = self.horizontal_offset.get()
+            vertical_offset = self.vertical_offset.get()
+        except tk.TclError:
+            return
         self.print_image = self.export_to_png(output_filename=None,
                                               horizontal_offset=horizontal_offset,
                                               vertical_offset=vertical_offset)
@@ -279,9 +286,13 @@ class PrintOption:
         future.add_done_callback(lambda f: self._print_handler(f))
 
     def _print_handler(self, future):
-        result = future.result()
-        if result:
-            # debug("print", result)
+        try:
+            result = future.result()
+        except Exception:
+            result = False
+        def _update():
             self.config.print_job = False
-            self.root.after(0, lambda: self.root.status_bar.update_status(result))
-        self.print_button.config(state=tk.NORMAL)
+            if result:
+                self.root.status_bar.update_status(result)
+            self.print_button.config(state=tk.NORMAL)
+        self.root.after(0, _update)
