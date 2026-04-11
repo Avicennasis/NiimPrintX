@@ -20,16 +20,24 @@
 - [ ] **#35** — Xubuntu printer setup — Documentation/FAQ (Bluetooth pairing guide)
 - [ ] **#25** — D101 Windows pairing — D101 now supported; ask user to retry with latest
 
-## Future Improvements
+## Future Improvements (Phase 3-6 from Round 4 Review)
 
-- [ ] **CI/CD pipeline** — Add GitHub Actions workflow for linting + pytest on push
-- [ ] **Expand test suite** — Add packet error-path tests, AppConfig isolation from filesystem, merge_label_sizes tests, CacheManager round-trip, _encode_image pixel verification
+- [ ] **CI/CD pipeline** — Add test runner workflow, lint/type check, dependency audit, PR build check
+- [ ] **Expand test suite** — 50+ test cases identified; packet error-path tests done, need PrinterClient mocks, UserConfig merge, CLI CliRunner, bluetooth find_device
 - [ ] **User config documentation** — Document TOML config format in README
 - [ ] **Rotation UI control** (#38) — Add rotation slider/dropdown to the GUI for user-adjustable rotation
 - [ ] **Update Flatpak metadata** — Change developer_name from "labbots" to fork maintainer
 - [ ] **Screenshot for metainfo** — Add main-window.png (missing from PR #16 binary cherry-pick)
 - [ ] **README install instructions** — Fix contradictory venv + poetry install guidance
 - [ ] **Python version floor** — Document why >=3.12 (tomllib needs 3.11, bleak winrt needs 3.12)
+
+- [ ] **Error handling** — Add error handling to save_to_file, load_text/image, display_print, load_image (#69-74)
+- [ ] **Input validation** — Validate density spinbox, quantity IntRange, TOML config scalars (#45, #54, #55, #65)
+- [ ] **CLI exit codes** — CLI exits code 0 on all errors; needs sys.exit(1) (#62, #63)
+- [ ] **Dependencies** — Bump Pillow to ^12.1.1 (CVE fix), replace appdirs with platformdirs, remove unused devtools/pytest-asyncio
+- [ ] **GitHub Actions** — Fix Linux job name, macOS runtime_hooks, version extraction, poetry cache, apt-get update
+- [ ] **Performance** — Replace getpixel() loop with tobytes(), remove export_to_png double encode-decode
+- [ ] **Dead code cleanup** — Remove dead imports (asyncio, ttk, messagebox, PIL), commented-out code in TextTab
 
 ## Code Review Fixes (2026-04-11, second session)
 
@@ -53,6 +61,27 @@
 - [x] Fixed StatusBar oval leak, default_bg, spinbox validation, resize_text order
 - [x] Fixed negative offset crash, find_device None guard, CLI connect handling
 - [x] Updated AppStream metainfo to v0.2.0
+
+### Round 4 — Deep dive (13 critical fixes, 20 parallel review agents, 95 findings total)
+- [x] Fixed send_command notification race (clear event before wait, not after)
+- [x] Catch ValueError from from_bytes, wrap as PrinterException
+- [x] Added _print_lock to prevent heartbeat interleaving with image data
+- [x] Fixed BleakClient.connect() return value (returns None not bool in bleak >= 0.14)
+- [x] Fixed BLETransport.connect() already-connected returning False
+- [x] Added packet length field validation in from_bytes
+- [x] Fixed heartbeat case 10 rfid_read_state duplication (still present despite Round 3)
+- [x] Renamed set_dimension(w,h) → set_dimension(height, width) to match call sites
+- [x] Stop asyncio loop in on_close before destroy()
+- [x] Guard _print_handler against destroyed widgets (TclError)
+- [x] Fix lambda captures in schedule_heartbeat (bind by value)
+- [x] Fix text DPI — set resolution on Image not Drawing (was no-op at 72 DPI)
+- [x] Fix WandImage memory leak (context-manage metrics probe)
+- [x] Fix os.environ not updated in load_libraries (local dict copy never written back)
+- [x] Handle both tk.PhotoImage and ImageTk.PhotoImage in save_to_file
+- [x] Fix icon grid anchor n → nw (left half was clipped)
+- [x] Force img.load() in background thread (PIL lazy loading defeated threading)
+- [x] Move NotebookTabChanged bind outside loop (was registered N times)
+- [x] Added 9 new tests (22 total, all passing)
 
 ### Round 3 — Final pass (29 fixes)
 - [x] Fixed heartbeat case 10 copy-paste bug (rfid_read_state index)
