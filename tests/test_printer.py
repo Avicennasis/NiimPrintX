@@ -65,6 +65,24 @@ async def test_send_command_catches_valueerror_from_malformed_packet():
 
 
 @pytest.mark.asyncio
+async def test_heartbeat_case_10_no_rfid():
+    """10-byte heartbeat should not set rfid_read_state (only 2 useful fields)."""
+    client = _make_client()
+    hb_data = bytes(10)
+    response_pkt = NiimbotPacket(RequestCodeEnum.HEARTBEAT, hb_data)
+
+    async def fake_write(data, char_uuid):
+        client.notification_data = response_pkt.to_bytes()
+        client.notification_event.set()
+
+    client.transport.write = AsyncMock(side_effect=fake_write)
+    result = await client.heartbeat()
+    assert result["closing_state"] == hb_data[8]
+    assert result["power_level"] == hb_data[9]
+    assert result["rfid_read_state"] is None
+
+
+@pytest.mark.asyncio
 async def test_send_command_timeout_raises_printer_exception():
     """Timeout must be wrapped as PrinterException."""
     client = _make_client()

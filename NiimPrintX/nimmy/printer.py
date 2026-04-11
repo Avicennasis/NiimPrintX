@@ -309,7 +309,6 @@ class PrinterClient:
             case 10:
                 closing_state = packet.data[8]
                 power_level = packet.data[9]
-                rfid_read_state = packet.data[9]
             case 9:
                 closing_state = packet.data[8]
 
@@ -359,16 +358,16 @@ class PrinterClient:
         packet = await self.send_command(RequestCodeEnum.ALLOW_PRINT_CLEAR, b"\x01")
         return bool(packet.data[0])
 
-    async def set_dimension(self, w, h):
+    async def set_dimension(self, height, width):
         packet = await self.send_command(
-            RequestCodeEnum.SET_DIMENSION, struct.pack(">HH", w, h)
+            RequestCodeEnum.SET_DIMENSION, struct.pack(">HH", height, width)
         )
         return bool(packet.data[0])
 
-    async def set_dimensionV2(self, w, h, copies):
-        logger.debug(f"Setting dimension: {w}x{h}")
+    async def set_dimensionV2(self, height, width, copies):
+        logger.debug(f"Setting dimension: {height}x{width}")
         packet = await self.send_command(
-            RequestCodeEnum.SET_DIMENSION, struct.pack(">HHH", w, h, copies)
+            RequestCodeEnum.SET_DIMENSION, struct.pack(">HHH", height, width, copies)
         )
         return bool(packet.data[0])
 
