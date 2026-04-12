@@ -32,18 +32,56 @@
 
 ## Outstanding (Important)
 
-- [ ] **Architecture: Split AppConfig** — God object mixing immutable config + mutable canvas state
-- [ ] **Architecture: Move helper.py** — From nimmy/ to cli/ (it's a Rich presentation layer)
-- [ ] **Architecture: Move UserConfig.py** — From ui/ to nimmy/ (no UI dependency)
-- [ ] **Architecture: FileMenu callbacks** — Use callbacks instead of reaching into root.text_tab
-- [ ] **Dependabot pip ecosystem** — `dependabot.yml` uses `pip` ecosystem which doesn't parse `[tool.poetry.dependencies]`; Python deps get no automated update PRs; comment added documenting this
+- [ ] **Architecture: Split AppConfig** — God object mixing immutable config + mutable canvas state. Proposed split: ImmutableConfig (os_system, current_dir, icon_folder, label_sizes), CanvasState (canvas, bounding_box, text/image_items, selections), PrinterState (device, label_size, connected, print_job). ~12 files to update. See Round 22 review doc for full analysis.
+- [ ] **Performance: BLE start_notify/stop_notify lifecycle** — Currently arms/disarms notifications on every `send_command` call (up to 800 BLE round-trips per print job). Hold subscription open for duration of print job; `_command_lock` already serializes access.
+- [ ] **Performance: Font disk cache** — `fonts()` subprocess runs `magick -list font` on every app launch (~1-3s). Cache parsed result to `AppConfig.cache_dir` with mtime-based invalidation.
 - [ ] **BLE unsolicited notification handling** — Notification handler silently drops unsolicited BLE notifications that could be consumed as command responses; needs hardware testing to verify impact
 - [ ] **UI type annotations** — UI layer (19 files) has no type annotations; nimmy and cli layers are fully typed
-- [ ] **macOS code signing** — entitlements.plist needed for Bluetooth TCC approval; TODO in mac spec
+- [ ] **macOS code signing** — entitlements.plist needed for Bluetooth TCC approval; TODO in mac spec. Create entitlements.plist with `com.apple.security.device.bluetooth`, configure codesign_identity in mac spec, add signing step to `_build-macos.yaml`. Requires Apple Developer account.
+- [ ] **macOS ImageMagick dylibs** — `NiimPrintX-mac.spec` puts dylibs in `datas` instead of `binaries`; PyInstaller won't fix up `LC_RPATH` entries. Split collection: `lib/*.dylib` and `bin/magick` → `binaries`, `etc/` and `share/` → `datas`.
+- [ ] **V2 method naming** — `print_imageV2`, `start_printV2`, `set_dimensionV2` use camelCase; rename to `print_image_v2`, `start_print_v2`, `set_dimension_v2` (PEP 8). 3 methods + their call sites in command.py and PrinterOperation.py.
 
 ---
 
 ## Completed
+
+### Round 22 Deep Code Review (2026-04-12, tenth session)
+
+- [x] **25-agent full-codebase burn** — ~130 findings across type safety, security, CI/CD, bugs, architecture, code quality, tests, performance, build, cross-platform, error handling, docs
+- [x] **2 mypy errors fixed** — None guards for `transport.client.services` and `notification_data`
+- [x] **4 UI bugs fixed** — ImageOp bbox None dereference, start_image_resize missing initial_y, PrintOption wrong status value, TextOp delete handle None check
+- [x] **P-mode palette transparency** — Images with palette transparency key now composite correctly
+- [x] **send_command code_label 4x deduplication** — Resolve once before write, not in each handler
+- [x] **set_dimensionV2 copies bounds check** — Validates 1-65535 range
+- [x] **Security: base64 memory bomb guards** — 10MB cap on base64 strings before decode (3 sites in FileMenu)
+- [x] **Security: TabbedIconGrid MAX_IMAGE_PIXELS** — Added missing PIL decompression bomb guard
+- [x] **Security: RFID control-char sanitization** — Strip \n\r from barcode/serial fields
+- [x] **Security: packet trailing bytes warning** — Log when BLE frame has ignored trailing data
+- [x] **CI: Windows+macOS script injection fixed** — VERSION passed via env: context
+- [x] **CI: coverage threshold unified** — pyproject.toml and CI both at 90%, PrintOption.py added to omit
+- [x] **CI: concurrency groups** — Prevent duplicate CI and release runs
+- [x] **CI: tomllib version parser** — Replace fragile sed with Python tomllib
+- [x] **CI: pin windows-2022** — Was floating windows-latest
+- [x] **CI: apt→apt-get** — Consistency in Linux build
+- [x] **CI: dependabot pip entry** — Commented out non-functional pip ecosystem
+- [x] **Cross-platform: AppConfig icon_folder** — Hardcoded / → os.path.join
+- [x] **Cross-platform: DYLD_LIBRARY_PATH** — Split Linux/Darwin, fixed lib/ path on macOS
+- [x] **Architecture: helper.py → cli/helper.py** — Rich presentation layer moved to CLI package
+- [x] **Architecture: UserConfig.py → nimmy/userconfig.py** — Config loading moved to core (enables CLI sharing)
+- [x] **Architecture: FileMenu callback decoupling** — 5 direct widget accesses replaced with callbacks
+- [x] **Performance: NiimbotPacket.to_bytes** — bytearray replaces tuple spread (1 allocation per row saved)
+- [x] **Performance: TextTab Wand debounce** — 150ms after() delay prevents UI freeze on fast spinbox
+- [x] **Error handling: save_image()** — Added try/except with error dialog
+- [x] **Error handling: raise e → raise** — Preserves original traceback in print_label
+- [x] **Error handling: notification_handler logging** — Warns when _loop is None instead of silent drop
+- [x] **Code quality** — isinstance modernization (union form), match/case in FontList, boolean simplification in TextOperation, redundant getattr cleanup, find_device simplification
+- [x] **15 new tests** — PA/LA/P mode encoding, RFID overruns, write_raw guard, set_dimensionV2 copies, merge_label_sizes, PrinterOp disconnect, find_characteristics edge cases, notification_data None
+- [x] **Python constraint** — Narrowed to >=3.12,<3.15 (pyinstaller 6.19 requires <3.15)
+- [x] **Build specs** — CLI excludes (tkinter/wand/cairo), Windows path anchored to spec dir, Linux TK path guard
+- [x] **CHANGELOG.md** — Created with Keep a Changelog format (v0.1.0–v0.7.0)
+- [x] **README** — Version, test count, entry points, dev commands, macOS paths, ImageMagick as GUI-only
+- [x] **info_command** — Initialize success=False before try block
+- [x] **was_connecting** — Remove shadowed variable in PrintOption
 
 ### Rounds 17–21 Deep Code Review (2026-04-12, ninth session)
 
