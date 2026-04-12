@@ -146,20 +146,17 @@ def test_encode_image_negative_horizontal_offset_crops(make_client):
 
 
 # ---------------------------------------------------------------------------
-# 5. send_command — start_notification failure skips stop_notification
+# 5. send_command — start_notification failure raises PrinterException
 # ---------------------------------------------------------------------------
 
 
-async def test_send_command_start_notification_failure_skips_stop(make_client):
-    """If start_notification raises, stop_notification must NOT be called
-    (notifying flag was never set)."""
+async def test_send_command_start_notification_failure_raises(make_client):
+    """If start_notification raises, PrinterException must propagate."""
     client = make_client()
     client.transport.start_notification = AsyncMock(side_effect=BLEException("start failed"))
 
     with pytest.raises(PrinterException, match="BLE error"):
         await client.send_command(RequestCodeEnum.GET_INFO, b"\x01")
-
-    client.transport.stop_notification.assert_not_awaited()
 
 
 # ---------------------------------------------------------------------------

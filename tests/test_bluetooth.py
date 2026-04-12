@@ -300,7 +300,7 @@ async def test_stop_notification_failure_still_discards_uuid():
     uuid = "test-uuid"
     transport._notifying_uuids.add(uuid)
 
-    with pytest.raises(BleakError):
+    with pytest.raises(BLEException, match="stop_notify failed"):
         await transport.stop_notification(uuid)
 
     assert uuid not in transport._notifying_uuids

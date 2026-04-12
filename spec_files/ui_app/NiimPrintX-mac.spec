@@ -34,19 +34,37 @@ def collect_and_adjust_files(base_path, target_dir):
 # Get the ImageMagick installation path dynamically and resolve symlink
 imagemagick_path = get_imagemagick_path()
 
-# Collect the ImageMagick binaries and libraries and specify the target directory
-datas = collect_and_adjust_files(imagemagick_path, 'imagemagick')
+# Collect ImageMagick files, splitting binaries from data
+imagemagick_binaries = []
+imagemagick_datas = []
 
-current_path = os.getcwd()
-if os.path.basename(current_path) == "ui_app":
-    src_path = os.path.join(current_path, '..', '..', 'NiimPrintX', 'ui')
-elif os.path.basename(current_path) == "NiimPrintX":
-    src_path = os.path.join(current_path, 'NiimPrintX', 'ui')
-else:
-    src_path = os.path.join(current_path, 'ui')
+im_lib = os.path.join(imagemagick_path, 'lib')
+im_bin = os.path.join(imagemagick_path, 'bin')
 
-# Add custom assets
-datas += [
+# Binaries: dylibs need LC_RPATH fixup by PyInstaller
+if os.path.isdir(im_lib):
+    for f in os.listdir(im_lib):
+        if f.endswith('.dylib'):
+            imagemagick_binaries.append((os.path.join(im_lib, f), 'imagemagick/lib'))
+
+# Binaries: magick executable
+if os.path.isdir(im_bin):
+    for f in os.listdir(im_bin):
+        if f == 'magick' or f.startswith('magick-'):
+            imagemagick_binaries.append((os.path.join(im_bin, f), 'imagemagick/bin'))
+
+# Data: config and share files
+for subdir in ('etc', 'share'):
+    subpath = os.path.join(imagemagick_path, subdir)
+    if os.path.isdir(subpath):
+        imagemagick_datas.extend(collect_and_adjust_files(subpath, os.path.join('imagemagick', subdir)))
+
+spec_dir = os.path.dirname(os.path.abspath(__file__))
+repo_root = os.path.normpath(os.path.join(spec_dir, '..', '..'))
+src_path = os.path.join(repo_root, 'NiimPrintX', 'ui')
+
+# Combine ImageMagick data with custom assets
+datas = imagemagick_datas + [
     (os.path.join(src_path, 'icons'), 'NiimPrintX/ui/icons'),
     (os.path.join(src_path, 'assets'), 'NiimPrintX/ui/assets')
 ]
@@ -54,7 +72,7 @@ datas += [
 a = Analysis(
     [os.path.join(src_path, '__main__.py')],
     pathex=['.'],
-    binaries=[],
+    binaries=imagemagick_binaries,
     datas=datas,
     hiddenimports=['tkinter'] + hiddenimports,
     hookspath=[],
@@ -82,7 +100,7 @@ exe = EXE(
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
-    entitlements_file=None,  # TODO: set to entitlements.plist when code signing is configured (needed for Bluetooth TCC approval)
+    entitlements_file=os.path.join(repo_root, 'entitlements.plist'),  # Bluetooth TCC approval; requires codesign_identity to take effect
     icon=os.path.join(src_path, 'assets', 'icon.icns'),
     onefile=False,  # Must be False for .app bundle (COLLECT+BUNDLE pattern)
 )

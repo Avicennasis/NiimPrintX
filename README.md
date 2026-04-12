@@ -20,7 +20,7 @@ Since forking, we have:
 
 - Merged outstanding upstream pull requests from the community
 - Conducted 22 rounds of deep code review, hardening the codebase throughout
-- Added a comprehensive test suite (331 pytest tests, 90%+ coverage) and CI/CD pipeline
+- Added a comprehensive test suite (380 pytest tests, 90%+ coverage) and CI/CD pipeline
 - Replaced the pickle-based `.niim` file format with a secure JSON-based format
 - Introduced user-configurable custom label sizes, per-device rotation, and BLE resilience improvements
 
@@ -40,7 +40,7 @@ A huge thank you to [labbots](https://github.com/labbots) for creating NiimPrint
 * **User-Configurable Label Sizes:** Define custom label dimensions and device profiles via a simple TOML config file.
 * **Per-Device Rotation Settings:** Configure default rotation on a per-device basis through the config file.
 * **Decompression Bomb Protection:** Image loading includes safeguards against decompression bomb attacks.
-* **Comprehensive Test Suite:** 331 pytest tests (90%+ coverage) covering packets, Bluetooth communication, image encoding, configuration, CLI, and print integration.
+* **Comprehensive Test Suite:** 380 pytest tests (90%+ coverage) covering packets, Bluetooth communication, image encoding, configuration, CLI, and print integration.
 * **CI/CD Pipeline:** Automated ruff linting, pytest runs on every push, and PyInstaller builds for Linux, macOS, and Windows on tagged releases.
 
 ## Requirements
@@ -124,7 +124,7 @@ NiimPrintX supports an optional TOML configuration file for customizing device s
 [devices.myprinter]
 density = 3
 print_dpi = 203
-rotation = -90
+rotation = 270
 
 [devices.myprinter.size]
 "50mm x 25mm" = [50, 25]
@@ -133,7 +133,7 @@ rotation = -90
 ### How merging works
 
 * **Existing devices:** User-defined sizes are merged into the built-in size list. You can add new label sizes without losing the defaults.
-* **New devices:** You can define entirely new device entries. A new device must include at least one valid size (a `[width, height]` pair). Optional settings (`density`, `print_dpi`, `rotation`) default to `3`, `203`, and `-90` respectively if omitted.
+* **New devices:** You can define entirely new device entries. A new device must include at least one valid size (a `[width, height]` pair). Optional settings (`density`, `print_dpi`, `rotation`) default to `3`, `203`, and `270` respectively if omitted.
 
 
 ## Usage

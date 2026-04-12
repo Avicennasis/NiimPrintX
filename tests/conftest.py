@@ -49,6 +49,7 @@ def make_client():
         client.notification_data = None
         client._command_lock = asyncio.Lock()
         client._print_lock = asyncio.Lock()
+        client._expecting_response = False
         try:
             client._loop = asyncio.get_running_loop()
         except RuntimeError:

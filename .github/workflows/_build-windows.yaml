@@ -10,6 +10,10 @@ jobs:
   windows:
     name: "Windows"
     runs-on: windows-2022
+    # To update: download new portable ZIP from https://imagemagick.org/archive/binaries/, update version + SHA-256
+    env:
+      IMAGEMAGICK_VERSION: "7.1.1-33"
+      IMAGEMAGICK_SHA256: "9448F8A1159C9B14E3E1B9D8EAB1A6DDF88D26E1F888A34CEF430C756E4E6E1E"
 
     steps:
       - name: Extract Tag
@@ -52,11 +56,11 @@ jobs:
 
       - name: Download ImageMagick
         run: |
-          Invoke-WebRequest -Uri https://imagemagick.org/archive/binaries/ImageMagick-7.1.1-33-portable-Q16-HDRI-x64.zip -OutFile ImageMagick.zip
+          Invoke-WebRequest -Uri https://imagemagick.org/archive/binaries/ImageMagick-${{ env.IMAGEMAGICK_VERSION }}-portable-Q16-HDRI-x64.zip -OutFile ImageMagick.zip
 
       - name: Verify ImageMagick checksum
         run: |
-          $expected = "9448F8A1159C9B14E3E1B9D8EAB1A6DDF88D26E1F888A34CEF430C756E4E6E1E"
+          $expected = "${{ env.IMAGEMAGICK_SHA256 }}"
           $actual = (Get-FileHash -Path ImageMagick.zip -Algorithm SHA256).Hash
           if ($actual -ne $expected) {
             Write-Error "SHA-256 mismatch! Expected: $expected Got: $actual"

@@ -66,6 +66,7 @@ class PrinterClient:
         self._loop: asyncio.AbstractEventLoop | None = None
         self._command_lock: asyncio.Lock = asyncio.Lock()
         self._print_lock: asyncio.Lock = asyncio.Lock()
+        self._expecting_response: bool = False
 
     async def connect(self) -> bool:
         await self.transport.connect(self.device.address)
@@ -80,6 +81,9 @@ class PrinterClient:
         return True
 
     async def disconnect(self) -> None:
+        if self.char_uuid is not None:
+            with contextlib.suppress(Exception):
+                await self.transport.stop_notification(self.char_uuid)
         self.char_uuid = None
         await self.transport.disconnect()
         logger.info(f"Printer {self.device.name!r} disconnected.")
@@ -110,14 +114,12 @@ class PrinterClient:
 
     async def send_command(self, request_code: int, data: bytes, timeout: float = 10) -> NiimbotPacket:  # noqa: ASYNC109 — uses asyncio.wait_for internally
         async with self._command_lock:
-            notifying = False
-            char_uuid: str | None = None  # capture before any await can race with disconnect()
+            code_label = hex(request_code)  # default before try; overridden with enum name inside
             try:
                 if (not self.transport.client or not self.transport.client.is_connected) and not await self.connect():
                     raise PrinterException("Failed to reconnect to printer")
                 if self.char_uuid is None:
                     raise PrinterException("No characteristic UUID available")
-                char_uuid = self.char_uuid  # snapshot for use in finally
                 # Clear stale state BEFORE arming notifications
                 self.notification_event.clear()
                 self.notification_data = None
@@ -126,9 +128,10 @@ class PrinterClient:
                 except ValueError:
                     code_label = hex(request_code)
                 packet = NiimbotPacket(request_code, data)
-                await self.transport.start_notification(char_uuid, self.notification_handler)
-                notifying = True
-                await self.transport.write(packet.to_bytes(), char_uuid)
+                # start_notification is idempotent — no-ops if already armed
+                await self.transport.start_notification(self.char_uuid, self.notification_handler)
+                self._expecting_response = True
+                await self.transport.write(packet.to_bytes(), self.char_uuid)
                 logger.debug(f"Printer command sent - {code_label}:{request_code} - {list(data)}")
                 await asyncio.wait_for(self.notification_event.wait(), timeout)
                 # notification_data is set by notification_handler callback via call_soon_threadsafe;
@@ -149,11 +152,7 @@ class PrinterClient:
                 logger.debug(f"Malformed response for {code_label}: {e}")
                 raise PrinterException(f"Malformed printer response: {e}") from e
             finally:
-                if notifying and char_uuid is not None:
-                    try:
-                        await self.transport.stop_notification(char_uuid)
-                    except Exception as e:  # noqa: BLE001 — best-effort cleanup during notification teardown
-                        logger.warning(f"stop_notify failed: {e}")
+                self._expecting_response = False
                 self.notification_event.clear()
 
     async def write_raw(self, data: NiimbotPacket) -> None:
@@ -175,9 +174,11 @@ class PrinterClient:
             return
 
         def _set() -> None:
-            if not self.notification_event.is_set():
+            if self._expecting_response and not self.notification_event.is_set():
                 self.notification_data = bytes(data)
                 self.notification_event.set()
+            elif not self._expecting_response:
+                logger.debug(f"Unsolicited notification dropped ({len(data)} bytes)")
 
         self._loop.call_soon_threadsafe(_set)
 
@@ -191,7 +192,7 @@ class PrinterClient:
     ) -> None:
         await self._print_job(image, density, quantity, vertical_offset, horizontal_offset, v2=False)
 
-    async def print_imageV2(
+    async def print_image_v2(
         self,
         image: Image.Image,
         density: int = 3,
@@ -219,7 +220,7 @@ class PrinterClient:
                 await self.set_label_type(1)
 
                 if v2:
-                    await self.start_printV2(quantity=quantity)
+                    await self.start_print_v2(quantity=quantity)
                 else:
                     await self.start_print()
                 print_started = True
@@ -246,7 +247,7 @@ class PrinterClient:
                     )
 
                 if v2:
-                    await self.set_dimensionV2(effective_height, effective_width, quantity)
+                    await self.set_dimension_v2(effective_height, effective_width, quantity)
                 else:
                     await self.set_dimension(effective_height, effective_width)
                     await self.set_quantity(quantity)
@@ -275,6 +276,8 @@ class PrinterClient:
 
                 await self.end_print()
             except BaseException as e:
+                # BaseException includes CancelledError — must clean up printer
+                # to avoid leaving hardware in mid-print state (requires power cycle)
                 logger.error(f"Print job failed: {e}")
                 if print_started and self.transport.client and self.transport.client.is_connected:
                     if page_started:
@@ -483,7 +486,7 @@ class PrinterClient:
             raise PrinterException("Empty response from printer for START_PRINT")
         return bool(packet.data[0])
 
-    async def start_printV2(self, quantity: int) -> bool:
+    async def start_print_v2(self, quantity: int) -> bool:
         if not 1 <= quantity <= 65535:
             raise PrinterException(f"Quantity must be 1-65535, got {quantity}")
         command = struct.pack(">H", quantity)
@@ -520,7 +523,7 @@ class PrinterClient:
             raise PrinterException("Empty response from printer for SET_DIMENSION")
         return bool(packet.data[0])
 
-    async def set_dimensionV2(self, height: int, width: int, copies: int) -> bool:
+    async def set_dimension_v2(self, height: int, width: int, copies: int) -> bool:
         if not 1 <= height <= 65535:
             raise PrinterException(f"Height must be 1-65535, got {height}")
         if not 1 <= width <= 65535:

@@ -97,7 +97,7 @@ async def test_print_image_command_ordering(make_client):
 
 
 async def test_print_image_v2_sends_correct_commands(make_client):
-    """print_imageV2 should use V2 start/dimension commands and end with status polling + end_print."""
+    """print_image_v2 should use V2 start/dimension commands and end with status polling + end_print."""
     client = make_client()
 
     # Custom auto-respond that returns page=2 for status (matching quantity=2)
@@ -118,19 +118,19 @@ async def test_print_image_v2_sends_correct_commands(make_client):
 
     img = Image.new("L", (16, 4), color=128)
     with patch("asyncio.sleep", new_callable=AsyncMock):
-        await client.print_imageV2(img, density=3, quantity=2)
+        await client.print_image_v2(img, density=3, quantity=2)
 
     assert RequestCodeEnum.SET_LABEL_DENSITY in commands_sent
     assert RequestCodeEnum.SET_LABEL_TYPE in commands_sent
-    assert RequestCodeEnum.START_PRINT in commands_sent  # start_printV2 uses same code
+    assert RequestCodeEnum.START_PRINT in commands_sent  # start_print_v2 uses same code
     assert RequestCodeEnum.START_PAGE_PRINT in commands_sent
-    assert RequestCodeEnum.SET_DIMENSION in commands_sent  # set_dimensionV2 uses same code
+    assert RequestCodeEnum.SET_DIMENSION in commands_sent  # set_dimension_v2 uses same code
     assert 0x85 in commands_sent  # image data
     assert RequestCodeEnum.END_PAGE_PRINT in commands_sent
     # V2 now calls status polling and end_print (matching print_image behavior)
     assert RequestCodeEnum.GET_PRINT_STATUS in commands_sent
     assert RequestCodeEnum.END_PRINT in commands_sent
-    # V2 does NOT call set_quantity (quantity is passed via start_printV2 and set_dimensionV2)
+    # V2 does NOT call set_quantity (quantity is passed via start_print_v2 and set_dimension_v2)
     assert RequestCodeEnum.SET_QUANTITY not in commands_sent
 
 
@@ -184,14 +184,14 @@ def _auto_respond_with_data(client, *, status_page=1):
     return commands_sent
 
 
-async def test_print_imageV2_uses_v2_commands(make_client):
-    """print_imageV2 should use V2 start/dimension format with quantity embedded in the payload."""
+async def test_print_image_v2_uses_v2_commands(make_client):
+    """print_image_v2 should use V2 start/dimension format with quantity embedded in the payload."""
     client = make_client()
     commands = _auto_respond_with_data(client, status_page=2)
 
     img = Image.new("L", (16, 4), color=128)
     with patch("asyncio.sleep", new_callable=AsyncMock):
-        await client.print_imageV2(img, density=3, quantity=2)
+        await client.print_image_v2(img, density=3, quantity=2)
 
     types = [t for t, _ in commands]
 

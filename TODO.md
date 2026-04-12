@@ -7,15 +7,15 @@
 - [ ] **#37 — B21S support** — May be similar to B21; needs hardware to verify protocol
 - [ ] **#34 — K3 support** — Unknown protocol; needs hardware research
 - [ ] **#23 — B3S support** — Unknown protocol; needs hardware research
-- [ ] **#18 — macOS CoreBluetooth "Event loop is closed" crash** — bleak async lifecycle bug on macOS Big Sur; may be fixed by bleak 0.22.3 upgrade (needs macOS testing)
+- [ ] **#18 — macOS CoreBluetooth "Event loop is closed" crash** — bleak async lifecycle bug on macOS Big Sur; may already be resolved by bleak 3.0 migration (needs macOS testing to confirm)
 - [ ] **#10 — Phomemo printer support** — Different brand/protocol; likely out of scope
 
 ## Known Protocol Issues (Need Hardware to Verify)
 
 > These protocol changes risk breaking working configurations. Do not implement without hardware to verify.
 
-- [ ] **D11_H 7-byte START_PRINT** — Upstream PR #36 comment by @MultiMote suggests D11_H needs a 7-byte START_PRINT packet (matching `start_printV2` format) instead of the 1-byte `start_print`. Users reported blank labels. D11_H may need routing through the V2 print path. Needs hardware testing before changing.
-- [ ] **B1 multi-copy printing** — `print_imageV2()` passes quantity to `start_printV2` and `set_dimensionV2` but only sends page data once. Upstream user @hadess confirmed multi-copy doesn't work. Unclear if firmware handles repetition or if the page block needs to loop. Needs B1 hardware testing.
+- [ ] **D11_H 7-byte START_PRINT** — Upstream PR #36 comment by @MultiMote suggests D11_H needs a 7-byte START_PRINT packet (matching `start_print_v2` format) instead of the 1-byte `start_print`. Users reported blank labels. D11_H may need routing through the V2 print path. Needs hardware testing before changing.
+- [ ] **B1 multi-copy printing** — `print_image_v2()` passes quantity to `start_print_v2` and `set_dimension_v2` but only sends page data once. Upstream user @hadess confirmed multi-copy doesn't work. Unclear if firmware handles repetition or if the page block needs to loop. Needs B1 hardware testing.
 
 ## Upstream Issues to Close (No Code Needed)
 
@@ -28,18 +28,18 @@
 
 ## Outstanding (Blocking before v0.8.0)
 
-- [ ] **ImageMagick Windows URL** — Download URL hardcoded to 7.1.1-33; needs auto-latest or pinned artifact
+- [x] **ImageMagick Windows URL** — Version + SHA extracted into env vars in `_build-windows.yaml`
 
 ## Outstanding (Important)
 
-- [ ] **Architecture: Split AppConfig** — God object mixing immutable config + mutable canvas state. Proposed split: ImmutableConfig (os_system, current_dir, icon_folder, label_sizes), CanvasState (canvas, bounding_box, text/image_items, selections), PrinterState (device, label_size, connected, print_job). ~12 files to update. See Round 22 review doc for full analysis.
-- [ ] **Performance: BLE start_notify/stop_notify lifecycle** — Currently arms/disarms notifications on every `send_command` call (up to 800 BLE round-trips per print job). Hold subscription open for duration of print job; `_command_lock` already serializes access.
-- [ ] **Performance: Font disk cache** — `fonts()` subprocess runs `magick -list font` on every app launch (~1-3s). Cache parsed result to `AppConfig.cache_dir` with mtime-based invalidation.
-- [ ] **BLE unsolicited notification handling** — Notification handler silently drops unsolicited BLE notifications that could be consumed as command responses; needs hardware testing to verify impact
-- [ ] **UI type annotations** — UI layer (19 files) has no type annotations; nimmy and cli layers are fully typed
-- [ ] **macOS code signing** — entitlements.plist needed for Bluetooth TCC approval; TODO in mac spec. Create entitlements.plist with `com.apple.security.device.bluetooth`, configure codesign_identity in mac spec, add signing step to `_build-macos.yaml`. Requires Apple Developer account.
-- [ ] **macOS ImageMagick dylibs** — `NiimPrintX-mac.spec` puts dylibs in `datas` instead of `binaries`; PyInstaller won't fix up `LC_RPATH` entries. Split collection: `lib/*.dylib` and `bin/magick` → `binaries`, `etc/` and `share/` → `datas`.
-- [ ] **V2 method naming** — `print_imageV2`, `start_printV2`, `set_dimensionV2` use camelCase; rename to `print_image_v2`, `start_print_v2`, `set_dimension_v2` (PEP 8). 3 methods + their call sites in command.py and PrinterOperation.py.
+- [x] **Architecture: Split AppConfig** — God object split into `ImmutableConfig` + `CanvasState` + `PrinterState` in `config.py`. All 12 widget files migrated. `AppConfig` retained as thin delegation layer for test compatibility. `mm_to_pixels()` is now a free function.
+- [x] **Performance: BLE start_notify/stop_notify lifecycle** — Removed per-command stop_notification; subscription stays armed until disconnect(). Eliminates up to 800 wasted BLE round-trips per print job.
+- [x] **Performance: Font disk cache** — JSON cache at `~/.cache/NiimPrintX/font_cache.json` with mtime-based invalidation. Saves ~1-3s on app launch.
+- [x] **BLE unsolicited notification handling** — Added `_expecting_response` flag; handler now drops notifications when no command is in flight. Logs dropped notifications at debug level.
+- [x] **UI type annotations** — All 14 UI files annotated with full method signatures and TYPE_CHECKING guards
+- [x] **macOS code signing** — entitlements.plist created with Bluetooth entitlement; both mac specs updated. Requires Apple Developer account for codesign_identity to take effect.
+- [x] **macOS ImageMagick dylibs** — Split `lib/*.dylib` + `bin/magick` into `binaries` for LC_RPATH fixup; `etc/` + `share/` remain as `datas`.
+- [x] **V2 method naming** — `print_imageV2`, `start_printV2`, `set_dimensionV2` renamed to `print_image_v2`, `start_print_v2`, `set_dimension_v2` (PEP 8). 3 methods + call sites in command.py and PrinterOperation.py.
 
 ---
 
@@ -52,7 +52,7 @@
 - [x] **4 UI bugs fixed** — ImageOp bbox None dereference, start_image_resize missing initial_y, PrintOption wrong status value, TextOp delete handle None check
 - [x] **P-mode palette transparency** — Images with palette transparency key now composite correctly
 - [x] **send_command code_label 4x deduplication** — Resolve once before write, not in each handler
-- [x] **set_dimensionV2 copies bounds check** — Validates 1-65535 range
+- [x] **set_dimension_v2 copies bounds check** — Validates 1-65535 range
 - [x] **Security: base64 memory bomb guards** — 10MB cap on base64 strings before decode (3 sites in FileMenu)
 - [x] **Security: TabbedIconGrid MAX_IMAGE_PIXELS** — Added missing PIL decompression bomb guard
 - [x] **Security: RFID control-char sanitization** — Strip \n\r from barcode/serial fields
@@ -75,7 +75,7 @@
 - [x] **Error handling: raise e → raise** — Preserves original traceback in print_label
 - [x] **Error handling: notification_handler logging** — Warns when _loop is None instead of silent drop
 - [x] **Code quality** — isinstance modernization (union form), match/case in FontList, boolean simplification in TextOperation, redundant getattr cleanup, find_device simplification
-- [x] **15 new tests** — PA/LA/P mode encoding, RFID overruns, write_raw guard, set_dimensionV2 copies, merge_label_sizes, PrinterOp disconnect, find_characteristics edge cases, notification_data None
+- [x] **15 new tests** — PA/LA/P mode encoding, RFID overruns, write_raw guard, set_dimension_v2 copies, merge_label_sizes, PrinterOp disconnect, find_characteristics edge cases, notification_data None
 - [x] **Python constraint** — Narrowed to >=3.12,<3.15 (pyinstaller 6.19 requires <3.15)
 - [x] **Build specs** — CLI excludes (tkinter/wand/cairo), Windows path anchored to spec dir, Linux TK path guard
 - [x] **CHANGELOG.md** — Created with Keep a Changelog format (v0.1.0–v0.7.0)
@@ -152,7 +152,7 @@
 
 - [x] **25-agent parallel burn** — full codebase audit across every .py file + CI/CD + build specs
 - [x] **BLE hardening** — stale requirements.txt (bleak 0.22 → 3.0), print_started flag prevents double end_print
-- [x] **Protocol bounds** — set_dimension/set_dimensionV2 height/width validation (1-65535)
+- [x] **Protocol bounds** — set_dimension/set_dimension_v2 height/width validation (1-65535)
 - [x] **Lifecycle fixes** — asyncio.all_tasks() loop param removed (Python 3.10+), destroy() TclError guard, heartbeat CancelledError handler
 - [x] **PrinterOperation safety** — printer assigned only after successful connect, nulled on disconnect failure, printer_connected reset on heartbeat error
 - [x] **UI robustness** — ImageOperation bbox None guard, TextOperation text_id guards in move/resize, StatusBar TclError guard, density default clamped to device max, rotated image leak fixed
@@ -231,7 +231,7 @@
 - [x] **20-agent review** — 120+ findings (19 critical, 45 important, 25 medium)
 - [x] **21-agent fix session** — All critical and important fixes applied across 47 files
 - [x] **Protocol routing** — B18/B21 now correctly routed to V2 in GUI (was V1-only, CLI was correct)
-- [x] **Code dedup** — print_image/print_imageV2 consolidated into shared _print_job helper (170 LOC eliminated)
+- [x] **Code dedup** — print_image/print_image_v2 consolidated into shared _print_job helper (170 LOC eliminated)
 - [x] **Memory leaks** — PIL per-row crop replaced with tobytes+slice; intermediate images explicitly closed
 - [x] **Linux fixes** — <Button1-Motion> → <B1-Motion> (image drag), .ico → .png icon in spec
 - [x] **Security** — Decompression bomb bypass closed (MAX_IMAGE_PIXELS before open), data[0] length guards on 10 parsers

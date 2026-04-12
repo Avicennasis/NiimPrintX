@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING
 
@@ -76,8 +75,10 @@ class BLETransport:
 
     async def disconnect(self) -> None:
         if self.client:
-            with contextlib.suppress(Exception):
+            try:
                 await self.client.disconnect()
+            except Exception as e:  # noqa: BLE001
+                logger.warning(f"BLE disconnect error suppressed: {e}")
         self.client = None
         self._notifying_uuids.clear()
 
@@ -99,7 +100,7 @@ class BLETransport:
             self._notifying_uuids.add(char_uuid)
             try:
                 await self.client.start_notify(char_uuid, handler)
-            except Exception:
+            except BaseException:
                 self._notifying_uuids.discard(char_uuid)
                 raise
 
@@ -107,5 +108,7 @@ class BLETransport:
         try:
             if char_uuid in self._notifying_uuids and self.client and self.client.is_connected:
                 await self.client.stop_notify(char_uuid)
+        except BleakError as e:
+            raise BLEException(f"BLE stop_notify failed: {e}") from e
         finally:
             self._notifying_uuids.discard(char_uuid)

@@ -34,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 4 UI bugs: ImageOp bbox None dereference, start_image_resize missing initial_y, PrintOption wrong status bar value, TextOp delete handle None check
 - P-mode palette images losing transparency (now composite via RGBA)
 - `send_command` code_label resolved 4x per call (now once)
-- `set_dimensionV2` missing copies bounds check
+- `set_dimension_v2` missing copies bounds check
 - `info_command` unbound `success` variable
 - `raise e` → `raise` in print_label (preserves traceback)
 - `save_image()` silently swallowing exceptions (now shows error dialog)
@@ -181,7 +181,7 @@ Round 13. 25-agent parallel burn across every .py file + CI/CD + build specs.
 - 21 fixes across 15 files
 - Stale `requirements.txt` (bleak 0.22 to 3.0)
 - `print_started` flag prevents double `end_print`
-- `set_dimension`/`set_dimensionV2` height/width validation (1-65535)
+- `set_dimension`/`set_dimension_v2` height/width validation (1-65535)
 - `asyncio.all_tasks()` loop param removed (Python 3.10+)
 - `destroy()` TclError guard
 - Heartbeat `CancelledError` handler
@@ -252,7 +252,7 @@ Rounds 8-9. Massive review and fix campaign: 120+ findings per round, 56 new tes
 - 20 ruff rule categories (added PERF/PIE/RET/PLW/PLC/ERA/BLE/ASYNC)
 
 ### Changed
-- `print_image`/`print_imageV2` consolidated into shared `_print_job` helper (170 LOC eliminated)
+- `print_image`/`print_image_v2` consolidated into shared `_print_job` helper (170 LOC eliminated)
 - PIL per-row crop replaced with `tobytes+slice` (memory leak fix)
 - Signal-based splash screen instead of 5s hardcoded delay
 - Lint matrix removed from CI (50% CI time savings)
@@ -397,6 +397,7 @@ Original upstream release by [labbots](https://github.com/labbots).
 - PyInstaller specs for Windows, macOS, and Linux builds
 - GitHub Actions CI/CD for builds
 
+[0.8.0]: https://github.com/avicennasis/NiimPrintX/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/avicennasis/NiimPrintX/compare/v0.6.2...v0.7.0
 [0.6.2]: https://github.com/avicennasis/NiimPrintX/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/avicennasis/NiimPrintX/compare/v0.6.0...v0.6.1

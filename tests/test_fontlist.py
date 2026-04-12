@@ -1,9 +1,17 @@
+import os
 import subprocess
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from NiimPrintX.ui.component.FontList import _run_font_list, fonts, group_fonts_by_family, parse_font_details
+from NiimPrintX.ui.component.FontList import (
+    _load_disk_cache,
+    _run_font_list,
+    _save_disk_cache,
+    fonts,
+    group_fonts_by_family,
+    parse_font_details,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -12,6 +20,16 @@ def _clear_fonts_cache():
     fonts.cache_clear()
     yield
     fonts.cache_clear()
+
+
+@pytest.fixture(autouse=True)
+def _no_disk_cache():
+    """Prevent disk cache side effects during tests."""
+    with (
+        patch("NiimPrintX.ui.component.FontList._load_disk_cache", return_value=None),
+        patch("NiimPrintX.ui.component.FontList._save_disk_cache"),
+    ):
+        yield
 
 
 # ---------- parse_font_details ----------
@@ -358,3 +376,130 @@ def test_fonts_both_fail():
 
     assert mock_run.call_count == 2
     assert result == {}
+
+
+# ---------- disk cache ----------
+
+
+class TestDiskCache:
+    """Tests for _load_disk_cache and _save_disk_cache.
+
+    These override the _no_disk_cache autouse fixture by calling the real
+    functions directly (the fixture patches the module-level names, but
+    we import the functions directly so we get the real implementations).
+    """
+
+    def test_save_and_load_roundtrip(self, tmp_path):
+        """Saved data can be loaded back."""
+        data = {"TestFamily": {"family_name": "TestFamily", "fonts": {}}}
+        magick_bin = tmp_path / "magick"
+        magick_bin.write_text("fake")
+
+        with patch("NiimPrintX.ui.component.FontList._get_cache_dir", return_value=str(tmp_path)):
+            _save_disk_cache(data)
+            loaded = _load_disk_cache(str(magick_bin))
+
+        assert loaded == data
+
+    def test_load_returns_none_when_no_cache_file(self, tmp_path):
+        """Missing cache file returns None."""
+        with patch("NiimPrintX.ui.component.FontList._get_cache_dir", return_value=str(tmp_path)):
+            assert _load_disk_cache("/usr/bin/magick") is None
+
+    def test_load_invalidates_when_binary_newer(self, tmp_path):
+        """Cache is invalidated when the binary mtime is newer than cache mtime."""
+        import time
+
+        data = {"TestFamily": {"family_name": "TestFamily", "fonts": {}}}
+
+        with patch("NiimPrintX.ui.component.FontList._get_cache_dir", return_value=str(tmp_path)):
+            _save_disk_cache(data)
+
+        # Make the binary newer than the cache
+        magick_bin = tmp_path / "magick"
+        magick_bin.write_text("fake")
+        cache_file = tmp_path / "font_cache.json"
+        # Set cache mtime to the past
+        old_time = time.time() - 100
+        os.utime(cache_file, (old_time, old_time))
+
+        with patch("NiimPrintX.ui.component.FontList._get_cache_dir", return_value=str(tmp_path)):
+            assert _load_disk_cache(str(magick_bin)) is None
+
+    def test_load_valid_when_binary_older(self, tmp_path):
+        """Cache is valid when the binary mtime is older than cache mtime."""
+        import time
+
+        data = {"TestFamily": {"family_name": "TestFamily", "fonts": {}}}
+        magick_bin = tmp_path / "magick"
+        magick_bin.write_text("fake")
+        # Set binary mtime to the past
+        old_time = time.time() - 100
+        os.utime(magick_bin, (old_time, old_time))
+
+        with patch("NiimPrintX.ui.component.FontList._get_cache_dir", return_value=str(tmp_path)):
+            _save_disk_cache(data)
+            loaded = _load_disk_cache(str(magick_bin))
+
+        assert loaded == data
+
+    def test_load_with_no_magick_path(self, tmp_path):
+        """When magick_path is None, cache is still loaded (no mtime check)."""
+        data = {"TestFamily": {"family_name": "TestFamily", "fonts": {}}}
+
+        with patch("NiimPrintX.ui.component.FontList._get_cache_dir", return_value=str(tmp_path)):
+            _save_disk_cache(data)
+            loaded = _load_disk_cache(None)
+
+        assert loaded == data
+
+    def test_save_creates_directory(self, tmp_path):
+        """_save_disk_cache creates the cache directory if it doesn't exist."""
+        nested = tmp_path / "sub" / "dir"
+        data = {"TestFamily": {"family_name": "TestFamily", "fonts": {}}}
+
+        with patch("NiimPrintX.ui.component.FontList._get_cache_dir", return_value=str(nested)):
+            _save_disk_cache(data)
+
+        assert (nested / "font_cache.json").is_file()
+
+    def test_load_handles_corrupt_json(self, tmp_path):
+        """Corrupt JSON in cache file returns None instead of crashing."""
+        cache_file = tmp_path / "font_cache.json"
+        cache_file.write_text("{not valid json!!!")
+
+        with patch("NiimPrintX.ui.component.FontList._get_cache_dir", return_value=str(tmp_path)):
+            assert _load_disk_cache(None) is None
+
+    def test_fonts_uses_disk_cache(self):
+        """fonts() returns disk-cached data without running subprocess."""
+        cached_data = {"CachedFamily": {"family_name": "CachedFamily", "fonts": {}}}
+        with (
+            patch("NiimPrintX.ui.component.FontList._load_disk_cache", return_value=cached_data),
+            patch("NiimPrintX.ui.component.FontList._run_font_list") as mock_run,
+            patch("NiimPrintX.ui.component.FontList.shutil") as mock_shutil,
+        ):
+            mock_shutil.which.return_value = "/usr/bin/magick"
+            if hasattr(__import__("sys"), "_MEIPASS"):
+                delattr(__import__("sys"), "_MEIPASS")
+            result = fonts()
+
+        mock_run.assert_not_called()
+        assert result == cached_data
+
+    def test_fonts_saves_to_disk_cache_on_miss(self):
+        """fonts() saves result to disk cache when subprocess succeeds."""
+        grouped = {"NewFamily": {"family_name": "NewFamily", "fonts": {}}}
+        with (
+            patch("NiimPrintX.ui.component.FontList._load_disk_cache", return_value=None),
+            patch("NiimPrintX.ui.component.FontList._save_disk_cache") as mock_save,
+            patch("NiimPrintX.ui.component.FontList._run_font_list", return_value=grouped),
+            patch("NiimPrintX.ui.component.FontList.shutil") as mock_shutil,
+        ):
+            mock_shutil.which.return_value = "/usr/bin/magick"
+            if hasattr(__import__("sys"), "_MEIPASS"):
+                delattr(__import__("sys"), "_MEIPASS")
+            result = fonts()
+
+        mock_save.assert_called_once_with(grouped)
+        assert result == grouped

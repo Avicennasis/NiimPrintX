@@ -2,29 +2,34 @@
 import os
 from PyInstaller.utils.hooks import collect_submodules
 
-# Function to collect files and adjust their target directory
-def collect_and_adjust_files(base_path, target_dir):
-    collected_files = []
-    for root, _, files in os.walk(base_path):
-        for file in files:
-            full_path = os.path.join(root, file)
-            # We only need the relative path without the filename
-            rel_path = os.path.relpath(root, base_path)
-            target_path = os.path.join(target_dir, rel_path)
-            collected_files.append((full_path, target_path))
-    return collected_files
+# Spec-relative paths
+spec_dir = os.path.dirname(os.path.abspath(__file__))
+repo_root = os.path.normpath(os.path.join(spec_dir, '..', '..'))
+src_path = os.path.join(repo_root, 'NiimPrintX', 'ui')
 
 # Path to the extracted ImageMagick directory
-_spec_dir = os.path.dirname(os.path.abspath(__file__))
-imagemagick_path = os.path.abspath(os.path.join(_spec_dir, '..', '..', 'resources', 'ImageMagick'))
+imagemagick_path = os.path.join(repo_root, 'resources', 'ImageMagick')
 if not os.path.isdir(imagemagick_path):
     raise RuntimeError(
         f"ImageMagick not found at {imagemagick_path}. "
         "Extract the portable ImageMagick build to resources/ImageMagick/ first."
     )
 
-# Collect the ImageMagick binaries and libraries and specify the target directory
-datas = collect_and_adjust_files(imagemagick_path, 'imagemagick')
+# Collect ImageMagick files, splitting binaries from data
+imagemagick_binaries = []
+imagemagick_datas = []
+
+for root, _, files in os.walk(imagemagick_path):
+    for f in files:
+        full_path = os.path.join(root, f)
+        rel_path = os.path.relpath(root, imagemagick_path)
+        target_path = os.path.join('imagemagick', rel_path)
+        if f.endswith(('.dll', '.exe')):
+            imagemagick_binaries.append((full_path, target_path))
+        else:
+            imagemagick_datas.append((full_path, target_path))
+
+datas = imagemagick_datas
 
 # Include all submodules from PIL, tkinter, bleak, and wand
 hiddenimports = collect_submodules('PIL')
@@ -32,14 +37,6 @@ hiddenimports += collect_submodules('tkinter')
 hiddenimports += collect_submodules('bleak')
 hiddenimports += collect_submodules('wand')
 hiddenimports += ['platformdirs', 'sv_ttk', 'cairo']
-
-current_path = os.getcwd()
-if os.path.basename(current_path) == "ui_app":
-    src_path = os.path.join(current_path, '..', '..', 'NiimPrintX', 'ui')
-elif os.path.basename(current_path) == "NiimPrintX":
-    src_path = os.path.join(current_path, 'NiimPrintX', 'ui')
-else:
-    src_path = os.path.join(current_path, 'ui')
 
 # Add custom assets
 datas += [
@@ -51,7 +48,7 @@ datas += [
 a = Analysis(
     [os.path.join(src_path, '__main__.py')],
     pathex=['.'],
-    binaries=[],
+    binaries=imagemagick_binaries,
     datas=datas,
     hiddenimports=hiddenimports,
     hookspath=[],
@@ -73,7 +70,7 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,
     console=False,  # Set to False for a GUI application
     disable_windowed_traceback=False,
     argv_emulation=False,
@@ -89,7 +86,7 @@ coll = COLLECT(
     a.binaries,
     a.datas,
     strip=False,
-    upx=True,
+    upx=False,
     upx_exclude=[],
     name='NiimPrintX',
 )

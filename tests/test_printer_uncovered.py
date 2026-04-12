@@ -175,21 +175,19 @@ async def test_send_command_reconnect_fails_when_client_is_none(make_client):
 
 
 # ---------------------------------------------------------------------------
-# send_command() — stop_notification failure is suppressed
+# disconnect() — stop_notification failure is suppressed
 # ---------------------------------------------------------------------------
 
 
-async def test_send_command_stop_notification_failure_suppressed(make_client):
-    """When stop_notification raises during cleanup, it should be suppressed."""
+async def test_disconnect_stop_notification_failure_suppressed(make_client):
+    """When stop_notification raises during disconnect, it should be suppressed."""
     client = make_client()
-
-    response_pkt = NiimbotPacket(RequestCodeEnum.GET_INFO, b"\x01")
-    client.transport.write = AsyncMock(side_effect=_make_fake_write(client, response_pkt))
+    client.char_uuid = "test-uuid"
     client.transport.stop_notification = AsyncMock(side_effect=RuntimeError("stop failed"))
-
+    client.transport.disconnect = AsyncMock()
     # Should not raise despite stop_notification failure
-    result = await client.send_command(RequestCodeEnum.GET_INFO, b"\x01")
-    assert result.data == b"\x01"
+    await client.disconnect()
+    client.transport.stop_notification.assert_awaited_once_with("test-uuid")
 
 
 # ---------------------------------------------------------------------------
@@ -487,13 +485,13 @@ async def test_start_print_empty_response(make_client):
         await client.start_print()
 
 
-async def test_start_printV2_empty_response(make_client):
-    """start_printV2 must raise PrinterException on empty response."""
+async def test_start_print_v2_empty_response(make_client):
+    """start_print_v2 must raise PrinterException on empty response."""
     client = make_client()
     empty_pkt = NiimbotPacket(RequestCodeEnum.START_PRINT, b"")
     client.transport.write = AsyncMock(side_effect=_make_fake_write(client, empty_pkt))
     with pytest.raises(PrinterException, match=r"Empty response.*START_PRINT"):
-        await client.start_printV2(quantity=1)
+        await client.start_print_v2(quantity=1)
 
 
 async def test_end_print_empty_response(make_client):
@@ -532,13 +530,13 @@ async def test_set_dimension_empty_response(make_client):
         await client.set_dimension(100, 50)
 
 
-async def test_set_dimensionV2_empty_response(make_client):
-    """set_dimensionV2 must raise PrinterException on empty response."""
+async def test_set_dimension_v2_empty_response(make_client):
+    """set_dimension_v2 must raise PrinterException on empty response."""
     client = make_client()
     empty_pkt = NiimbotPacket(RequestCodeEnum.SET_DIMENSION, b"")
     client.transport.write = AsyncMock(side_effect=_make_fake_write(client, empty_pkt))
     with pytest.raises(PrinterException, match=r"Empty response.*SET_DIMENSION"):
-        await client.set_dimensionV2(100, 50, 1)
+        await client.set_dimension_v2(100, 50, 1)
 
 
 async def test_set_quantity_empty_response(make_client):

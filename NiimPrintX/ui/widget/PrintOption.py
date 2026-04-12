@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import contextlib
 import io
@@ -6,6 +8,7 @@ import tempfile
 import tkinter as tk
 import tkinter.messagebox as mb
 from tkinter import filedialog, ttk
+from typing import TYPE_CHECKING
 
 try:
     import cairo
@@ -13,25 +16,40 @@ except ImportError:
     cairo = None
 from PIL import Image, ImageTk
 
+from NiimPrintX.ui.config import CanvasState, ImmutableConfig, PrinterState, mm_to_pixels
+
 from .PrinterOperation import PrinterOperation
+
+if TYPE_CHECKING:
+    from NiimPrintX.nimmy.types import HeartbeatResponse
+    from NiimPrintX.ui.main import LabelPrinterApp
 
 
 class PrintOption:
-    def __init__(self, root, parent, config):
+    def __init__(
+        self,
+        root: LabelPrinterApp,
+        parent: tk.Frame,
+        immutable: ImmutableConfig,
+        canvas_state: CanvasState,
+        printer: PrinterState,
+    ) -> None:
         self.root = root
         self.parent = parent
-        self.config = config
+        self.immutable: ImmutableConfig = immutable
+        self.canvas_state: CanvasState = canvas_state
+        self.printer: PrinterState = printer
         self.frame = ttk.Frame(parent)
         self.create_widgets()
-        self.print_op = PrinterOperation(self.config)
+        self.print_op = PrinterOperation(self.immutable, self.printer)
         self._connecting = False
         self._heartbeat_active = False
         self.check_heartbeat()
 
-    def check_heartbeat(self):
+    def check_heartbeat(self) -> None:
         asyncio.run_coroutine_threadsafe(self.schedule_heartbeat(), self.root.async_loop)
 
-    async def schedule_heartbeat(self):
+    async def schedule_heartbeat(self) -> None:
         self._heartbeat_active = True
         try:
             await self._heartbeat_loop()
@@ -40,10 +58,10 @@ class PrintOption:
         finally:
             self._heartbeat_active = False
 
-    async def _heartbeat_loop(self):
+    async def _heartbeat_loop(self) -> None:
         while self._heartbeat_active:
             try:
-                if self.print_op.printer and not self.config.print_job:
+                if self.print_op.is_connected and not self.printer.print_job:
                     state, hb = await self.print_op.heartbeat()
                     if not self._heartbeat_active:
                         break
@@ -52,7 +70,7 @@ class PrintOption:
                     except tk.TclError:
                         self._heartbeat_active = False
                         break
-                elif not self.config.print_job:
+                elif not self.printer.print_job:
                     if not self._heartbeat_active:
                         break
                     try:
@@ -65,16 +83,16 @@ class PrintOption:
                 break  # Root destroyed, exit heartbeat loop cleanly
             await asyncio.sleep(5)
 
-    def update_status(self, connected=False, hb_data=None):
+    def update_status(self, connected: bool = False, hb_data: HeartbeatResponse | None = None) -> None:
         if not self._connecting:
-            self.config.printer_connected = connected
+            self.printer.printer_connected = connected
         if not connected and self.connect_button["state"] != tk.DISABLED:
             self.connect_button.config(text="Connect")
             self.connect_button.config(state=tk.NORMAL)
         with contextlib.suppress(tk.TclError):
             self.root.status_bar.update_status(connected)
 
-    def create_widgets(self):
+    def create_widgets(self) -> None:
         self.toolbar_print_button = tk.Button(self.parent, text="Print", command=self.display_print)
         self.toolbar_print_button.pack(side=tk.RIGHT, padx=10)
         save_image_button = tk.Button(self.parent, text="Save Image", command=self.save_image)
@@ -82,19 +100,19 @@ class PrintOption:
         self.connect_button = tk.Button(self.parent, text="Connect", command=self.printer_connect)
         self.connect_button.pack(side=tk.RIGHT, padx=10)
 
-    def printer_connect(self):
+    def printer_connect(self) -> None:
         self.connect_button.config(state=tk.DISABLED)
         self._connecting = True
-        if not self.config.printer_connected:
+        if not self.printer.printer_connected:
             future = asyncio.run_coroutine_threadsafe(
-                self.print_op.printer_connect(self.config.device), self.root.async_loop
+                self.print_op.printer_connect(self.printer.device), self.root.async_loop
             )
             future.add_done_callback(lambda f: self._update_device_status(f, was_connecting=True))
         else:
             future = asyncio.run_coroutine_threadsafe(self.print_op.printer_disconnect(), self.root.async_loop)
             future.add_done_callback(lambda f: self._update_device_status(f, was_connecting=False))
 
-    def _update_device_status(self, future, *, was_connecting):
+    def _update_device_status(self, future: asyncio.Future[bool], *, was_connecting: bool) -> None:
         try:
             result = future.result()
         except Exception:  # noqa: BLE001 — GUI callback; any async failure means "not connected"
@@ -103,28 +121,28 @@ class PrintOption:
         def _update():
             self._connecting = False
             if was_connecting and result:
-                self.config.printer_connected = True
+                self.printer.printer_connected = True
                 self.connect_button.config(text="Disconnect")
             elif not was_connecting and result:
-                self.config.printer_connected = False
+                self.printer.printer_connected = False
                 self.connect_button.config(text="Connect")
             # On failure, leave button text matching current state
             self.connect_button.config(state=tk.NORMAL)
             with contextlib.suppress(tk.TclError):
-                self.root.status_bar.update_status(self.config.printer_connected)
+                self.root.status_bar.update_status(self.printer.printer_connected)
 
         try:
             self.root.after(0, _update)
         except tk.TclError:
             self._connecting = False
 
-    def display_print(self):
-        if self.config.print_job:
+    def display_print(self) -> None:
+        if self.printer.print_job:
             return
         self.toolbar_print_button.config(state=tk.DISABLED)
         try:
             # Export to PNG and display it in a pop-up window
-            if self.config.os_system == "Windows":
+            if self.immutable.os_system == "Windows":
                 # Windows-specific: close fd immediately so Cairo can reopen by path
                 fd, tmp_file_path = tempfile.mkstemp(suffix=".png")
                 os.close(fd)
@@ -142,8 +160,8 @@ class PrintOption:
             self.toolbar_print_button.config(state=tk.NORMAL)
             mb.showerror("Export Error", f"Failed to prepare print preview:\n{e}")
 
-    def save_image(self):
-        if self.config.print_job:
+    def save_image(self) -> None:
+        if self.printer.print_job:
             return
         options = {
             "defaultextension": ".png",
@@ -160,18 +178,21 @@ class PrintOption:
             except Exception as e:  # noqa: BLE001 — UI-facing catch-all for user feedback dialog
                 mb.showerror("Save Error", f"Failed to save image:\n{e}")
 
-    def export_to_png(self, output_filename=None, horizontal_offset=0.0, vertical_offset=0.0):
+    def export_to_png(
+        self, output_filename: str | None = None, horizontal_offset: float = 0.0, vertical_offset: float = 0.0
+    ) -> Image.Image | None:
         if cairo is None:
             raise ImportError("GUI extras not installed. Run: pip install NiimPrintX[gui]")
-        if self.config.canvas is None or self.config.bounding_box is None:
+        if self.canvas_state.canvas is None or self.canvas_state.bounding_box is None:
             return None
-        width = self.config.canvas.winfo_width()
-        height = self.config.canvas.winfo_height()
+        width = self.canvas_state.canvas.winfo_width()
+        height = self.canvas_state.canvas.winfo_height()
 
-        horizontal_offset_pixels = self.config.mm_to_pixels(horizontal_offset)
-        vertical_offset_pixels = self.config.mm_to_pixels(vertical_offset)
+        dpi = self.immutable.label_sizes[self.printer.device]["print_dpi"]
+        horizontal_offset_pixels = mm_to_pixels(horizontal_offset, dpi)
+        vertical_offset_pixels = mm_to_pixels(vertical_offset, dpi)
 
-        x1, y1, x2, y2 = self.config.canvas.bbox(self.config.bounding_box)
+        x1, y1, x2, y2 = self.canvas_state.canvas.bbox(self.canvas_state.bounding_box)
 
         x1 += horizontal_offset_pixels
         y1 += vertical_offset_pixels
@@ -187,9 +208,9 @@ class PrintOption:
         ctx.paint()
 
         # Drawing images (if any)
-        if self.config.image_items:
-            for img_id, img_props in self.config.image_items.items():
-                coords = self.config.canvas.coords(img_id)
+        if self.canvas_state.image_items:
+            for img_id, img_props in self.canvas_state.image_items.items():
+                coords = self.canvas_state.canvas.coords(img_id)
                 resized_image = ImageTk.getimage(img_props["image"])
                 with io.BytesIO() as buffer:
                     resized_image.save(buffer, format="PNG")
@@ -197,11 +218,12 @@ class PrintOption:
                     img_surface = cairo.ImageSurface.create_from_png(buffer)
                 ctx.set_source_surface(img_surface, coords[0], coords[1])
                 ctx.paint()
+                img_surface.finish()  # release native Cairo memory
 
         # Drawing text items
-        if self.config.text_items:
-            for text_id, text_props in self.config.text_items.items():
-                coords = self.config.canvas.coords(text_id)
+        if self.canvas_state.text_items:
+            for text_id, text_props in self.canvas_state.text_items.items():
+                coords = self.canvas_state.canvas.coords(text_id)
                 font_img_widget = text_props["font_image"]
                 if isinstance(font_img_widget, ImageTk.PhotoImage):
                     resized_image = ImageTk.getimage(font_img_widget)
@@ -217,6 +239,7 @@ class PrintOption:
                     img_surface = cairo.ImageSurface.create_from_png(buffer)
                 ctx.set_source_surface(img_surface, coords[0], coords[1])
                 ctx.paint()
+                img_surface.finish()  # release native Cairo memory
 
         # Create a cropped surface to save
         cropped_surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, int(bbox_width), int(bbox_height))
@@ -234,7 +257,7 @@ class PrintOption:
             cropped_surface.finish()
             surface.finish()
 
-    def display_image_in_popup(self, filename):
+    def display_image_in_popup(self, filename: str) -> None:
         # Create a new Toplevel window
         popup = tk.Toplevel(self.root)
         popup.title("Preview Image")
@@ -258,12 +281,12 @@ class PrintOption:
         option_frame.grid(row=1, column=0, columnspan=4, padx=20, pady=10, sticky="ew")
 
         self.print_density = tk.StringVar()
-        self.print_density.set(str(min(3, self.config.label_sizes[self.config.device]["density"])))
+        self.print_density.set(str(min(3, self.immutable.label_sizes[self.printer.device]["density"])))
         tk.Label(option_frame, text="Density").grid(row=0, column=0, padx=5, pady=5, sticky="e")
         density_slider = tk.Spinbox(
             option_frame,
             from_=1,
-            to=self.config.label_sizes[self.config.device]["density"],
+            to=self.immutable.label_sizes[self.printer.device]["density"],
             textvariable=self.print_density,
             width=4,
         )
@@ -276,7 +299,7 @@ class PrintOption:
         print_copy_dropdown.grid(row=0, column=3, padx=5, pady=5, sticky="w")
 
         tk.Label(option_frame, text="Rotation").grid(row=0, column=4, padx=20, pady=5, sticky="e")
-        device_rotation = self.config.label_sizes[self.config.device].get("rotation", -90)
+        device_rotation = self.immutable.label_sizes[self.printer.device].get("rotation", -90)
         rotation_choices = ["0", "90", "180", "270"]
         self.print_rotation = tk.StringVar()
         # Set default to the device's configured rotation (convert negative to positive for display)
@@ -356,7 +379,7 @@ class PrintOption:
         offset_frame.grid_columnconfigure(1, weight=1)
         offset_frame.grid_columnconfigure(3, weight=1)
 
-    def update_image_offset(self):
+    def update_image_offset(self) -> None:
         try:
             horizontal_offset = self.horizontal_offset.get()
             vertical_offset = self.vertical_offset.get()
@@ -376,17 +399,17 @@ class PrintOption:
             self.image_label.config(image=img_tk)
             self.image_label.image = img_tk
 
-    def print_label(self, image, density, quantity):
+    def print_label(self, image: Image.Image, density: str, quantity: str) -> None:
         self.print_button.config(state=tk.DISABLED)
         self._popup_ref = self.image_label.winfo_toplevel()
-        self.config.print_job = True
+        self.printer.print_job = True
 
         # Validate density
         try:
             density = int(density)
         except (ValueError, TypeError):
             density = 3
-        density = max(1, min(density, self.config.label_sizes[self.config.device]["density"]))
+        density = max(1, min(density, self.immutable.label_sizes[self.printer.device]["density"]))
 
         # Validate quantity
         try:
@@ -398,7 +421,7 @@ class PrintOption:
         try:
             rotation = int(self.print_rotation.get())
         except (ValueError, AttributeError):
-            rotation = self.config.label_sizes[self.config.device].get("rotation", -90) % 360
+            rotation = self.immutable.label_sizes[self.printer.device].get("rotation", -90) % 360
 
         # PIL rotates counter-clockwise, so negate for clockwise
         rotation = -rotation
@@ -409,26 +432,26 @@ class PrintOption:
             )
             future.add_done_callback(self._print_handler)
         except Exception:
-            self.config.print_job = False
+            self.printer.print_job = False
             with contextlib.suppress(tk.TclError):
                 self.print_button.config(state=tk.NORMAL)
             raise
 
-    def _print_handler(self, future):
+    def _print_handler(self, future: asyncio.Future[bool]) -> None:
         try:
             result = future.result()
         except BaseException:  # noqa: BLE001 — catches CancelledError + any async failure; GUI must not crash
             result = False
 
         def _update():
-            self.config.print_job = False
+            self.printer.print_job = False
             if hasattr(self, "_rotated_image") and self._rotated_image is not None:
                 with contextlib.suppress(Exception):
                     self._rotated_image.close()
                 self._rotated_image = None
             if result:
                 with contextlib.suppress(tk.TclError):
-                    self.root.status_bar.update_status(self.config.printer_connected)
+                    self.root.status_bar.update_status(self.printer.printer_connected)
             else:
                 popup_alive = hasattr(self, "_popup_ref") and self._popup_ref is not None
                 if popup_alive:
@@ -444,4 +467,8 @@ class PrintOption:
             with contextlib.suppress(tk.TclError):
                 self.toolbar_print_button.config(state=tk.NORMAL)
 
-        self.root.after(0, _update)
+        try:
+            self.root.after(0, _update)
+        except tk.TclError:
+            # Root destroyed during print — reset state directly
+            self.printer.print_job = False

@@ -2,13 +2,9 @@
 import os
 from PyInstaller.utils.hooks import collect_submodules
 
-current_path = os.getcwd()
-if os.path.basename(current_path) == "cli_app":
-    src_path = os.path.join(current_path, '..', '..', 'NiimPrintX', 'cli')
-elif os.path.basename(current_path) == "NiimPrintX":
-    src_path = os.path.join(current_path, 'NiimPrintX', 'cli')
-else:
-    src_path = os.path.join(current_path, 'cli')
+spec_dir = os.path.dirname(os.path.abspath(__file__))
+repo_root = os.path.normpath(os.path.join(spec_dir, '..', '..'))
+src_path = os.path.join(repo_root, 'NiimPrintX', 'cli')
 
 a = Analysis(
     [os.path.join(src_path, '__main__.py')],
@@ -35,7 +31,7 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,
     upx_exclude=[],
     runtime_tmpdir=None,
     console=True,

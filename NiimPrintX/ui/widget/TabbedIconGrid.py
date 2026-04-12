@@ -1,29 +1,42 @@
+from __future__ import annotations
+
 import contextlib
 import math
 import os
 import threading
 import tkinter as tk
 from tkinter import ttk
+from typing import TYPE_CHECKING
 
 import PIL
 from PIL import Image, ImageTk
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
 
 class TabbedIconGrid(tk.Frame):
-    def __init__(self, parent, base_folder, columns=8, on_icon_selected=None, **kwargs):
+    def __init__(
+        self,
+        parent: tk.Widget,
+        base_folder: str,
+        columns: int = 8,
+        on_icon_selected: Callable[[str], None] | None = None,
+        **kwargs: object,
+    ) -> None:
         super().__init__(parent, **kwargs)
-        self.base_folder = base_folder
-        self.columns = columns
-        self.on_icon_selected = on_icon_selected
-        self.icon_cache = {}  # Store loaded icons to avoid redundant processing
-        self.icon_references = {}  # Prevent PhotoImage GC
-        self.tab_names = {}  # tab_index → original folder name
+        self.base_folder: str = base_folder
+        self.columns: int = columns
+        self.on_icon_selected: Callable[[str], None] | None = on_icon_selected
+        self.icon_cache: dict[str, tk.Canvas] = {}  # Store loaded icons to avoid redundant processing
+        self.icon_references: dict[str, list[ImageTk.PhotoImage]] = {}  # Prevent PhotoImage GC
+        self.tab_names: dict[int, str] = {}  # tab_index → original folder name
 
-        self.notebook = ttk.Notebook(self)
+        self.notebook: ttk.Notebook = ttk.Notebook(self)
         self.create_tabs()
         self.notebook.pack(fill="both", expand=True)
 
-    def create_tabs(self):
+    def create_tabs(self) -> None:
         """Create a tab for each subfolder."""
         try:
             entries = sorted(os.listdir(self.base_folder))
@@ -45,7 +58,7 @@ class TabbedIconGrid(tk.Frame):
             if first_subfolder:
                 self._load_tab_by_index(first_tab_index, first_subfolder)
 
-    def load_tab_icons(self, event):
+    def load_tab_icons(self, event: tk.Event) -> None:
         """Load icons when a tab is selected."""
         notebook = event.widget
         selected_tab = notebook.select()
@@ -55,7 +68,7 @@ class TabbedIconGrid(tk.Frame):
         subfolder_name = self.tab_names[selected_tab_index]
         self._load_tab_by_index(selected_tab_index, subfolder_name)
 
-    def _load_tab_by_index(self, tab_index, subfolder_name):
+    def _load_tab_by_index(self, tab_index: int, subfolder_name: str) -> None:
         """Load icons for a tab by index and subfolder name (extracted for direct calls)."""
         tab_frame = self.notebook.nametowidget(self.notebook.tabs()[tab_index])
 
@@ -66,7 +79,7 @@ class TabbedIconGrid(tk.Frame):
         # I17: Scroll bindings are established in create_icon_grid; no duplicate bindings needed here.
         # M13: scrollregion is configured in _create_icon_widgets after all widgets are placed.
 
-    def create_icon_grid(self, parent, folder, subfolder_name):
+    def create_icon_grid(self, parent: tk.Frame, folder: str, subfolder_name: str) -> tk.Canvas:
         """Create a scrollable icon grid for a given folder."""
         canvas = tk.Canvas(parent)  # Create canvas
         v_scrollbar = ttk.Scrollbar(parent, orient="vertical", command=canvas.yview)  # Set up scrollbar
@@ -100,10 +113,10 @@ class TabbedIconGrid(tk.Frame):
 
         return canvas
 
-    def load_icons(self, frame, folder, subfolder_name, canvas):
+    def load_icons(self, frame: tk.Frame, folder: str, subfolder_name: str, canvas: tk.Canvas) -> None:
         """Load PIL images in background thread, then create PhotoImages + widgets on main thread."""
         icon_folder = os.path.join(folder, "50x50")
-        pil_images = []
+        pil_images: list[tuple[str, Image.Image, str]] = []
         try:
             filenames = sorted(os.listdir(icon_folder))
         except OSError:
@@ -125,14 +138,20 @@ class TabbedIconGrid(tk.Frame):
         with contextlib.suppress(tk.TclError):
             self.after(0, lambda: self._create_icon_widgets(frame, pil_images, subfolder_name, canvas))
 
-    def _create_icon_widgets(self, frame, pil_images, subfolder_name, canvas):
+    def _create_icon_widgets(
+        self,
+        frame: tk.Frame,
+        pil_images: list[tuple[str, Image.Image, str]],
+        subfolder_name: str,
+        canvas: tk.Canvas,
+    ) -> None:
         """Create PhotoImages and icon grid widgets — must run on main thread."""
         try:
             if not frame.winfo_exists():
                 return
         except tk.TclError:
             return
-        icons = []
+        icons: list[tuple[str, ImageTk.PhotoImage, str]] = []
         for filename, pil_img, sub_name in pil_images:
             photo = ImageTk.PhotoImage(pil_img)
             pil_img.close()
@@ -157,7 +176,7 @@ class TabbedIconGrid(tk.Frame):
                     icon_label.bind("<Button-1>", lambda event, idx=index, ic=icons: self.on_icon_click(idx, ic))
 
         # M13: Configure scrollregion AFTER all widgets are placed, not before the bg thread completes
-        def _update_scrollregion():
+        def _update_scrollregion() -> None:
             with contextlib.suppress(tk.TclError):
                 bbox = canvas.bbox("all")
                 if bbox:
@@ -165,12 +184,12 @@ class TabbedIconGrid(tk.Frame):
 
         canvas.after_idle(_update_scrollregion)
 
-    def on_mouse_wheel(self, event, canvas):
+    def on_mouse_wheel(self, event: tk.Event, canvas: tk.Canvas) -> None:
         """Handle mouse wheel scrolling."""
         direction = 1 if event.delta < 0 else -1
         canvas.yview_scroll(3 * direction, "units")
 
-    def on_icon_click(self, index, icons):
+    def on_icon_click(self, index: int, icons: list[tuple[str, ImageTk.PhotoImage, str]]) -> None:
         """Handle icon click and trigger callback."""
         try:
             if not self.winfo_exists():

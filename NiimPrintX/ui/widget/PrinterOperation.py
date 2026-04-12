@@ -1,52 +1,66 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from NiimPrintX.nimmy.bluetooth import find_device
 from NiimPrintX.nimmy.logger_config import get_logger
 from NiimPrintX.nimmy.printer import V2_MODELS, PrinterClient
+
+if TYPE_CHECKING:
+    from NiimPrintX.ui.config import ImmutableConfig, PrinterState
 
 logger = get_logger()
 
 
 class PrinterOperation:
-    def __init__(self, config):
-        self.config = config
-        self.printer = None
+    def __init__(self, immutable: ImmutableConfig, printer: PrinterState) -> None:
+        self.immutable: ImmutableConfig = immutable
+        self.printer: PrinterState = printer
+        self._client: PrinterClient | None = None
+
+    @property
+    def is_connected(self) -> bool:
+        """Whether a BLE client is currently connected."""
+        return self._client is not None
 
     async def printer_connect(self, model):
         try:
             device = await find_device(model)
             client = PrinterClient(device)
             if await client.connect():
-                self.printer = client
+                self._client = client
                 return True
-            self.printer = None
+            self._client = None
             return False
         except Exception as e:
             logger.error(f"Cannot connect to printer {model}: {e}")
-            self.printer = None
+            self._client = None
             return False
 
     async def printer_disconnect(self):
         try:
-            if self.printer:
-                await self.printer.disconnect()
-            self.printer = None
+            if self._client:
+                await self._client.disconnect()
+            self._client = None
             return True
         except Exception as e:
-            self.printer = None
+            self._client = None
             logger.error(f"Disconnect error: {e}")
             return False
 
     async def print(self, image, density, quantity):
         try:
-            if not self.config.printer_connected or not self.printer:
-                connected = await self.printer_connect(self.config.device)
+            if not self.printer.printer_connected or not self._client:
+                connected = await self.printer_connect(self.printer.device)
                 if not connected:
                     logger.error("Print failed: could not connect to printer")
                     return False
+                self.printer.printer_connected = True  # reflect successful reconnect
 
-            if self.config.device in V2_MODELS:
-                await self.printer.print_imageV2(image, density, quantity)
+            if self.printer.device in V2_MODELS:
+                await self._client.print_image_v2(image, density, quantity)
             else:
-                await self.printer.print_image(image, density, quantity)
+                await self._client.print_image(image, density, quantity)
             return True
         except Exception as e:
             logger.error(f"Print error: {e}")
@@ -54,11 +68,11 @@ class PrinterOperation:
 
     async def heartbeat(self):
         try:
-            if self.printer:
-                hb = await self.printer.heartbeat()
+            if self._client:
+                hb = await self._client.heartbeat()
                 return True, hb
             return False, {}
         except Exception as e:
             logger.error(f"Heartbeat error: {e}")
-            self.printer = None
+            self._client = None
             return False, {}

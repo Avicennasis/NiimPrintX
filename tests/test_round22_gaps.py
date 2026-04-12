@@ -7,7 +7,7 @@ Covers 14 specific gaps identified in the review:
   4. get_rfid serial-length overrun → None
   5. get_rfid trailer-fields underrun → None
   6. write_raw with char_uuid=None → PrinterException
-  7. set_dimensionV2 copies bounds check (0 and 65536)
+  7. set_dimension_v2 copies bounds check (0 and 65536)
   8. merge_label_sizes non-dict devices → builtin unchanged
   9. PrinterOperation.printer_disconnect exception → False, printer=None
  10. _validate_dims three-element list → None
@@ -177,22 +177,22 @@ async def test_write_raw_char_uuid_none_raises(make_client):
 
 
 # ---------------------------------------------------------------------------
-# 7. set_dimensionV2 copies bounds check (0 and 65536)
+# 7. set_dimension_v2 copies bounds check (0 and 65536)
 # ---------------------------------------------------------------------------
 
 
-async def test_set_dimensionV2_copies_zero_raises(make_client):
+async def test_set_dimension_v2_copies_zero_raises(make_client):
     """copies=0 should raise PrinterException."""
     client = make_client()
     with pytest.raises(PrinterException, match="Copies must be 1-65535, got 0"):
-        await client.set_dimensionV2(100, 50, copies=0)
+        await client.set_dimension_v2(100, 50, copies=0)
 
 
-async def test_set_dimensionV2_copies_overflow_raises(make_client):
+async def test_set_dimension_v2_copies_overflow_raises(make_client):
     """copies=65536 should raise PrinterException."""
     client = make_client()
     with pytest.raises(PrinterException, match="Copies must be 1-65535, got 65536"):
-        await client.set_dimensionV2(100, 50, copies=65536)
+        await client.set_dimension_v2(100, 50, copies=65536)
 
 
 # ---------------------------------------------------------------------------
@@ -224,17 +224,20 @@ def test_merge_label_sizes_non_dict_devices():
 
 async def test_printer_disconnect_exception_returns_false():
     """When disconnect() raises, printer_disconnect should return False and clear printer."""
-    config = _make_config(printer_connected=True)
-    op = PrinterOperation(config)
+    immutable = MagicMock()
+    printer_state = MagicMock()
+    printer_state.printer_connected = True
+    printer_state.device = "d110"
+    op = PrinterOperation(immutable, printer_state)
 
     mock_printer = MagicMock()
     mock_printer.disconnect = AsyncMock(side_effect=RuntimeError("BLE transport error"))
-    op.printer = mock_printer
+    op._client = mock_printer
 
     result = await op.printer_disconnect()
 
     assert result is False
-    assert op.printer is None
+    assert op._client is None
 
 
 # ---------------------------------------------------------------------------

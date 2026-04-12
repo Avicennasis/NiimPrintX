@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import sys
 
 import click
@@ -62,7 +63,7 @@ def niimbot_cli(verbose: int) -> None:
 @click.option(
     "--vo",
     "vertical_offset",
-    type=int,
+    type=click.IntRange(-10000, 10000),
     default=0,
     show_default=True,
     help="Vertical offset in pixels",
@@ -70,7 +71,7 @@ def niimbot_cli(verbose: int) -> None:
 @click.option(
     "--ho",
     "horizontal_offset",
-    type=int,
+    type=click.IntRange(-10000, 10000),
     default=0,
     show_default=True,
     help="Horizontal offset in pixels",
@@ -146,7 +147,7 @@ async def _print(
         print_info(f"Connected to {device.name!r}")
         if model in V2_MODELS:
             print_info("Printing with V2 protocol")
-            await printer.print_imageV2(
+            await printer.print_image_v2(
                 image,
                 density=density,
                 quantity=quantity,
@@ -170,7 +171,8 @@ async def _print(
         return False
     finally:
         if printer:
-            await printer.disconnect()
+            with contextlib.suppress(Exception):
+                await printer.disconnect()
 
 
 @niimbot_cli.command("info")
@@ -219,7 +221,8 @@ async def _info(model: str) -> bool:
         return False
     finally:
         if printer:
-            await printer.disconnect()
+            with contextlib.suppress(Exception):
+                await printer.disconnect()
 
 
 if __name__ == "__main__":

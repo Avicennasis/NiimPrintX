@@ -2,13 +2,9 @@
 import os
 from PyInstaller.utils.hooks import collect_submodules
 
-current_path = os.getcwd()
-if os.path.basename(current_path) == "ui_app":
-    src_path = os.path.join(current_path, '..', '..', 'NiimPrintX', 'ui')
-elif os.path.basename(current_path) == "NiimPrintX":
-    src_path = os.path.join(current_path, 'NiimPrintX', 'ui')
-else:
-    src_path = os.path.join(current_path, 'ui')
+spec_dir = os.path.dirname(os.path.abspath(__file__))
+repo_root = os.path.normpath(os.path.join(spec_dir, '..', '..'))
+src_path = os.path.join(repo_root, 'NiimPrintX', 'ui')
 
 # Add custom assets
 datas = [
@@ -60,7 +56,7 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,
     upx_exclude=[],
     runtime_tmpdir=None,
     console=False,

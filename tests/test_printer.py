@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from PIL import Image
 
+from NiimPrintX.cli.command import niimbot_cli
 from NiimPrintX.nimmy.exception import PrinterException
 from NiimPrintX.nimmy.packet import NiimbotPacket
 from NiimPrintX.nimmy.printer import InfoEnum, RequestCodeEnum
@@ -118,11 +119,11 @@ async def test_set_label_density_invalid_raises(make_client):
         await client.set_label_density(6)
 
 
-async def test_start_printV2_quantity_validation(make_client):
-    """start_printV2(quantity=-1) must raise PrinterException."""
+async def test_start_print_v2_quantity_validation(make_client):
+    """start_print_v2(quantity=-1) must raise PrinterException."""
     client = make_client()
     with pytest.raises(PrinterException, match="Quantity must be 1-65535"):
-        await client.start_printV2(quantity=-1)
+        await client.start_print_v2(quantity=-1)
 
 
 async def test_get_info_device_serial(make_client):
@@ -398,8 +399,9 @@ async def test_disconnect_clears_state(make_client):
 
 async def test_notification_handler_sets_data(make_client):
     """notification_handler should schedule _set via call_soon_threadsafe,
-    which sets notification_data and fires the event."""
+    which sets notification_data and fires the event when expecting a response."""
     client = make_client()
+    client._expecting_response = True  # simulate command in flight
 
     mock_loop = MagicMock()
     # Capture the callback passed to call_soon_threadsafe and execute it
@@ -416,6 +418,26 @@ async def test_notification_handler_sets_data(make_client):
     callbacks[0]()
     assert client.notification_data == b"\x01\x02"
     assert client.notification_event.is_set()
+
+
+async def test_notification_handler_drops_unsolicited(make_client):
+    """Unsolicited notifications (no command in flight) should be dropped."""
+    client = make_client()
+    client._expecting_response = False  # no command waiting
+
+    mock_loop = MagicMock()
+    callbacks = []
+    mock_loop.call_soon_threadsafe = MagicMock(side_effect=callbacks.append)
+    client._loop = mock_loop
+
+    sender = MagicMock()
+    client.notification_handler(sender, b"\xff\xee")
+
+    mock_loop.call_soon_threadsafe.assert_called_once()
+    callbacks[0]()
+    # Data should NOT be set
+    assert client.notification_data is None
+    assert not client.notification_event.is_set()
 
 
 # ---------------------------------------------------------------------------
@@ -472,13 +494,13 @@ async def test_response_parser_empty_data(make_client):
 
 
 # ---------------------------------------------------------------------------
-# Coverage gap: print_imageV2 with zero-dimension offset
+# Coverage gap: print_image_v2 with zero-dimension offset
 # ---------------------------------------------------------------------------
 
 
-async def test_print_imageV2_zero_dimension(make_client):
+async def test_print_image_v2_zero_dimension(make_client):
     """When negative horizontal_offset equals the image width, effective_width
-    becomes 0 and print_imageV2 must raise PrinterException (mirroring the
+    becomes 0 and print_image_v2 must raise PrinterException (mirroring the
     print_image test in test_coverage_gaps.py)."""
     client = make_client()
 
@@ -495,7 +517,7 @@ async def test_print_imageV2_zero_dimension(make_client):
     img = Image.new("1", (100, 50), color=0)
 
     with pytest.raises(PrinterException, match="no data after applying offsets"):
-        await client.print_imageV2(img, horizontal_offset=-100)
+        await client.print_image_v2(img, horizontal_offset=-100)
 
 
 # ---------------------------------------------------------------------------
@@ -519,6 +541,123 @@ async def test_get_print_status_short_response(make_client):
 
     with pytest.raises(PrinterException, match="short response"):
         await client.get_print_status()
+
+
+# ---------------------------------------------------------------------------
+# Boundary validation: set_dimension height/width and set_quantity
+# ---------------------------------------------------------------------------
+
+
+async def test_set_dimension_height_zero_raises(make_client):
+    """set_dimension(0, 100) must raise PrinterException before sending."""
+    client = make_client()
+    with pytest.raises(PrinterException, match="Height must be 1-65535"):
+        await client.set_dimension(0, 100)
+
+
+async def test_set_dimension_height_overflow_raises(make_client):
+    """set_dimension(65536, 100) must raise PrinterException before sending."""
+    client = make_client()
+    with pytest.raises(PrinterException, match="Height must be 1-65535"):
+        await client.set_dimension(65536, 100)
+
+
+async def test_set_dimension_width_zero_raises(make_client):
+    """set_dimension(100, 0) must raise PrinterException before sending."""
+    client = make_client()
+    with pytest.raises(PrinterException, match="Width must be 1-65535"):
+        await client.set_dimension(100, 0)
+
+
+async def test_set_dimension_width_overflow_raises(make_client):
+    """set_dimension(100, 65536) must raise PrinterException before sending."""
+    client = make_client()
+    with pytest.raises(PrinterException, match="Width must be 1-65535"):
+        await client.set_dimension(100, 65536)
+
+
+async def test_set_quantity_zero_raises(make_client):
+    """set_quantity(0) must raise PrinterException before sending."""
+    client = make_client()
+    with pytest.raises(PrinterException, match="Quantity must be 1-65535"):
+        await client.set_quantity(0)
+
+
+async def test_set_quantity_overflow_raises(make_client):
+    """set_quantity(65536) must raise PrinterException before sending."""
+    client = make_client()
+    with pytest.raises(PrinterException, match="Quantity must be 1-65535"):
+        await client.set_quantity(65536)
+
+
+# ---------------------------------------------------------------------------
+# Retry loop: end_page_print timeout in _print_job
+# ---------------------------------------------------------------------------
+
+
+async def test_end_page_print_retry_timeout(make_client):
+    """When end_page_print always returns False, _print_job should retry
+    up to 200 times and then raise PrinterException('end_page_print timed out')."""
+    client = make_client()
+
+    # Build a generic OK response for the setup commands
+    ok_pkt = NiimbotPacket(RequestCodeEnum.SET_LABEL_DENSITY, b"\x01")
+    ok_bytes = ok_pkt.to_bytes()
+
+    async def fake_write(data, char_uuid):
+        client.notification_data = ok_bytes
+        client.notification_event.set()
+
+    client.transport.write = AsyncMock(side_effect=fake_write)
+
+    img = Image.new("1", (24, 10), color=0)
+
+    with patch.object(client, "end_page_print", new_callable=AsyncMock, return_value=False) as mock_epp:
+        with pytest.raises(PrinterException, match="end_page_print timed out"):
+            await client._print_job(img, density=1, quantity=1, vertical_offset=0, horizontal_offset=0)
+
+        # 200 calls in the retry loop + 1 cleanup call in the except block
+        # (page_started is still True because end_page_print never succeeded)
+        assert mock_epp.await_count == 201
+
+
+# ---------------------------------------------------------------------------
+# CLI width validation: d11_h model (354px max)
+# ---------------------------------------------------------------------------
+
+
+def test_cli_rejects_354px_width_for_d11_h(runner):
+    """An image wider than 354px should be rejected for d11_h."""
+    with runner.isolated_filesystem():
+        Image.new("RGB", (355, 100)).save("too_wide.png")
+        result = runner.invoke(
+            niimbot_cli,
+            ["print", "-m", "d11_h", "-i", "too_wide.png"],
+        )
+        assert result.exit_code != 0
+        assert "exceeds" in result.output.lower() or "width" in result.output.lower()
+
+
+def test_cli_accepts_354px_width_for_d11_h(runner):
+    """An image exactly 354px wide should be accepted for d11_h."""
+    device = MagicMock()
+    device.name = "TestPrinter"
+    printer = AsyncMock()
+    printer.connect.return_value = True
+    printer.disconnect.return_value = None
+    printer.print_image.return_value = None
+
+    with runner.isolated_filesystem():
+        Image.new("RGB", (354, 100)).save("exact.png")
+        with (
+            patch("NiimPrintX.cli.command.find_device", new_callable=AsyncMock, return_value=device),
+            patch("NiimPrintX.cli.command.PrinterClient", return_value=printer),
+        ):
+            result = runner.invoke(
+                niimbot_cli,
+                ["print", "-m", "d11_h", "-i", "exact.png"],
+            )
+            assert result.exit_code == 0
 
 
 # ---------------------------------------------------------------------------
@@ -816,6 +955,7 @@ async def test_print_job_cleanup_skips_end_page_when_not_started(mock_sleep, mak
 async def test_notification_handler_second_call_is_noop(make_client):
     """Second notification while first is pending should be discarded."""
     client = make_client()
+    client._expecting_response = True  # simulate command in flight
 
     mock_loop = MagicMock()
     callbacks = []
@@ -873,45 +1013,29 @@ async def test_find_characteristics_multiple_matches_uses_first(make_client):
 
 
 # ---------------------------------------------------------------------------
-# Final hardening: send_command uses captured char_uuid in finally
+# Final hardening: disconnect calls stop_notification with correct char_uuid
 # ---------------------------------------------------------------------------
 
 
-async def test_send_command_uses_captured_char_uuid_in_finally(make_client):
-    """send_command must use the captured char_uuid, not self.char_uuid which may be None after disconnect."""
+async def test_disconnect_uses_char_uuid_for_stop_notification(make_client):
+    """disconnect() must pass the current char_uuid to stop_notification before clearing it."""
     client = make_client()
-    original_uuid = client.char_uuid
+    client.char_uuid = "original-uuid"
 
-    # Mock transport to track what UUID stop_notification receives
     stop_uuids = []
 
     async def tracking_stop(uuid):
         stop_uuids.append(uuid)
-        # Simulate what would happen — just discard
-        client.transport._notifying_uuids.discard(uuid)
 
     client.transport.stop_notification = tracking_stop
+    client.transport.disconnect = AsyncMock()
 
-    # Set up a normal command that succeeds
-    # (use the existing mock infrastructure from make_client)
-    # After the command, mutate char_uuid to None to simulate disconnect
-    # The finally should still use the original UUID
+    await client.disconnect()
 
-    # This is hard to test without actually racing, so verify the simpler case:
-    # after a successful command, stop_notification receives the correct UUID
-    response_pkt = NiimbotPacket(RequestCodeEnum.GET_INFO, b"\x01")
-
-    async def fake_write(data, char_uuid):
-        client.notification_data = response_pkt.to_bytes()
-        client.notification_event.set()
-
-    client.transport.write = fake_write
-    client.transport.start_notification = AsyncMock()
-
-    await client.send_command(RequestCodeEnum.GET_INFO, b"\x01")
     assert len(stop_uuids) == 1
-    assert stop_uuids[0] == original_uuid
-    assert stop_uuids[0] is not None
+    assert stop_uuids[0] == "original-uuid"
+    # char_uuid should be cleared after disconnect
+    assert client.char_uuid is None
 
 
 # ---------------------------------------------------------------------------
@@ -926,3 +1050,27 @@ async def test_disconnect_behavior(make_client):
     client.transport.disconnect = AsyncMock()
     await client.disconnect()
     assert client.char_uuid is None
+
+
+# ---------------------------------------------------------------------------
+# disconnect() notification lifecycle
+# ---------------------------------------------------------------------------
+
+
+async def test_disconnect_calls_stop_notification(make_client):
+    """disconnect() should call stop_notification before transport.disconnect."""
+    client = make_client()
+    client.char_uuid = "test-uuid"
+    client.transport.disconnect = AsyncMock()
+    await client.disconnect()
+    client.transport.stop_notification.assert_awaited_once_with("test-uuid")
+    client.transport.disconnect.assert_awaited_once()
+
+
+async def test_disconnect_skips_stop_when_no_char_uuid(make_client):
+    """disconnect() with no char_uuid should skip stop_notification."""
+    client = make_client()
+    client.char_uuid = None
+    client.transport.disconnect = AsyncMock()
+    await client.disconnect()
+    client.transport.stop_notification.assert_not_awaited()

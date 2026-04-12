@@ -1,6 +1,6 @@
 """End-to-end integration tests for the full print workflow.
 
-These tests exercise print_image and print_imageV2 with mocked BLE transport,
+These tests exercise print_image and print_image_v2 with mocked BLE transport,
 verifying that all protocol methods are called in the correct order and that
 failure recovery (end_print cleanup) works as expected.
 """
@@ -47,9 +47,9 @@ def _auto_respond_tracking(client, *, status_page=1):
         # Distinguish V2 variants by payload length
         name = code_to_name.get(pkt.type, f"unknown_{pkt.type}")
         if pkt.type == RequestCodeEnum.START_PRINT and len(pkt.data) == 7:
-            name = "start_printV2"
+            name = "start_print_v2"
         if pkt.type == RequestCodeEnum.SET_DIMENSION and len(pkt.data) == 6:
-            name = "set_dimensionV2"
+            name = "set_dimension_v2"
 
         method_names.append(name)
 
@@ -122,8 +122,8 @@ async def test_v1_print_with_rotation_and_offset(make_client):
     assert len(middle) == expected_write_raw_count
 
     # Verify no V2 methods were used
-    assert "start_printV2" not in methods
-    assert "set_dimensionV2" not in methods
+    assert "start_print_v2" not in methods
+    assert "set_dimension_v2" not in methods
 
 
 # ---------------------------------------------------------------------------
@@ -132,11 +132,11 @@ async def test_v1_print_with_rotation_and_offset(make_client):
 
 
 async def test_v2_print_with_b21_model(make_client):
-    """V2 print_imageV2 verifies start_printV2 and set_dimensionV2 are used.
+    """V2 print_image_v2 verifies start_print_v2 and set_dimension_v2 are used.
 
     Protocol order for V2:
-    set_label_density -> set_label_type -> start_printV2 -> start_page_print ->
-    set_dimensionV2 -> write_raw x N -> end_page_print ->
+    set_label_density -> set_label_type -> start_print_v2 -> start_page_print ->
+    set_dimension_v2 -> write_raw x N -> end_page_print ->
     get_print_status -> end_print
 
     V2 does NOT call set_quantity (quantity is embedded in V2 commands).
@@ -148,7 +148,7 @@ async def test_v2_print_with_b21_model(make_client):
     img = Image.new("RGB", (8, 8), color=(255, 255, 255))
 
     with patch("asyncio.sleep", new_callable=AsyncMock):
-        await client.print_imageV2(
+        await client.print_image_v2(
             img,
             density=2,
             quantity=1,
@@ -161,9 +161,9 @@ async def test_v2_print_with_b21_model(make_client):
     expected_prefix = [
         "set_label_density",
         "set_label_type",
-        "start_printV2",
+        "start_print_v2",
         "start_page_print",
-        "set_dimensionV2",
+        "set_dimension_v2",
     ]
     expected_suffix = [
         "end_page_print",
@@ -184,8 +184,8 @@ async def test_v2_print_with_b21_model(make_client):
     assert "set_quantity" not in methods
 
     # V2 must use the V2 variants, not V1
-    assert "start_print" not in methods  # only start_printV2
-    assert "set_dimension" not in methods  # only set_dimensionV2
+    assert "start_print" not in methods  # only start_print_v2
+    assert "set_dimension" not in methods  # only set_dimension_v2
 
 
 # ---------------------------------------------------------------------------

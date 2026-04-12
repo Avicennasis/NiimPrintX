@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import platform
 import sys
@@ -7,7 +9,7 @@ from NiimPrintX.ui.main import LabelPrinterApp
 from NiimPrintX.ui.SplashScreen import SplashScreen
 
 
-def load_libraries():
+def load_libraries() -> None:
     if hasattr(sys, "_MEIPASS"):
         base_path = sys._MEIPASS
         magick_path = os.path.join(base_path, "imagemagick")
@@ -32,7 +34,7 @@ def load_libraries():
                 os.environ["PATH"] = magick_path + os.pathsep + os.environ.get("PATH", "")
 
 
-def resource_path(relative_path):
+def resource_path(relative_path: str) -> str:
     """Get absolute path to resource, works for dev and for PyInstaller"""
     if hasattr(sys, "_MEIPASS"):
         base_path = sys._MEIPASS
@@ -43,7 +45,7 @@ def resource_path(relative_path):
     return os.path.realpath(os.path.join(base_path, relative_path))
 
 
-def main():
+def main() -> None:
     load_libraries()
     setup_logger()
     app = None

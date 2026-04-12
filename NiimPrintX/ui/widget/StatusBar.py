@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 import tkinter as tk
-from typing import Any
 
 
 class StatusBar:
-    def __init__(self, parent: tk.Tk, config: Any) -> None:
-        self.parent = parent
-        self.config = config
+    def __init__(self, parent: tk.Tk) -> None:
+        self.parent: tk.Tk = parent
         self.create_widgets()
 
     def create_widgets(self) -> None:

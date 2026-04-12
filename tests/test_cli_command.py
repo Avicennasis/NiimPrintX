@@ -5,7 +5,7 @@ Focuses on areas not covered by test_cli.py:
   - Print command density capping per-model limits
   - Print command rotation with all valid angles
   - Print command offset passthrough
-  - B-series routing to V2 protocol (print_imageV2)
+  - B-series routing to V2 protocol (print_image_v2)
   - D-series routing to V1 protocol (print_image)
   - Edge-case argument validation
 """
@@ -25,7 +25,7 @@ def _mock_printer(*, connect_ok=True):
     mock.connect.return_value = connect_ok
     mock.disconnect.return_value = None
     mock.print_image.return_value = None
-    mock.print_imageV2.return_value = None
+    mock.print_image_v2.return_value = None
     return mock
 
 
@@ -167,7 +167,7 @@ class TestPrintDensityCap:
         [
             ("d110", "5", DEFAULT_MAX_DENSITY, True, 200, "print_image"),
             ("d110", "3", 3, False, 200, "print_image"),
-            ("b21", "5", 5, False, 300, "print_imageV2"),
+            ("b21", "5", 5, False, 300, "print_image_v2"),
         ],
         ids=["d110-capped-at-max", "d110-within-limit", "b21-allows-density-5"],
     )
@@ -213,11 +213,11 @@ class TestPrintDensityCap:
 
 
 class TestV2ProtocolRouting:
-    """Tests that B-series models route through print_imageV2."""
+    """Tests that B-series models route through print_image_v2."""
 
     @pytest.mark.parametrize("model", sorted(V2_MODELS))
     def test_b_series_uses_v2_protocol(self, runner, model):
-        """All B-series models should call print_imageV2, not print_image."""
+        """All B-series models should call print_image_v2, not print_image."""
         device = _mock_device()
         printer = _mock_printer()
 
@@ -229,7 +229,7 @@ class TestV2ProtocolRouting:
             ):
                 result = runner.invoke(niimbot_cli, ["print", "-m", model, "-d", "1", "-i", "test.png"])
                 assert result.exit_code == 0
-                printer.print_imageV2.assert_awaited_once()
+                printer.print_image_v2.assert_awaited_once()
                 printer.print_image.assert_not_awaited()
 
     def test_b_series_v2_output_message(self, runner):
@@ -249,7 +249,7 @@ class TestV2ProtocolRouting:
 
     @pytest.mark.parametrize("model", ["d11", "d110", "d101", "d11_h", "d110_m"])
     def test_d_series_uses_v1_protocol(self, runner, model):
-        """D-series models should call print_image (V1), not print_imageV2."""
+        """D-series models should call print_image (V1), not print_image_v2."""
         device = _mock_device()
         printer = _mock_printer()
 
@@ -262,7 +262,7 @@ class TestV2ProtocolRouting:
                 result = runner.invoke(niimbot_cli, ["print", "-m", model, "-d", "1", "-i", "test.png"])
                 assert result.exit_code == 0
                 printer.print_image.assert_awaited_once()
-                printer.print_imageV2.assert_not_awaited()
+                printer.print_image_v2.assert_not_awaited()
 
     def test_d_series_v1_output_message(self, runner):
         """D-series print should show 'V1 protocol' in output."""
@@ -417,7 +417,7 @@ class TestPrintOffsets:
                 assert captured_kwargs["horizontal_offset"] == 5
 
     def test_offsets_passed_to_v2_print(self, runner):
-        """Offsets should also be forwarded to print_imageV2 for B-series."""
+        """Offsets should also be forwarded to print_image_v2 for B-series."""
         device = _mock_device()
         printer = _mock_printer()
         captured_kwargs = {}
@@ -425,7 +425,7 @@ class TestPrintOffsets:
         async def capture(image, **kwargs):
             captured_kwargs.update(kwargs)
 
-        printer.print_imageV2 = AsyncMock(side_effect=capture)
+        printer.print_image_v2 = AsyncMock(side_effect=capture)
 
         with runner.isolated_filesystem():
             Image.new("RGB", (300, 100)).save("test.png")
