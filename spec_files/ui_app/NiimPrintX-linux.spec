@@ -27,6 +27,8 @@ import tkinter
 _tcl = tkinter.Tcl()
 tcl_library = os.environ.get('TCL_LIBRARY') or _tcl.eval('info library')
 tk_library = os.environ.get('TK_LIBRARY') or os.path.join(os.path.dirname(tcl_library), f'tk{_tcl.eval("info patchlevel").rsplit(".", 1)[0]}')
+if not os.path.isdir(tk_library):
+    raise RuntimeError(f"Derived Tk library path {tk_library!r} does not exist. Set TK_LIBRARY env var.")
 
 datas += [
     (tcl_library, 'tcl'),

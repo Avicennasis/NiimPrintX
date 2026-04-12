@@ -48,12 +48,20 @@ class NiimbotPacket:
     def to_bytes(self) -> bytes:
         if not 0 <= self.type <= 255:
             raise ValueError(f"Packet type must be 0-255, got {self.type}")
-        if len(self.data) > 255:
-            raise ValueError(f"Packet data too long: {len(self.data)} bytes (max 255)")
-        checksum = self.type ^ len(self.data)
-        for i in self.data:
-            checksum ^= i
-        return bytes((0x55, 0x55, self.type, len(self.data), *self.data, checksum, 0xAA, 0xAA))
+        data_len = len(self.data)
+        if data_len > 255:
+            raise ValueError(f"Packet data too long: {data_len} bytes (max 255)")
+        checksum = self.type ^ data_len
+        for b in self.data:
+            checksum ^= b
+        buf = bytearray(4 + data_len + 3)
+        buf[0] = buf[1] = 0x55
+        buf[2] = self.type
+        buf[3] = data_len
+        buf[4 : 4 + data_len] = self.data
+        buf[-3] = checksum
+        buf[-2] = buf[-1] = 0xAA
+        return bytes(buf)
 
     def __repr__(self) -> str:
         return f"<NiimbotPacket type={self.type} data={self.data!r}>"

@@ -17,10 +17,15 @@ PIL.Image.MAX_IMAGE_PIXELS = _MAX_LABEL_PIXELS
 
 
 class FileMenu:
-    def __init__(self, root, parent, config):
+    def __init__(self, root, parent, config, *, on_close, on_deselect_all, on_load_canvas_config, on_bind_text_select, on_bind_image_select):
         self.root = root
         self.parent = parent
         self.config = config
+        self._on_close = on_close
+        self._on_deselect_all = on_deselect_all
+        self._on_load_canvas_config = on_load_canvas_config
+        self._on_bind_text_select = on_bind_text_select
+        self._on_bind_image_select = on_bind_image_select
         self.create_menu()
 
     def create_menu(self):
@@ -32,7 +37,7 @@ class FileMenu:
         file_menu.add_command(label="Exit", command=self.on_close)
 
     def on_close(self):
-        self.root.on_close()
+        self._on_close()
 
     def save_to_file(self):
         try:
@@ -150,15 +155,9 @@ class FileMenu:
                 return
 
             with contextlib.suppress(Exception):
-                if self.config.current_selected:
-                    self.root.text_tab.text_op.deselect_text()
-                if self.config.current_selected_image:
-                    self.root.icon_tab.image_op.deselect_image()
+                self._on_deselect_all()
 
-            self.root.canvas_selector.selected_device.set(data["device"].upper())
-            self.root.canvas_selector.update_device_label_size()  # repopulate label dropdown
-            self.root.canvas_selector.selected_label_size.set(data["current_label_size"])
-            self.root.canvas_selector.update_canvas_size()  # resize canvas to the saved label size
+            self._on_load_canvas_config(data["device"], data["current_label_size"])
 
             if isinstance(data.get("text"), dict):
                 for item_data in data["text"].values():
@@ -205,9 +204,7 @@ class FileMenu:
             font_img_tk = ImageTk.PhotoImage(font_image)
             font_image.close()
             text_id = self.config.canvas.create_image(coords[0], coords[1], image=font_img_tk, anchor="nw")
-            self.config.canvas.tag_bind(
-                text_id, "<Button-1>", lambda event, tid=text_id: self.root.text_tab.text_op.select_text(event, tid)
-            )
+            self._on_bind_text_select(text_id)
 
             self.config.text_items[text_id] = {
                 "font_image": font_img_tk,
@@ -262,13 +259,6 @@ class FileMenu:
                 "handle": None,
             }
 
-            self.config.canvas.tag_bind(
-                image_id,
-                "<Button-1>",
-                lambda event, img_id=image_id: self.root.icon_tab.image_op.select_image(event, img_id),
-            )
-            self.config.canvas.tag_bind(
-                image_id, "<B1-Motion>", lambda e, img_id=image_id: self.root.icon_tab.image_op.move_image(e, img_id)
-            )
+            self._on_bind_image_select(image_id)
         except (OSError, ValueError, TypeError, KeyError, PIL.UnidentifiedImageError) as e:
             messagebox.showwarning("Warning", f"Failed to load image item: {e}")

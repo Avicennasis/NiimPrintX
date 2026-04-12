@@ -15,7 +15,8 @@ def collect_and_adjust_files(base_path, target_dir):
     return collected_files
 
 # Path to the extracted ImageMagick directory
-imagemagick_path = os.path.abspath('./resources/ImageMagick')
+_spec_dir = os.path.dirname(os.path.abspath(__file__))
+imagemagick_path = os.path.abspath(os.path.join(_spec_dir, '..', '..', 'resources', 'ImageMagick'))
 if not os.path.isdir(imagemagick_path):
     raise RuntimeError(
         f"ImageMagick not found at {imagemagick_path}. "

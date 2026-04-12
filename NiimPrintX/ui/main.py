@@ -59,10 +59,45 @@ class LabelPrinterApp(tk.Tk):
         self.create_widgets()
         self.printer = None
 
+    def _deselect_all(self):
+        if self.app_config.current_selected:
+            self.text_tab.text_op.deselect_text()
+        if self.app_config.current_selected_image:
+            self.icon_tab.image_op.deselect_image()
+
+    def _load_canvas_config(self, device, label_size):
+        self.canvas_selector.selected_device.set(device.upper())
+        self.canvas_selector.update_device_label_size()
+        self.canvas_selector.selected_label_size.set(label_size)
+        self.canvas_selector.update_canvas_size()
+
+    def _bind_text_select(self, text_id):
+        self.app_config.canvas.tag_bind(
+            text_id, "<Button-1>",
+            lambda event, tid=text_id: self.text_tab.text_op.select_text(event, tid),
+        )
+
+    def _bind_image_select(self, image_id):
+        self.app_config.canvas.tag_bind(
+            image_id, "<Button-1>",
+            lambda event, img_id=image_id: self.icon_tab.image_op.select_image(event, img_id),
+        )
+        self.app_config.canvas.tag_bind(
+            image_id, "<B1-Motion>",
+            lambda e, img_id=image_id: self.icon_tab.image_op.move_image(e, img_id),
+        )
+
     def create_menu(self):
         menu_bar = tk.Menu(self)
         self.config(menu=menu_bar)
-        self.file_menu = FileMenu(self, menu_bar, self.app_config)
+        self.file_menu = FileMenu(
+            self, menu_bar, self.app_config,
+            on_close=self.on_close,
+            on_deselect_all=self._deselect_all,
+            on_load_canvas_config=self._load_canvas_config,
+            on_bind_text_select=self._bind_text_select,
+            on_bind_image_select=self._bind_image_select,
+        )
 
     def create_widgets(self):
         # Top frame to hold the canvas and Notebook
