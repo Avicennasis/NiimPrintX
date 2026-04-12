@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 class NiimPrintXException(Exception):
     """Base exception for all NiimPrintX errors."""
 

@@ -1,6 +1,7 @@
 import os
 import platform
 import re
+import shutil
 import subprocess
 import sys
 from collections import defaultdict
@@ -27,6 +28,7 @@ def _run_font_list(cmd):
 
 
 def fonts():
+    path_fallback = False
     if hasattr(sys, "_MEIPASS"):
         base_path = sys._MEIPASS
         imagemagick_base_path = os.path.join(base_path, "imagemagick")
@@ -37,21 +39,39 @@ def fonts():
         elif platform.system() == "Linux":
             magick_path = os.path.join(imagemagick_base_path, "bin", "magick")
         else:
-            magick_path = "magick"
+            magick_path = shutil.which("magick")
+            if magick_path is None:
+                logger.warning("ImageMagick 'magick' not found in PATH")
+                return {}
+            path_fallback = True
+            logger.warning("Using PATH fallback for 'magick': %s", magick_path)
     else:
-        magick_path = "magick"
+        magick_path = shutil.which("magick")
+        if magick_path is None:
+            logger.warning("ImageMagick 'magick' not found in PATH")
+            # Still try the IM6 convert fallback below
+        else:
+            path_fallback = True
+            logger.warning("Using PATH fallback for 'magick': %s", magick_path)
 
-    grouped = _run_font_list([magick_path, "-list", "font"])
-    if grouped is not None:
-        return grouped
-
-    # Fallback to IM6 'convert' on non-Windows when using system magick
-    if magick_path == "magick" and platform.system() != "Windows":
-        grouped = _run_font_list(["convert", "-list", "font"])
+    if magick_path is not None:
+        grouped = _run_font_list([magick_path, "-list", "font"])
         if grouped is not None:
             return grouped
 
-    logger.warning(f"ImageMagick at {magick_path} failed. Font list unavailable.")
+    # Fallback to IM6 'convert' on non-Windows when using system magick
+    if (magick_path is None or path_fallback) and platform.system() != "Windows":
+        convert_path = shutil.which("convert")
+        if convert_path is None:
+            logger.warning("ImageMagick 'convert' not found in PATH")
+        else:
+            logger.warning("Using PATH fallback for 'convert': %s", convert_path)
+            grouped = _run_font_list([convert_path, "-list", "font"])
+            if grouped is not None:
+                return grouped
+
+    label = magick_path or "magick"
+    logger.warning("ImageMagick at %s failed. Font list unavailable.", label)
     return {}
 
 

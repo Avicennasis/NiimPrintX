@@ -3,7 +3,7 @@ import os
 import subprocess
 from PyInstaller.utils.hooks import collect_submodules
 
-hiddenimports = collect_submodules('bleak') + collect_submodules('wand') + ['platformdirs', 'sv_ttk', 'cairo']
+hiddenimports = collect_submodules('PIL') + collect_submodules('tkinter') + collect_submodules('bleak') + collect_submodules('wand') + ['platformdirs', 'sv_ttk', 'cairo']
 
 
 # Function to get the ImageMagick installation path using brew and resolve the symlink

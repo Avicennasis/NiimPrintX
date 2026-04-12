@@ -1,18 +1,24 @@
+from __future__ import annotations
+
 import contextlib
 import os
 import sys
+from typing import TYPE_CHECKING
 
 import platformdirs
 from loguru import logger
 
+if TYPE_CHECKING:
+    from loguru import Logger
 
-def _get_log_path():
+
+def _get_log_path() -> str:
     log_dir = platformdirs.user_log_dir("NiimPrintX")
     os.makedirs(log_dir, exist_ok=True)
     return os.path.join(log_dir, "nimmy.log")
 
 
-def _add_handlers(level):
+def _add_handlers(level: str) -> None:
     logger.add(
         sys.stderr, colorize=True, format="<blue>{time}</blue> | <level>{level}</level> | {message}", level=level
     )
@@ -20,7 +26,7 @@ def _add_handlers(level):
         logger.add(_get_log_path(), rotation="100 MB", compression="zip", level=level)
 
 
-def setup_logger():
+def setup_logger() -> None:
     logger.remove()
     _add_handlers("INFO")
 
@@ -35,7 +41,7 @@ def setup_logger():
 # | ERROR      | 40             | logger.error()    |
 # | CRITICAL   | 50             | logger.critical() |
 # ---------------------------------------------------
-def logger_enable(verbose: int):
+def logger_enable(verbose: int) -> None:
     # At verbose=0, keep the handlers setup_logger() already configured
     if verbose == 0:
         return
@@ -49,5 +55,5 @@ def logger_enable(verbose: int):
     _add_handlers(new_level)
 
 
-def get_logger():
+def get_logger() -> Logger:
     return logger

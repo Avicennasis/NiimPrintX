@@ -1,6 +1,7 @@
-from unittest.mock import patch
+import subprocess
+from unittest.mock import MagicMock, patch
 
-from NiimPrintX.ui.component.FontList import fonts, group_fonts_by_family, parse_font_details
+from NiimPrintX.ui.component.FontList import _run_font_list, fonts, group_fonts_by_family, parse_font_details
 
 # ---------- parse_font_details ----------
 
@@ -47,6 +48,93 @@ def test_parse_font_details_missing_family():
     font = result[0]
     assert font["name"] == "Mystery-Font"
     assert "family" not in font
+
+
+MULTI_FONT_OUTPUT = """\
+  Font: DejaVu-Sans
+    family: DejaVu Sans
+    style: Normal
+    stretch: Normal
+    weight: 400
+    glyphs: /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
+  Font: DejaVu-Sans-Bold
+    family: DejaVu Sans
+    style: Normal
+    stretch: Normal
+    weight: 700
+    glyphs: /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf
+"""
+
+
+def test_parse_font_details_multiple_fonts():
+    """Multiple font entries are each appended as separate dicts (covers lines 64-65)."""
+    result = parse_font_details(MULTI_FONT_OUTPUT)
+    assert len(result) == 2
+    assert result[0]["name"] == "DejaVu-Sans"
+    assert result[0]["weight"] == "400"
+    assert result[1]["name"] == "DejaVu-Sans-Bold"
+    assert result[1]["weight"] == "700"
+
+
+# ---------- _run_font_list ----------
+
+
+def test_run_font_list_success():
+    """Successful subprocess returns grouped fonts dict."""
+    mock_result = MagicMock()
+    mock_result.returncode = 0
+    mock_result.stdout = SINGLE_FONT_OUTPUT
+
+    with patch("NiimPrintX.ui.component.FontList.subprocess.run", return_value=mock_result):
+        result = _run_font_list(["magick", "-list", "font"])
+
+    assert "DejaVu Sans" in result
+    assert result["DejaVu Sans"]["family_name"] == "DejaVu Sans"
+
+
+def test_run_font_list_nonzero_returncode():
+    """Non-zero return code yields None."""
+    mock_result = MagicMock()
+    mock_result.returncode = 1
+
+    with patch("NiimPrintX.ui.component.FontList.subprocess.run", return_value=mock_result):
+        result = _run_font_list(["magick", "-list", "font"])
+
+    assert result is None
+
+
+def test_run_font_list_empty_output():
+    """Empty stdout from subprocess returns an empty dict."""
+    mock_result = MagicMock()
+    mock_result.returncode = 0
+    mock_result.stdout = "   \n"
+
+    with patch("NiimPrintX.ui.component.FontList.subprocess.run", return_value=mock_result):
+        result = _run_font_list(["magick", "-list", "font"])
+
+    assert result == {}
+
+
+def test_run_font_list_timeout():
+    """TimeoutExpired from subprocess returns None."""
+    with patch(
+        "NiimPrintX.ui.component.FontList.subprocess.run",
+        side_effect=subprocess.TimeoutExpired(cmd="magick", timeout=10),
+    ):
+        result = _run_font_list(["magick", "-list", "font"])
+
+    assert result is None
+
+
+def test_run_font_list_file_not_found():
+    """FileNotFoundError (binary missing) returns None."""
+    with patch(
+        "NiimPrintX.ui.component.FontList.subprocess.run",
+        side_effect=FileNotFoundError("magick not found"),
+    ):
+        result = _run_font_list(["magick", "-list", "font"])
+
+    assert result is None
 
 
 # ---------- group_fonts_by_family ----------
@@ -163,17 +251,50 @@ def test_fonts_bundled_path_windows():
     assert result == FAKE_GROUPED
 
 
+def test_fonts_bundled_path_linux():
+    """Bundled (PyInstaller) Linux build constructs the correct magick path (covers lines 37-38)."""
+    with (
+        patch.object(__import__("sys"), "_MEIPASS", FAKE_MEIPASS, create=True),
+        patch("NiimPrintX.ui.component.FontList.platform") as mock_platform,
+        patch("NiimPrintX.ui.component.FontList._run_font_list", return_value=FAKE_GROUPED) as mock_run,
+    ):
+        mock_platform.system.return_value = "Linux"
+        result = fonts()
+
+    expected_path = f"{FAKE_MEIPASS}/imagemagick/bin/magick"
+    mock_run.assert_called_once_with([expected_path, "-list", "font"])
+    assert result == FAKE_GROUPED
+
+
+def test_fonts_bundled_path_unknown_platform():
+    """Bundled build on unknown platform falls back to shutil.which('magick')."""
+    with (
+        patch.object(__import__("sys"), "_MEIPASS", FAKE_MEIPASS, create=True),
+        patch("NiimPrintX.ui.component.FontList.platform") as mock_platform,
+        patch("NiimPrintX.ui.component.FontList.shutil") as mock_shutil,
+        patch("NiimPrintX.ui.component.FontList._run_font_list", return_value=FAKE_GROUPED) as mock_run,
+    ):
+        mock_platform.system.return_value = "FreeBSD"
+        mock_shutil.which.return_value = "/usr/local/bin/magick"
+        result = fonts()
+
+    mock_run.assert_called_once_with(["/usr/local/bin/magick", "-list", "font"])
+    assert result == FAKE_GROUPED
+
+
 def test_fonts_system_magick_success():
     """System magick succeeds on first try -- no convert fallback attempted."""
     with (
+        patch("NiimPrintX.ui.component.FontList.shutil") as mock_shutil,
         patch("NiimPrintX.ui.component.FontList._run_font_list", return_value=FAKE_GROUPED) as mock_run,
     ):
+        mock_shutil.which.return_value = "/usr/bin/magick"
         # Ensure no _MEIPASS so we hit the system-magick branch
         if hasattr(__import__("sys"), "_MEIPASS"):
             delattr(__import__("sys"), "_MEIPASS")
         result = fonts()
 
-    mock_run.assert_called_once_with(["magick", "-list", "font"])
+    mock_run.assert_called_once_with(["/usr/bin/magick", "-list", "font"])
     assert result == FAKE_GROUPED
 
 
@@ -181,27 +302,44 @@ def test_fonts_system_magick_fails_convert_fallback():
     """When system magick fails, fonts() falls back to 'convert' and returns its result."""
     convert_result = {"ConvertFamily": {"family_name": "ConvertFamily", "fonts": {}}}
 
+    def which_side_effect(name):
+        return {
+            "magick": "/usr/bin/magick",
+            "convert": "/usr/bin/convert",
+        }.get(name)
+
     with (
+        patch("NiimPrintX.ui.component.FontList.shutil") as mock_shutil,
         patch("NiimPrintX.ui.component.FontList._run_font_list", side_effect=[None, convert_result]) as mock_run,
         patch("NiimPrintX.ui.component.FontList.platform") as mock_platform,
     ):
+        mock_shutil.which.side_effect = which_side_effect
         mock_platform.system.return_value = "Linux"
         if hasattr(__import__("sys"), "_MEIPASS"):
             delattr(__import__("sys"), "_MEIPASS")
         result = fonts()
 
     assert mock_run.call_count == 2
-    mock_run.assert_any_call(["magick", "-list", "font"])
-    mock_run.assert_any_call(["convert", "-list", "font"])
+    mock_run.assert_any_call(["/usr/bin/magick", "-list", "font"])
+    mock_run.assert_any_call(["/usr/bin/convert", "-list", "font"])
     assert result == convert_result
 
 
 def test_fonts_both_fail():
     """When both magick and convert fail, fonts() returns an empty dict."""
+
+    def which_side_effect(name):
+        return {
+            "magick": "/usr/bin/magick",
+            "convert": "/usr/bin/convert",
+        }.get(name)
+
     with (
+        patch("NiimPrintX.ui.component.FontList.shutil") as mock_shutil,
         patch("NiimPrintX.ui.component.FontList._run_font_list", return_value=None) as mock_run,
         patch("NiimPrintX.ui.component.FontList.platform") as mock_platform,
     ):
+        mock_shutil.which.side_effect = which_side_effect
         mock_platform.system.return_value = "Linux"
         if hasattr(__import__("sys"), "_MEIPASS"):
             delattr(__import__("sys"), "_MEIPASS")

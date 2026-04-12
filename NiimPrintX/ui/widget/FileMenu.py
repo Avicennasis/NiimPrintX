@@ -10,6 +10,7 @@ import PIL
 from PIL import Image, ImageTk
 
 _MAX_LABEL_PIXELS = 5_000_000  # well above any real label dimensions
+_MAX_ITEMS_PER_FILE = 100
 
 
 class FileMenu:
@@ -117,6 +118,14 @@ class FileMenu:
 
             if not isinstance(data.get("device"), str) or not isinstance(data.get("current_label_size"), str):
                 messagebox.showerror("Error", "Invalid .niim file: 'device' and 'current_label_size' must be strings.")
+                return
+
+            total_items = len(data.get("text", {})) + len(data.get("image", {}))
+            if total_items > _MAX_ITEMS_PER_FILE:
+                messagebox.showerror(
+                    "Error",
+                    f"File contains too many items ({total_items}). Maximum is {_MAX_ITEMS_PER_FILE}.",
+                )
                 return
 
             device = data.get("device", "").lower()

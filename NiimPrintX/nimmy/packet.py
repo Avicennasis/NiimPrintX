@@ -1,16 +1,19 @@
-def packet_to_int(x):
+from __future__ import annotations
+
+
+def packet_to_int(x: NiimbotPacket) -> int:
     if not x.data:
         raise ValueError("Cannot convert empty packet data to integer")
     return int.from_bytes(x.data, "big")
 
 
 class NiimbotPacket:
-    def __init__(self, type_, data):
+    def __init__(self, type_: int, data: bytes) -> None:
         self.type = type_
         self.data = data
 
     @classmethod
-    def from_bytes(cls, pkt):
+    def from_bytes(cls, pkt: bytes | bytearray | memoryview) -> NiimbotPacket:
         if not isinstance(pkt, (bytes, bytearray, memoryview)):
             raise TypeError(f"from_bytes requires bytes-like object, got {type(pkt).__name__}")
         if len(pkt) < 7:
@@ -36,7 +39,7 @@ class NiimbotPacket:
 
         return cls(type_, data)
 
-    def to_bytes(self):
+    def to_bytes(self) -> bytes:
         if not 0 <= self.type <= 255:
             raise ValueError(f"Packet type must be 0-255, got {self.type}")
         if len(self.data) > 255:
@@ -46,5 +49,5 @@ class NiimbotPacket:
             checksum ^= i
         return bytes((0x55, 0x55, self.type, len(self.data), *self.data, checksum, 0xAA, 0xAA))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<NiimbotPacket type={self.type} data={self.data}>"

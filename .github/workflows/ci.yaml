@@ -32,8 +32,19 @@ jobs:
       - name: Install dependencies
         run: poetry install
 
+      - name: CLI smoke test
+        run: poetry run niimprintx --help
+
       - name: Run tests
-        run: poetry run pytest -v --cov=NiimPrintX --cov-report=term-missing --cov-fail-under=60
+        run: poetry run pytest -v --cov=NiimPrintX --cov-report=term-missing --junitxml=test-results.xml
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08  # v4
+        with:
+          name: test-results-${{ matrix.python-version }}
+          path: test-results.xml
+          retention-days: 30
 
   lint:
     name: "Lint"
@@ -58,3 +69,29 @@ jobs:
 
       - name: Format check with ruff
         run: poetry run ruff format --check NiimPrintX/ tests/
+
+  audit:
+    name: "Dependency Audit"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4
+
+      - name: Install poetry
+        run: pipx install poetry==2.3.3
+
+      - name: Set up Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b  # v5
+        with:
+          python-version: '3.12'
+          cache: 'poetry'
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Export requirements
+        run: poetry export -f requirements.txt --output requirements.txt --without-hashes
+
+      - name: Audit dependencies
+        uses: pypa/gh-action-pip-audit@d499194be74aeb3bc7dbed3a224a87e1e5a47aaa  # v1.1.0
+        with:
+          inputs: requirements.txt

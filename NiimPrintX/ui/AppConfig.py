@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import platform
 
@@ -7,7 +9,7 @@ from NiimPrintX.ui.UserConfig import load_user_config, merge_label_sizes
 
 
 class AppConfig:
-    def __init__(self):
+    def __init__(self) -> None:
         self.os_system = platform.system()
         self.screen_dpi = 72
         self.text_items = {}
@@ -122,3 +124,8 @@ class AppConfig:
         self.print_job = False
         self.printer_connected = False
         self.cache_dir = platformdirs.user_cache_dir("NiimPrintX")
+
+    def mm_to_pixels(self, mm: float) -> int:
+        """Convert millimeters to pixels using the current device's DPI."""
+        inches = mm / 25.4
+        return int(inches * self.label_sizes[self.device]["print_dpi"])

@@ -1,19 +1,22 @@
+from __future__ import annotations
+
 import contextlib
 import tkinter as tk
 from tkinter import ttk
+from typing import Any
 
 from .CanvasOperation import CanvasOperation
 
 
 class CanvasSelector:
-    def __init__(self, parent, config, text_op, img_op):
+    def __init__(self, parent: tk.Tk, config: Any, text_op: Any, img_op: Any) -> None:
         self.parent = parent
         self.config = config
         self.frame = ttk.Frame(parent)
         self.canvas_op = CanvasOperation(config, text_op, img_op)
         self.create_widgets()
 
-    def create_widgets(self):
+    def create_widgets(self) -> None:
         device_label = tk.Label(self.frame, text="Device")
         device_label.pack(side=tk.LEFT, padx=10)
         self.selected_device = tk.StringVar(value="D110")
@@ -35,7 +38,7 @@ class CanvasSelector:
         self.update_canvas_size()
         self.frame.pack(side=tk.LEFT)
 
-    def update_device_label_size(self, event=None):
+    def update_device_label_size(self, event: tk.Event | None = None) -> None:
         device = self.selected_device.get().lower()
         if device:
             # Reset connection state when device changes
@@ -52,7 +55,7 @@ class CanvasSelector:
             self.selected_label_size.set("")
         self.update_canvas_size()
 
-    def update_canvas_size(self, event=None):
+    def update_canvas_size(self, event: tk.Event | None = None) -> None:
         """Update the canvas size based on the selected label size."""
         device = self.selected_device.get().lower()
         label_size = self.selected_label_size.get()
@@ -65,11 +68,11 @@ class CanvasSelector:
         ]
 
         # Convert the label size to pixels
-        self.bounding_box_width = self.mm_to_pixels(label_width_mm)
-        self.bounding_box_height = self.mm_to_pixels(label_height_mm)
+        self.bounding_box_width = self.config.mm_to_pixels(label_width_mm)
+        self.bounding_box_height = self.config.mm_to_pixels(label_height_mm)
 
-        self.print_area_width = self.bounding_box_width - self.mm_to_pixels(2)
-        self.print_area_height = self.bounding_box_height - self.mm_to_pixels(4)
+        self.print_area_width = self.bounding_box_width - self.config.mm_to_pixels(2)
+        self.print_area_height = self.bounding_box_height - self.config.mm_to_pixels(4)
 
         # Set the new canvas dimensions with padding
         padding = 150  # total canvas padding
@@ -132,7 +135,3 @@ class CanvasSelector:
         )
 
         self.config.canvas.bind("<Button-1>", self.canvas_op.canvas_click_handler)
-
-    def mm_to_pixels(self, mm):
-        inches = mm / 25.4
-        return int(inches * self.config.label_sizes[self.config.device]["print_dpi"])

@@ -1,5 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 import os
+from PyInstaller.utils.hooks import collect_submodules
 
 # Determine the current path and the source path for the CLI application
 current_path = os.getcwd()
@@ -16,7 +17,7 @@ a = Analysis(
     pathex=['.'],
     binaries=[],
     datas=[],
-    hiddenimports=[],
+    hiddenimports=['click', 'loguru', 'rich', 'platformdirs'] + collect_submodules('PIL') + collect_submodules('bleak'),
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

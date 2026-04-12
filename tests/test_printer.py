@@ -44,23 +44,56 @@ async def test_send_command_catches_valueerror_from_malformed_packet(make_client
         await client.send_command(RequestCodeEnum.GET_INFO, b"\x01")
 
 
-async def test_heartbeat_case_10_no_rfid(make_client):
-    """10-byte heartbeat should not set rfid_read_state (only 2 useful fields)."""
-    client = make_client()
-    hb_data = bytearray(10)
-    hb_data[8] = 0x05  # closing_state
-    hb_data[9] = 0x64  # power_level
-    response_pkt = NiimbotPacket(RequestCodeEnum.HEARTBEAT, bytes(hb_data))
+def _build_heartbeat_data(size, offsets):
+    """Build a bytearray of the given size with specific byte offsets set."""
+    hb_data = bytearray(size)
+    for idx, val in offsets.items():
+        hb_data[idx] = val
+    return bytes(hb_data)
 
-    async def fake_write(data, char_uuid):
+
+@pytest.mark.parametrize(
+    ("data", "expected"),
+    [
+        pytest.param(
+            _build_heartbeat_data(9, {8: 0x01}),
+            {"closing_state": 0x01, "power_level": None, "paper_state": None, "rfid_read_state": None},
+            id="case_9",
+        ),
+        pytest.param(
+            _build_heartbeat_data(10, {8: 0x05, 9: 0x64}),
+            {"closing_state": 0x05, "power_level": 0x64, "paper_state": None, "rfid_read_state": None},
+            id="case_10",
+        ),
+        pytest.param(
+            _build_heartbeat_data(13, {9: 0x01, 10: 0x64, 11: 0x0A, 12: 0x0B}),
+            {"closing_state": 0x01, "power_level": 0x64, "paper_state": 0x0A, "rfid_read_state": 0x0B},
+            id="case_13",
+        ),
+        pytest.param(
+            _build_heartbeat_data(19, {15: 0x01, 16: 0x50, 17: 0x0C, 18: 0x0D}),
+            {"closing_state": 0x01, "power_level": 0x50, "paper_state": 0x0C, "rfid_read_state": 0x0D},
+            id="case_19",
+        ),
+        pytest.param(
+            _build_heartbeat_data(20, {18: 0x02, 19: 0x03}),
+            {"closing_state": None, "power_level": None, "paper_state": 0x02, "rfid_read_state": 0x03},
+            id="case_20",
+        ),
+    ],
+)
+async def test_heartbeat_parsing(data, expected, make_client):
+    """Heartbeat responses of different lengths parse into the correct state fields."""
+    client = make_client()
+    response_pkt = NiimbotPacket(RequestCodeEnum.HEARTBEAT, data)
+
+    async def fake_write(raw, char_uuid):
         client.notification_data = response_pkt.to_bytes()
         client.notification_event.set()
 
     client.transport.write = AsyncMock(side_effect=fake_write)
     result = await client.heartbeat()
-    assert result["closing_state"] == 0x05
-    assert result["power_level"] == 0x64
-    assert result["rfid_read_state"] is None
+    assert result == expected
 
 
 async def test_send_command_timeout_raises_printer_exception(make_client):
@@ -69,89 +102,6 @@ async def test_send_command_timeout_raises_printer_exception(make_client):
     # Never set the event — will timeout
     with pytest.raises(PrinterException, match="timed out"):
         await client.send_command(RequestCodeEnum.GET_INFO, b"\x01", timeout=0.1)
-
-
-async def test_heartbeat_case_20(make_client):
-    """20-byte heartbeat sets paper_state and rfid_read_state from tail bytes."""
-    client = make_client()
-    hb_data = bytearray(20)
-    hb_data[18] = 0x02  # paper_state
-    hb_data[19] = 0x03  # rfid_read_state
-    response_pkt = NiimbotPacket(RequestCodeEnum.HEARTBEAT, bytes(hb_data))
-
-    async def fake_write(data, char_uuid):
-        client.notification_data = response_pkt.to_bytes()
-        client.notification_event.set()
-
-    client.transport.write = AsyncMock(side_effect=fake_write)
-    result = await client.heartbeat()
-    assert result["closing_state"] is None
-    assert result["power_level"] is None
-    assert result["paper_state"] == 0x02
-    assert result["rfid_read_state"] == 0x03
-
-
-async def test_heartbeat_case_13(make_client):
-    """13-byte heartbeat extracts closing_state, power, paper, and rfid."""
-    client = make_client()
-    hb_data = bytearray(13)
-    hb_data[9] = 0x01  # closing_state
-    hb_data[10] = 0x64  # power_level
-    hb_data[11] = 0x0A  # paper_state
-    hb_data[12] = 0x0B  # rfid_read_state
-    response_pkt = NiimbotPacket(RequestCodeEnum.HEARTBEAT, bytes(hb_data))
-
-    async def fake_write(data, char_uuid):
-        client.notification_data = response_pkt.to_bytes()
-        client.notification_event.set()
-
-    client.transport.write = AsyncMock(side_effect=fake_write)
-    result = await client.heartbeat()
-    assert result["closing_state"] == 0x01
-    assert result["power_level"] == 0x64
-    assert result["paper_state"] == 0x0A
-    assert result["rfid_read_state"] == 0x0B
-
-
-async def test_heartbeat_case_19(make_client):
-    """19-byte heartbeat reads state fields from higher offsets."""
-    client = make_client()
-    hb_data = bytearray(19)
-    hb_data[15] = 0x01  # closing_state
-    hb_data[16] = 0x50  # power_level
-    hb_data[17] = 0x0C  # paper_state
-    hb_data[18] = 0x0D  # rfid_read_state
-    response_pkt = NiimbotPacket(RequestCodeEnum.HEARTBEAT, bytes(hb_data))
-
-    async def fake_write(data, char_uuid):
-        client.notification_data = response_pkt.to_bytes()
-        client.notification_event.set()
-
-    client.transport.write = AsyncMock(side_effect=fake_write)
-    result = await client.heartbeat()
-    assert result["closing_state"] == 0x01
-    assert result["power_level"] == 0x50
-    assert result["paper_state"] == 0x0C
-    assert result["rfid_read_state"] == 0x0D
-
-
-async def test_heartbeat_case_9(make_client):
-    """9-byte heartbeat only sets closing_state; paper and rfid are None."""
-    client = make_client()
-    hb_data = bytearray(9)
-    hb_data[8] = 0x01  # closing_state
-    response_pkt = NiimbotPacket(RequestCodeEnum.HEARTBEAT, bytes(hb_data))
-
-    async def fake_write(data, char_uuid):
-        client.notification_data = response_pkt.to_bytes()
-        client.notification_event.set()
-
-    client.transport.write = AsyncMock(side_effect=fake_write)
-    result = await client.heartbeat()
-    assert result["closing_state"] == 0x01
-    assert result["power_level"] is None
-    assert result["paper_state"] is None
-    assert result["rfid_read_state"] is None
 
 
 async def test_set_label_type_invalid_raises(make_client):

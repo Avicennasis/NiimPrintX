@@ -78,7 +78,7 @@ class TextOperation:
         }
 
     def delete_text(self):
-        if self.config.current_selected:
+        if self.config.current_selected and self.config.current_selected in self.config.text_items:
             self.config.canvas.delete(self.config.current_selected)
             if self.config.text_items[self.config.current_selected].get("bbox") is not None:
                 self.config.canvas.delete(self.config.text_items[self.config.current_selected]["bbox"])
@@ -135,6 +135,8 @@ class TextOperation:
 
     def draw_bounding_box(self, event, text_id):
         bb = self.config.canvas.bbox(text_id)
+        if bb is None:
+            return
         bbox = self.config.canvas.create_rectangle(bb, outline="blue", width=2, tags="bounding_box")
         handle = self.config.canvas.create_oval(bb[2] - 5, bb[3] - 5, bb[2] + 5, bb[3] + 5, outline="blue", fill="gray")
         self.config.text_items[text_id].update(
@@ -185,6 +187,8 @@ class TextOperation:
 
     def update_bbox_and_handle(self, text_id):
         bbox_coords = self.config.canvas.bbox(text_id)
+        if bbox_coords is None:
+            return
         self.config.canvas.coords(self.config.text_items[text_id]["bbox"], bbox_coords)
         self.config.canvas.coords(
             self.config.text_items[text_id]["handle"],

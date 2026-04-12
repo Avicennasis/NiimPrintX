@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 
 from rich.console import Console
@@ -10,16 +12,16 @@ console = Console(color_system=None if no_color else "auto")
 err_console = Console(color_system=None if no_color else "auto", stderr=True)
 
 
-def print_success(message):
+def print_success(message: str) -> None:
     """Prints a message indicating success in green color."""
     console.print(f"[bold green]{message}[/bold green]")
 
 
-def print_error(message):
+def print_error(message: str) -> None:
     """Prints a message indicating an error in red color."""
     err_console.print(f"[bold red]{message}[/bold red]")
 
 
-def print_info(message):
+def print_info(message: str) -> None:
     """Prints an informational message in blue color."""
     console.print(f"[bold blue]{message}[/bold blue]")

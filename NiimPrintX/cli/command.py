@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import sys
 
@@ -21,7 +23,7 @@ logger = get_logger()
     help="Enable verbose logging",
 )
 @click.pass_context
-def niimbot_cli(ctx, verbose):
+def niimbot_cli(ctx: click.Context, verbose: int) -> None:
     ctx.ensure_object(dict)
     setup_logger()
     ctx.obj["VERBOSE"] = verbose
@@ -84,7 +86,9 @@ def niimbot_cli(ctx, verbose):
     required=True,
     help="Image path",
 )
-def print_command(model, density, rotate, image, quantity, vertical_offset, horizontal_offset):
+def print_command(
+    model: str, density: int, rotate: str, image: str, quantity: int, vertical_offset: int, horizontal_offset: int
+) -> None:
     logger.info("Niimbot Printing Start")
 
     max_width_px = 384 if model in V2_MODELS else 240
@@ -122,8 +126,10 @@ def print_command(model, density, rotate, image, quantity, vertical_offset, hori
         sys.exit(1)
 
 
-async def _print(model, density, image, quantity, vertical_offset, horizontal_offset):
-    printer = None
+async def _print(
+    model: str, density: int, image: Image.Image, quantity: int, vertical_offset: int, horizontal_offset: int
+) -> bool:
+    printer: PrinterClient | None = None
     try:
         print_info("Starting print job")
         device = await find_device(model)
@@ -170,7 +176,7 @@ async def _print(model, density, image, quantity, vertical_offset, horizontal_of
     show_default=True,
     help="Niimbot printer model",
 )
-def info_command(model):
+def info_command(model: str) -> None:
     logger.info("Niimbot Information")
     print_info("Niimbot Information")
     try:
@@ -185,8 +191,8 @@ def info_command(model):
         sys.exit(1)
 
 
-async def _info(model):
-    printer = None
+async def _info(model: str) -> bool:
+    printer: PrinterClient | None = None
     try:
         device = await find_device(model)
         printer = PrinterClient(device)

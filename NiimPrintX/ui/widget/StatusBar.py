@@ -1,13 +1,16 @@
+from __future__ import annotations
+
 import tkinter as tk
+from typing import Any
 
 
 class StatusBar:
-    def __init__(self, parent, config):
+    def __init__(self, parent: tk.Tk, config: Any) -> None:
         self.parent = parent
         self.config = config
         self.create_widgets()
 
-    def create_widgets(self):
+    def create_widgets(self) -> None:
         """Create a status bar at the bottom of the tkinter application with a status message."""
 
         # Create a frame for the status bar at the bottom of the root window
@@ -23,7 +26,7 @@ class StatusBar:
         self.status_label = tk.Label(self.status_frame, text="Not Connected", fg="red", font=("Arial", 10))
         self.status_label.pack(side=tk.RIGHT, padx=5)
 
-    def update_status(self, connection=True):
+    def update_status(self, connection: bool = True) -> None:
         """Update the status message and circle color to indicate connection."""
 
         if connection:

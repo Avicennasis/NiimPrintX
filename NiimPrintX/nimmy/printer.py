@@ -1,8 +1,12 @@
+from __future__ import annotations
+
 import asyncio
 import contextlib
 import enum
 import math
 import struct
+from collections.abc import Generator
+from typing import Any
 
 from PIL import Image, ImageOps
 
@@ -10,6 +14,7 @@ from .bluetooth import BLETransport
 from .exception import BLEException, PrinterException
 from .logger_config import get_logger
 from .packet import NiimbotPacket, packet_to_int
+from .types import HeartbeatResponse, PrintStatus, RFIDResponse
 
 logger = get_logger()
 
@@ -49,17 +54,17 @@ class RequestCodeEnum(enum.IntEnum):
 
 
 class PrinterClient:
-    def __init__(self, device):
-        self.char_uuid = None
+    def __init__(self, device: Any) -> None:
+        self.char_uuid: str | None = None
         self.device = device
-        self.transport = BLETransport()
-        self.notification_event = asyncio.Event()
-        self.notification_data = None
-        self._loop = None
-        self._command_lock = asyncio.Lock()
-        self._print_lock = asyncio.Lock()
+        self.transport: BLETransport = BLETransport()
+        self.notification_event: asyncio.Event = asyncio.Event()
+        self.notification_data: bytearray | None = None
+        self._loop: asyncio.AbstractEventLoop | None = None
+        self._command_lock: asyncio.Lock = asyncio.Lock()
+        self._print_lock: asyncio.Lock = asyncio.Lock()
 
-    async def connect(self):
+    async def connect(self) -> bool:
         if await self.transport.connect(self.device.address):
             if not self.char_uuid:
                 try:
@@ -73,13 +78,13 @@ class PrinterClient:
         logger.error("Connection failed.")
         return False
 
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         self.char_uuid = None
         await self.transport.disconnect()
         logger.info(f"Printer {self.device.name} disconnected.")
 
-    async def find_characteristics(self):
-        services = {}
+    async def find_characteristics(self) -> None:
+        services: dict[str, list[dict[str, Any]]] = {}
         for service in self.transport.client.services:
             s = [
                 {"id": char.uuid, "handle": char.handle, "properties": char.properties}
@@ -88,7 +93,7 @@ class PrinterClient:
 
             services[service.uuid] = s
 
-        candidates = []
+        candidates: list[str] = []
         for characteristics in services.values():
             if len(characteristics) == 1:  # Check if there's exactly one characteristic
                 props = characteristics[0]["properties"]
@@ -100,7 +105,7 @@ class PrinterClient:
             logger.warning(f"Multiple matching characteristics found: {candidates}; using first")
         self.char_uuid = candidates[0]
 
-    async def send_command(self, request_code, data, timeout=10):  # noqa: ASYNC109 — uses asyncio.wait_for internally
+    async def send_command(self, request_code: int, data: bytes, timeout: float = 10) -> NiimbotPacket:  # noqa: ASYNC109 — uses asyncio.wait_for internally
         async with self._command_lock:
             notifying = False
             try:
@@ -137,7 +142,7 @@ class PrinterClient:
                         logger.warning(f"stop_notify failed: {e}")
                 self.notification_event.clear()
 
-    async def write_raw(self, data):
+    async def write_raw(self, data: NiimbotPacket) -> None:
         async with self._command_lock:
             try:
                 if (not self.transport.client or not self.transport.client.is_connected) and not await self.connect():
@@ -147,12 +152,12 @@ class PrinterClient:
                 logger.error(f"Write error: {e}")
                 raise PrinterException(f"BLE write failed: {e}") from e
 
-    def notification_handler(self, sender, data):
+    def notification_handler(self, sender: Any, data: bytearray) -> None:
         logger.trace(f"Notification: {data}")
         if self._loop is None:
             return
 
-        def _set():
+        def _set() -> None:
             if not self.notification_event.is_set():
                 self.notification_data = data
                 self.notification_event.set()
@@ -160,13 +165,23 @@ class PrinterClient:
         self._loop.call_soon_threadsafe(_set)
 
     async def print_image(
-        self, image: Image.Image, density: int = 3, quantity: int = 1, vertical_offset=0, horizontal_offset=0
-    ):
+        self,
+        image: Image.Image,
+        density: int = 3,
+        quantity: int = 1,
+        vertical_offset: int = 0,
+        horizontal_offset: int = 0,
+    ) -> None:
         await self._print_job(image, density, quantity, vertical_offset, horizontal_offset, v2=False)
 
     async def print_imageV2(
-        self, image: Image.Image, density: int = 3, quantity: int = 1, vertical_offset=0, horizontal_offset=0
-    ):
+        self,
+        image: Image.Image,
+        density: int = 3,
+        quantity: int = 1,
+        vertical_offset: int = 0,
+        horizontal_offset: int = 0,
+    ) -> None:
         await self._print_job(image, density, quantity, vertical_offset, horizontal_offset, v2=True)
 
     async def _print_job(
@@ -178,7 +193,7 @@ class PrinterClient:
         horizontal_offset: int,
         *,
         v2: bool = False,
-    ):
+    ) -> None:
         async with self._print_lock:
             try:
                 await self.set_label_density(density)
@@ -217,7 +232,7 @@ class PrinterClient:
 
                 for pkt in self._encode_image(image, vertical_offset, horizontal_offset):
                     await self.write_raw(pkt)
-                    await asyncio.sleep(0.01)
+                    await asyncio.sleep(0)  # yield to event loop without artificial delay
 
                 for _ in range(200):  # ~10 seconds at 0.05s interval
                     if await self.end_page_print():
@@ -244,7 +259,9 @@ class PrinterClient:
                         await self.end_print()
                 raise
 
-    def _encode_image(self, image: Image.Image, vertical_offset=0, horizontal_offset=0):
+    def _encode_image(
+        self, image: Image.Image, vertical_offset: int = 0, horizontal_offset: int = 0
+    ) -> Generator[NiimbotPacket, None, None]:
         if image.width > (255 - 6) * 8:  # 6-byte header (>HBBBB): row_idx(2)+counts(3)+flag(1)
             raise PrinterException(f"Image width {image.width}px exceeds protocol limit of {(255 - 6) * 8}px")
 
@@ -298,7 +315,7 @@ class PrinterClient:
         finally:
             img.close()
 
-    async def get_info(self, key):
+    async def get_info(self, key: int) -> int | float | str:
         response = await self.send_command(RequestCodeEnum.GET_INFO, bytes((key,)))
 
         if len(response.data) < 1:
@@ -314,7 +331,7 @@ class PrinterClient:
             case _:
                 return packet_to_int(response)
 
-    async def get_rfid(self):
+    async def get_rfid(self) -> RFIDResponse | None:
         packet = await self.send_command(RequestCodeEnum.GET_RFID, b"\x01")
         data = packet.data
 
@@ -326,14 +343,23 @@ class PrinterClient:
 
             barcode_len = data[idx]
             idx += 1
+            if idx + barcode_len > len(data):
+                logger.error("Malformed RFID response: barcode length exceeds data bounds")
+                return None
             barcode = data[idx : idx + barcode_len].decode("utf-8", errors="replace")
 
             idx += barcode_len
             serial_len = data[idx]
             idx += 1
+            if idx + serial_len > len(data):
+                logger.error("Malformed RFID response: serial length exceeds data bounds")
+                return None
             serial = data[idx : idx + serial_len].decode("utf-8", errors="replace")
 
             idx += serial_len
+            if idx + 5 > len(data):
+                logger.error("Malformed RFID response: not enough data for trailer fields")
+                return None
             total_len, used_len, type_ = struct.unpack(">HHB", data[idx : idx + 5])
             return {
                 "uuid": uuid,
@@ -347,7 +373,7 @@ class PrinterClient:
             logger.error(f"Malformed RFID response: {e}")
             return None
 
-    async def heartbeat(self):
+    async def heartbeat(self) -> HeartbeatResponse:
         packet = await self.send_command(RequestCodeEnum.HEARTBEAT, b"\x01")
         closing_state = None
         power_level = None
@@ -383,7 +409,7 @@ class PrinterClient:
             "rfid_read_state": rfid_read_state,
         }
 
-    async def set_label_type(self, n):
+    async def set_label_type(self, n: int) -> bool:
         if not 1 <= n <= 3:
             raise ValueError(f"Label type must be 1-3, got {n}")
         packet = await self.send_command(RequestCodeEnum.SET_LABEL_TYPE, bytes((n,)))
@@ -391,7 +417,7 @@ class PrinterClient:
             raise PrinterException("Empty response from printer for SET_LABEL_TYPE")
         return bool(packet.data[0])
 
-    async def set_label_density(self, n):
+    async def set_label_density(self, n: int) -> bool:
         if not 1 <= n <= 5:
             raise ValueError(f"Label density must be 1-5, got {n}")
         packet = await self.send_command(RequestCodeEnum.SET_LABEL_DENSITY, bytes((n,)))
@@ -399,13 +425,13 @@ class PrinterClient:
             raise PrinterException("Empty response from printer for SET_LABEL_DENSITY")
         return bool(packet.data[0])
 
-    async def start_print(self):
+    async def start_print(self) -> bool:
         packet = await self.send_command(RequestCodeEnum.START_PRINT, b"\x01")
         if len(packet.data) < 1:
             raise PrinterException("Empty response from printer for START_PRINT")
         return bool(packet.data[0])
 
-    async def start_printV2(self, quantity):
+    async def start_printV2(self, quantity: int) -> bool:
         if not 1 <= quantity <= 65535:
             raise ValueError(f"Quantity must be 1-65535, got {quantity}")
         command = struct.pack(">H", quantity)
@@ -414,38 +440,38 @@ class PrinterClient:
             raise PrinterException("Empty response from printer for START_PRINT")
         return bool(packet.data[0])
 
-    async def end_print(self):
+    async def end_print(self) -> bool:
         packet = await self.send_command(RequestCodeEnum.END_PRINT, b"\x01")
         if len(packet.data) < 1:
             raise PrinterException("Empty response from printer for END_PRINT")
         return bool(packet.data[0])
 
-    async def start_page_print(self):
+    async def start_page_print(self) -> bool:
         packet = await self.send_command(RequestCodeEnum.START_PAGE_PRINT, b"\x01")
         if len(packet.data) < 1:
             raise PrinterException("Empty response from printer for START_PAGE_PRINT")
         return bool(packet.data[0])
 
-    async def end_page_print(self):
+    async def end_page_print(self) -> bool:
         packet = await self.send_command(RequestCodeEnum.END_PAGE_PRINT, b"\x01")
         if len(packet.data) < 1:
             raise PrinterException("Empty response from printer for END_PAGE_PRINT")
         return bool(packet.data[0])
 
-    async def set_dimension(self, height, width):
+    async def set_dimension(self, height: int, width: int) -> bool:
         packet = await self.send_command(RequestCodeEnum.SET_DIMENSION, struct.pack(">HH", height, width))
         if len(packet.data) < 1:
             raise PrinterException("Empty response from printer for SET_DIMENSION")
         return bool(packet.data[0])
 
-    async def set_dimensionV2(self, height, width, copies):
+    async def set_dimensionV2(self, height: int, width: int, copies: int) -> bool:
         logger.debug(f"Setting dimension: {height}x{width}")
         packet = await self.send_command(RequestCodeEnum.SET_DIMENSION, struct.pack(">HHH", height, width, copies))
         if len(packet.data) < 1:
             raise PrinterException("Empty response from printer for SET_DIMENSION")
         return bool(packet.data[0])
 
-    async def set_quantity(self, n):
+    async def set_quantity(self, n: int) -> bool:
         if not 1 <= n <= 65535:
             raise ValueError(f"Quantity must be 1-65535, got {n}")
         packet = await self.send_command(RequestCodeEnum.SET_QUANTITY, struct.pack(">H", n))
@@ -453,7 +479,7 @@ class PrinterClient:
             raise PrinterException("Empty response from printer for SET_QUANTITY")
         return bool(packet.data[0])
 
-    async def get_print_status(self):
+    async def get_print_status(self) -> PrintStatus:
         packet = await self.send_command(RequestCodeEnum.GET_PRINT_STATUS, b"\x01")
         if len(packet.data) < 4:
             raise PrinterException(f"get_print_status: short response ({len(packet.data)} bytes)")

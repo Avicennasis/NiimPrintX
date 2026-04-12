@@ -154,10 +154,11 @@ def test_safe_int_invalid_returns_default():
 
 
 def test_safe_int_float_rounds():
-    """_safe_int should round floats to the nearest int."""
-    assert _safe_int(3.7, 0) == 4
-    assert _safe_int(3.2, 0) == 3
-    assert _safe_int(2.5, 0) == 2  # Python banker's rounding
+    """_safe_int should reject non-whole floats and return default."""
+    assert _safe_int(3.7, 0) == 0  # non-whole float → default
+    assert _safe_int(3.2, 0) == 0  # non-whole float → default
+    assert _safe_int(3.0, 0) == 3  # whole float → accepted
+    assert _safe_int(2.0, 5) == 2  # whole float → accepted
 
 
 # ---------------------------------------------------------------------------

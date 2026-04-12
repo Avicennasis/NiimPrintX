@@ -1,22 +1,29 @@
+from __future__ import annotations
+
 import asyncio
 import contextlib
+from collections.abc import Awaitable, Callable
 
-from bleak import BleakClient, BleakScanner
+from bleak import BleakClient, BleakGATTCharacteristic, BleakScanner
+from bleak.backends.device import BLEDevice
 
 from .exception import BLEException
 from .logger_config import get_logger
 
 logger = get_logger()
 
+# Callback type for BLE notification handlers (matches bleak's start_notify signature)
+NotifyCallback = Callable[[BleakGATTCharacteristic, bytearray], None | Awaitable[None]]
 
-async def find_device(device_name_prefix=None):
+
+async def find_device(device_name_prefix: str | None = None) -> BLEDevice:
     if device_name_prefix is None or device_name_prefix == "":
         raise BLEException("No device name prefix specified")
     devices = await BleakScanner.discover(return_adv=True)
     # For D110 variants, prefer the device without service UUIDs.
     # D110 appears as two BLE devices; the printing-capable one has no UUIDs.
     is_d110 = device_name_prefix.lower().startswith("d110")
-    fallback = None
+    fallback: BLEDevice | None = None
     for device, adv_data in devices.values():
         if device.name and device.name.lower().startswith(device_name_prefix.lower()):
             if is_d110:
@@ -31,12 +38,16 @@ async def find_device(device_name_prefix=None):
 
 
 class BLETransport:
-    def __init__(self, address=None):
-        self.address = address
-        self.client = None
-        self._notifying_uuids = set()
+    # NOTE: Niimbot printers use unauthenticated BLE pairing. There is no
+    # PIN/passkey exchange. Any device advertising the correct name prefix
+    # can be paired. This is a hardware protocol limitation, not a software bug.
 
-    async def connect(self, address):
+    def __init__(self, address: str | None = None) -> None:
+        self.address: str | None = address
+        self.client: BleakClient | None = None
+        self._notifying_uuids: set[str] = set()
+
+    async def connect(self, address: str) -> bool:
         if self.client is not None and self.address != address:
             # Address changed — disconnect old client first
             await self.disconnect()
@@ -56,14 +67,14 @@ class BLETransport:
             return True
         return True  # already connected
 
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         if self.client:
             with contextlib.suppress(Exception):
                 await self.client.disconnect()
         self.client = None
         self._notifying_uuids.clear()
 
-    async def write(self, data, char_uuid, timeout=10.0):  # noqa: ASYNC109 — uses asyncio.wait_for internally
+    async def write(self, data: bytes | bytearray, char_uuid: str, timeout: float = 10.0) -> None:  # noqa: ASYNC109 — uses asyncio.wait_for internally
         if self.client and self.client.is_connected:
             try:
                 await asyncio.wait_for(self.client.write_gatt_char(char_uuid, data, response=False), timeout=timeout)
@@ -72,14 +83,14 @@ class BLETransport:
         else:
             raise BLEException("BLE client is not connected.")
 
-    async def start_notification(self, char_uuid, handler):
+    async def start_notification(self, char_uuid: str, handler: NotifyCallback) -> None:
         if not (self.client and self.client.is_connected):
             raise BLEException("BLE client is not connected.")
         if char_uuid not in self._notifying_uuids:
             await self.client.start_notify(char_uuid, handler)
             self._notifying_uuids.add(char_uuid)
 
-    async def stop_notification(self, char_uuid):
+    async def stop_notification(self, char_uuid: str) -> None:
         was_notifying = char_uuid in self._notifying_uuids
         self._notifying_uuids.discard(char_uuid)
         if was_notifying and self.client and self.client.is_connected:

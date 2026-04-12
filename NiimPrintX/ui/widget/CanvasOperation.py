@@ -1,10 +1,15 @@
+from __future__ import annotations
+
+from typing import Any
+
+
 class CanvasOperation:
-    def __init__(self, config, text_op, img_op):
+    def __init__(self, config: Any, text_op: Any, img_op: Any) -> None:
         self.config = config
         self.text_op = text_op
         self.img_op = img_op
 
-    def canvas_click_handler(self, event):
+    def canvas_click_handler(self, event: Any) -> None:
         """Deselect text/image if clicking outside the bounding box or on the resize handle."""
         clicked_on_text_handle = False
         clicked_on_image_handle = False

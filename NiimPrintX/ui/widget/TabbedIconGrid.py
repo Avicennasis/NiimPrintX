@@ -137,6 +137,11 @@ class TabbedIconGrid(tk.Frame):
             pil_img.close()
             icons.append((filename, photo, sub_name))
 
+        # Clear old icon references for this tab
+        old_refs = self.icon_references.pop(subfolder_name, None)
+        if old_refs:
+            old_refs.clear()
+
         # Retain references to prevent GC
         self.icon_references[subfolder_name] = [photo for _, photo, _ in icons]
 
@@ -161,6 +166,11 @@ class TabbedIconGrid(tk.Frame):
 
     def on_icon_click(self, index, icons):
         """Handle icon click and trigger callback."""
+        try:
+            if not self.winfo_exists():
+                return
+        except tk.TclError:
+            return
         filename, _, subfolder_name = icons[index]
         subpath = os.path.join(subfolder_name, "original", filename)
         full_path = os.path.join(self.base_folder, subpath)

@@ -110,6 +110,14 @@ class LabelPrinterApp(tk.Tk):
         self._shutting_down = True
 
         async def _shutdown():
+            # Close PIL images to prevent leaks
+            for item in self.app_config.image_items.values():
+                orig = item.get("original_image")
+                if orig is not None:
+                    with contextlib.suppress(Exception):
+                        orig.close()
+            self.app_config.image_items.clear()
+            self.app_config.text_items.clear()
             # Disconnect printer if connected
             if hasattr(self, "print_option") and self.print_option.print_op.printer:
                 with contextlib.suppress(Exception):

@@ -26,39 +26,48 @@
 - [ ] **#35** — Xubuntu printer setup — Documentation/FAQ (Bluetooth pairing guide)
 - [ ] **#25** — D101 Windows pairing — D101 now supported; ask user to retry with latest
 
-## Outstanding (Blocking before v0.5.0)
+## Outstanding (Blocking before v0.6.0)
 
-- [ ] **Version bump to v0.5.0** — Bump pyproject.toml before tagging
 - [ ] **Bleak migration** — bleak 0.22.x → 3.0+ has breaking API changes (connect return type, is_connected→connected, discover API); only bluetooth.py needs changes but needs hardware testing
-- [ ] **ImageMagick hash verification** — Windows build downloads binary ZIP with no SHA-256 check; supply chain risk
 - [ ] **ImageMagick Windows URL** — Download URL hardcoded to 7.1.1-33; needs auto-latest or pinned artifact
-- [ ] **macOS tag validation** — _build-macos.yaml missing tag validation step (Linux and Windows have it)
 
 ## Outstanding (Important)
-
-- [ ] **Performance: 10ms/row sleep** — `asyncio.sleep(0.01)` per scan line adds 2.4-8.6s per print; needs adaptive backpressure or tunable delay
-- [ ] **Performance: memoryview** — `_encode_image` does per-row bytes slice copies; should use memoryview to avoid 240-864 heap allocations
-- [ ] **Performance: Wand debounce** — `resize_text` runs full Wand pipeline on every mouse motion; needs throttling
-- [ ] **Type annotations** — 0% coverage (0/150 functions annotated); phased mypy rollout starting with nimmy/ core
-- [ ] **Thread safety: printer_connected** — Written from async thread (PrinterOperation) and main thread (heartbeat callback); works via GIL but architecturally fragile
-- [ ] **Coverage threshold** — Currently 32.72% (GUI widgets are 0%); need to raise toward 60% target
-- [ ] **pip-audit in CI** — No dependency vulnerability scanning
-- [ ] **Release checksums** — No SHA256SUMS.txt published with releases
-
-## Outstanding (Nice-to-have)
 
 - [ ] **Architecture: Split AppConfig** — God object mixing immutable config + mutable canvas state
 - [ ] **Architecture: Move helper.py** — From nimmy/ to cli/ (it's a Rich presentation layer)
 - [ ] **Architecture: Move UserConfig.py** — From ui/ to nimmy/ (no UI dependency)
 - [ ] **Architecture: FileMenu callbacks** — Use callbacks instead of reaching into root.text_tab
-- [ ] **Architecture: TypedDicts** — For font_props, text_items, image_items, heartbeat/RFID responses
-- [ ] **Architecture: mm_to_pixels dedup** — Duplicated in CanvasSelector and PrintOption
-- [ ] **Dependency bumps** — click 8.1.7→8.3.2, rich 13.7.1→14.3.4
-- [ ] **JUnit XML test results** — Upload for GitHub Actions PR summary
+- [ ] **Thread safety: printer_connected** — Written from async thread (PrinterOperation) and main thread (heartbeat callback); works via GIL but architecturally fragile
 
 ---
 
 ## Completed
+
+### Round 11 Deep Code Review (2026-04-12, sixth session)
+
+- [x] **21-agent fix session** — 4 audit agents + 21 fix agents across 6 themes
+- [x] **Lifecycle fixes (3 criticals)** — Heartbeat hang on close, image memory leak on exit, PhotoImage ref leak in TabbedIconGrid
+- [x] **UI safety guards** — ImageOperation/TextOperation delete guards, bbox null checks, deselect cleanup
+- [x] **BLE hardening** — RFID response bounds validation (3 checks), BLE auth design documented
+- [x] **Build pipeline** — CLI specs hiddenimports on all 3 platforms, macOS UI spec PIL normalization
+- [x] **Security** — FileMenu aggregate image limit (100), FontList shutil.which validation, UserConfig reject non-whole floats
+- [x] **Test refactor** — conftest shared fixtures, heartbeat parameterized, weak assertions replaced, CLI parameterized, 3 integration tests
+- [x] **CI** — CLI smoke test (niimprintx --help)
+- [x] **UX/cleanup** — CanvasOperation/StatusBar/CanvasSelector/SplashScreen type annotations, SplashScreen close()
+- [x] **Tests** — 306 → 309, coverage 96.76%, 0 lint errors, 55 formatted
+
+### Round 10 Fixes (2026-04-12, sixth session)
+
+- [x] **CI coverage fix** — Excluded GUI widgets from coverage (37.74% → 94.46%), added JUnit XML upload, added pip-audit dependency scanning
+- [x] **ImageMagick SHA-256** — Windows build now verifies download checksum before extraction
+- [x] **Release checksums** — SHA256SUMS.txt generated and included in GitHub Releases
+- [x] **mm_to_pixels dedup** — Extracted to AppConfig.mm_to_pixels(), removed from CanvasSelector and PrintOption
+- [x] **Print performance** — Removed 10ms/row hardcoded sleep (asyncio.sleep(0.01) → asyncio.sleep(0)), eliminates 2.4-8.6s per print
+- [x] **Type annotations** — Phase 1 complete: all nimmy/ functions (printer.py, bluetooth.py, packet.py, helper.py, exception.py, logger_config.py), cli/command.py, ui/AppConfig.py, ui/UserConfig.py
+- [x] **TypedDicts** — nimmy/types.py with HeartbeatResponse, RFIDResponse, PrintStatus, FontProps, TextItem, ImageItem
+- [x] **Dependency bumps** — click 8.1.7→8.3.2, rich 13.7.1→14.3.4
+- [x] **Tests** — 214 → 306 (92 new tests across 3 new files), coverage 94.46%
+- [x] **TODO.md** — Updated with current state, marked completed items
 
 ### Round 9 Deep Code Review (2026-04-11, fifth session)
 

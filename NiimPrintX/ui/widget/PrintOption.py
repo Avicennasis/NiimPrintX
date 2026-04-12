@@ -36,10 +36,23 @@ class PrintOption:
             try:
                 if self.print_op.printer and not self.config.print_job:
                     state, hb = await self.print_op.heartbeat()
-                    self.root.after(0, lambda s=state, h=hb: self.update_status(s, h))
+                    if not self._heartbeat_active:
+                        break
+                    try:
+                        self.root.after(0, lambda s=state, h=hb: self.update_status(s, h))
+                    except tk.TclError:
+                        self._heartbeat_active = False
+                        break
                 elif not self.config.print_job:
-                    self.root.after(0, lambda: self.update_status(False))
+                    if not self._heartbeat_active:
+                        break
+                    try:
+                        self.root.after(0, lambda: self.update_status(False))
+                    except tk.TclError:
+                        self._heartbeat_active = False
+                        break
             except tk.TclError:
+                self._heartbeat_active = False
                 break  # Root destroyed, exit heartbeat loop cleanly
             await asyncio.sleep(5)
 
@@ -122,10 +135,6 @@ class PrintOption:
             self.export_to_png(file_path)
             self.display_image_in_popup(file_path)
 
-    def mm_to_pixels(self, mm):
-        inches = mm / 25.4
-        return int(inches * self.config.label_sizes[self.config.device]["print_dpi"])
-
     def export_to_png(self, output_filename=None, horizontal_offset=0.0, vertical_offset=0.0):
         if cairo is None:
             raise ImportError("GUI extras not installed. Run: pip install NiimPrintX[gui]")
@@ -134,8 +143,8 @@ class PrintOption:
         width = self.config.canvas.winfo_reqwidth()
         height = self.config.canvas.winfo_reqheight()
 
-        horizontal_offset_pixels = self.mm_to_pixels(horizontal_offset)
-        vertical_offset_pixels = self.mm_to_pixels(vertical_offset)
+        horizontal_offset_pixels = self.config.mm_to_pixels(horizontal_offset)
+        vertical_offset_pixels = self.config.mm_to_pixels(vertical_offset)
 
         x1, y1, x2, y2 = self.config.canvas.bbox(self.config.bounding_box)
 

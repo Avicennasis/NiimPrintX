@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import copy
 import os
 import tomllib
+from typing import Any
 
 from loguru import logger
 from platformdirs import user_config_dir
@@ -9,7 +12,7 @@ CONFIG_DIR = user_config_dir("NiimPrintX")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "config.toml")
 
 
-def load_user_config():
+def load_user_config() -> dict[str, Any]:
     """Load user config, return empty dict if not found."""
     if not os.path.isfile(CONFIG_FILE):
         return {}
@@ -24,7 +27,7 @@ def load_user_config():
         return {}
 
 
-def _validate_dims(dims):
+def _validate_dims(dims: Any) -> tuple[float, float] | None:
     """Validate that dims is a list/tuple of 2 positive numbers."""
     if not isinstance(dims, (list, tuple)) or len(dims) != 2:
         return None
@@ -37,11 +40,13 @@ def _validate_dims(dims):
         return None
 
 
-def _safe_int(value, default):
+def _safe_int(value: Any, default: int) -> int:
     """Convert to int with fallback for invalid TOML values."""
+    if isinstance(value, float) and not value.is_integer():
+        logger.warning(f"Expected integer, got {value}; using default {default}")
+        return default
     if isinstance(value, float):
-        logger.warning(f"Config value {value!r} is a float, rounding to int")
-        return round(value)
+        return int(value)
     try:
         return int(value)
     except (TypeError, ValueError):
@@ -49,7 +54,7 @@ def _safe_int(value, default):
         return default
 
 
-def merge_label_sizes(builtin_sizes, user_config):
+def merge_label_sizes(builtin_sizes: dict[str, Any], user_config: dict[str, Any]) -> dict[str, Any]:
     """Merge user device configs into built-in label sizes."""
     builtin_sizes = copy.deepcopy(builtin_sizes)
     user_devices = user_config.get("devices", {})

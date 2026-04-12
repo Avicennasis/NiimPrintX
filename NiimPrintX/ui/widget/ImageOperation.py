@@ -1,3 +1,4 @@
+import contextlib
 import tkinter.messagebox as messagebox
 
 import PIL.Image
@@ -72,6 +73,8 @@ class ImageOperation:
             if item.get("bbox") is not None:
                 self.config.canvas.delete(item["bbox"])
                 self.config.canvas.delete(item["handle"])
+                item["bbox"] = None
+                item["handle"] = None
             self.config.current_selected_image = None
 
     def move_image(self, event, image_id):
@@ -142,5 +145,9 @@ class ImageOperation:
                 self.config.canvas.delete(item["bbox"])
             if item.get("handle") is not None:
                 self.config.canvas.delete(item["handle"])
+            orig = item.get("original_image")
+            if orig is not None:
+                with contextlib.suppress(Exception):
+                    orig.close()
             del self.config.image_items[self.config.current_selected_image]
             self.config.current_selected_image = None

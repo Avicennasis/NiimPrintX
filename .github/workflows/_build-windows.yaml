@@ -52,6 +52,16 @@ jobs:
         run: |
           Invoke-WebRequest -Uri https://imagemagick.org/archive/binaries/ImageMagick-7.1.1-33-portable-Q16-HDRI-x64.zip -OutFile ImageMagick.zip
 
+      - name: Verify ImageMagick checksum
+        run: |
+          $expected = "9448F8A1159C9B14E3E1B9D8EAB1A6DDF88D26E1F888A34CEF430C756E4E6E1E"
+          $actual = (Get-FileHash -Path ImageMagick.zip -Algorithm SHA256).Hash
+          if ($actual -ne $expected) {
+            Write-Error "SHA-256 mismatch! Expected: $expected Got: $actual"
+            exit 1
+          }
+          Write-Host "SHA-256 verified: $actual"
+
       - name: Extract ImageMagick
         run: |
           Expand-Archive -Path ImageMagick.zip -DestinationPath $env:GITHUB_WORKSPACE\resources\ImageMagick

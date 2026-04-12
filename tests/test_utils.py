@@ -53,19 +53,64 @@ def test_exception_hierarchy():
 # ---------- helper.py ----------
 
 
-def test_print_success_no_crash():
-    """print_success should not raise on a simple string."""
-    print_success("test")
+def test_print_success_writes_to_stdout():
+    """print_success should write the message to stdout via the console."""
+    from rich.console import Console
+
+    buf = StringIO()
+    cap_console = Console(file=buf, color_system=None)
+
+    import NiimPrintX.nimmy.helper as helper_mod
+
+    orig = helper_mod.console
+    helper_mod.console = cap_console
+    try:
+        print_success("operation complete")
+    finally:
+        helper_mod.console = orig
+
+    output = buf.getvalue()
+    assert "operation complete" in output
 
 
-def test_print_error_no_crash():
-    """print_error should not raise on a simple string."""
-    print_error("test")
+def test_print_error_writes_to_stderr():
+    """print_error should write the message to stderr via the err_console."""
+    from rich.console import Console
+
+    buf = StringIO()
+    cap_console = Console(file=buf, color_system=None)
+
+    import NiimPrintX.nimmy.helper as helper_mod
+
+    orig = helper_mod.err_console
+    helper_mod.err_console = cap_console
+    try:
+        print_error("something failed")
+    finally:
+        helper_mod.err_console = orig
+
+    output = buf.getvalue()
+    assert "something failed" in output
 
 
-def test_print_info_no_crash():
-    """print_info should not raise on a simple string."""
-    print_info("test")
+def test_print_info_writes_message():
+    """print_info should write its message to stdout via the console."""
+    from rich.console import Console
+
+    buf = StringIO()
+    cap_console = Console(file=buf, color_system=None)
+
+    import NiimPrintX.nimmy.helper as helper_mod
+
+    orig = helper_mod.console
+    helper_mod.console = cap_console
+    try:
+        print_info("status update")
+    finally:
+        helper_mod.console = orig
+
+    output = buf.getvalue()
+    assert "status update" in output
 
 
 def test_print_info_writes_to_stdout():
@@ -121,25 +166,53 @@ def test_get_logger_returns_logger():
     assert get_logger() is loguru_logger
 
 
-def test_setup_logger_no_crash():
-    """setup_logger() should not raise."""
+def test_setup_logger_configures_stderr_handler():
+    """setup_logger() should remove old handlers and add a stderr handler at INFO level."""
+    from loguru import logger as loguru_logger
+
     setup_logger()
+
+    # At least one handler should exist after setup
+    handlers = loguru_logger._core.handlers
+    assert len(handlers) >= 1
+
+    # Verify a stderr handler is present with INFO level
+    handler_levels = [h.levelno for h in handlers.values()]
+    info_level = 20  # loguru INFO severity
+    assert info_level in handler_levels
 
 
 def test_logger_enable_zero_preserves_handlers():
-    """logger_enable(0) should return early without removing handlers."""
+    """logger_enable(0) should return early without removing or changing handlers."""
+    from loguru import logger as loguru_logger
+
     setup_logger()
+    handlers_before = dict(loguru_logger._core.handlers)
     logger_enable(0)
-    # Verify logger is still functional by checking setup + enable didn't raise
-    # and that the logger can still be retrieved (handler exists internally)
-    logger = get_logger()
-    assert logger is not None
+    handlers_after = dict(loguru_logger._core.handlers)
+
+    # Handler IDs and count should be identical (no remove/re-add happened)
+    assert set(handlers_before.keys()) == set(handlers_after.keys())
 
 
 def test_logger_enable_nonzero_changes_level():
-    """logger_enable(1) should work without error."""
+    """logger_enable(1) should replace handlers with DEBUG-level ones."""
+    from loguru import logger as loguru_logger
+
     setup_logger()
+
+    # Before: handlers should be at INFO (20)
+    info_level = 20
+    debug_level = 10
+    levels_before = [h.levelno for h in loguru_logger._core.handlers.values()]
+    assert all(lv == info_level for lv in levels_before)
+
     logger_enable(1)
+
+    # After: handlers should be at DEBUG (10)
+    levels_after = [h.levelno for h in loguru_logger._core.handlers.values()]
+    assert len(levels_after) >= 1
+    assert all(lv == debug_level for lv in levels_after)
 
 
 def test_setup_logger_configures_handlers():

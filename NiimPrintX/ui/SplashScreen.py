@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 import tkinter as tk
 
 
 class SplashScreen(tk.Toplevel):
-    def __init__(self, image_path, master, **kwargs):
+    def __init__(self, image_path: str, master: tk.Tk, **kwargs: object) -> None:
         super().__init__(master, **kwargs)
+        self.image: tk.PhotoImage | None = None
         self.withdraw()
         self.overrideredirect(True)  # Remove window decorations
 
@@ -22,3 +25,7 @@ class SplashScreen(tk.Toplevel):
         y = (self.winfo_screenheight() // 2) - (height // 2)
         self.geometry(f"{width}x{height}+{x}+{y}")
         self.deiconify()
+
+    def close(self) -> None:
+        self.image = None
+        self.destroy()
