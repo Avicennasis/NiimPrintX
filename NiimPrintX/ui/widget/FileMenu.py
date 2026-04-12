@@ -90,10 +90,17 @@ class FileMenu:
                     data["image"][str(image_id)] = item_data
 
             dir_name = os.path.dirname(file_path) or "."
-            with tempfile.NamedTemporaryFile("w", dir=dir_name, delete=False, suffix=".tmp") as tf:
-                tmp_path = tf.name
-                json.dump(data, tf, indent=2)
-            os.replace(tmp_path, file_path)
+            tmp_path = None
+            try:
+                with tempfile.NamedTemporaryFile("w", dir=dir_name, delete=False, suffix=".tmp") as tf:
+                    tmp_path = tf.name
+                    json.dump(data, tf, indent=2)
+                os.replace(tmp_path, file_path)
+            except BaseException:
+                if tmp_path and os.path.exists(tmp_path):
+                    with contextlib.suppress(OSError):
+                        os.remove(tmp_path)
+                raise
         except (OSError, ValueError, TypeError, tk.TclError) as e:
             messagebox.showerror("Error", f"Failed to save: {e}")
 
@@ -153,11 +160,11 @@ class FileMenu:
             self.root.canvas_selector.selected_label_size.set(data["current_label_size"])
             self.root.canvas_selector.update_canvas_size()  # resize canvas to the saved label size
 
-            if data.get("text"):
+            if isinstance(data.get("text"), dict):
                 for item_data in data["text"].values():
                     self.load_text(item_data)
 
-            if data.get("image"):
+            if isinstance(data.get("image"), dict):
                 for item_data in data["image"].values():
                     self.load_image(item_data)
 

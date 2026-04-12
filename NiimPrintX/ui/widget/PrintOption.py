@@ -217,11 +217,15 @@ class PrintOption:
         cropped_ctx = cairo.Context(cropped_surface)
         cropped_ctx.set_source_surface(surface, -x1, -y1)
         cropped_ctx.paint()
-        if output_filename:
-            cropped_surface.write_to_png(output_filename)
-            return None
-        image_bytes = cropped_surface.get_data()
-        return Image.frombuffer("RGBA", (int(bbox_width), int(bbox_height)), image_bytes, "raw", "BGRA", 0, 1)
+        try:
+            if output_filename:
+                cropped_surface.write_to_png(output_filename)
+                return None
+            image_bytes = cropped_surface.get_data()
+            return Image.frombuffer("RGBA", (int(bbox_width), int(bbox_height)), image_bytes, "raw", "BGRA", 0, 1)
+        finally:
+            cropped_surface.finish()
+            surface.finish()
 
     def display_image_in_popup(self, filename):
         # Create a new Toplevel window

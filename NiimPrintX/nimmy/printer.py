@@ -285,8 +285,12 @@ class PrinterClient:
     def _encode_image(
         self, image: Image.Image, vertical_offset: int = 0, horizontal_offset: int = 0
     ) -> Generator[NiimbotPacket, None, None]:
-        if image.height > 65535:
-            raise PrinterException(f"Image height {image.height}px exceeds protocol limit of 65535 rows")
+        effective_height = image.height + max(0, vertical_offset)
+        if effective_height > 65535:
+            raise PrinterException(
+                f"Effective height {effective_height}px (image {image.height}px + offset {vertical_offset}px) "
+                f"exceeds protocol limit of 65535 rows"
+            )
 
         max_width = (255 - 6) * 8  # 6-byte header (>HBBBB): row_idx(2)+counts(3)+flag(1) → 1992px
         if image.width > max_width:

@@ -71,8 +71,8 @@ class CanvasSelector:
         self.bounding_box_width = self.config.mm_to_pixels(label_width_mm)
         self.bounding_box_height = self.config.mm_to_pixels(label_height_mm)
 
-        self.print_area_width = self.bounding_box_width - self.config.mm_to_pixels(2)
-        self.print_area_height = self.bounding_box_height - self.config.mm_to_pixels(4)
+        self.print_area_width = max(1, self.bounding_box_width - self.config.mm_to_pixels(2))
+        self.print_area_height = max(1, self.bounding_box_height - self.config.mm_to_pixels(4))
 
         # Set the new canvas dimensions with padding
         padding = 150  # total canvas padding

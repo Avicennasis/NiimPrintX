@@ -81,7 +81,7 @@ class BLETransport:
     async def write(self, data: bytes | bytearray, char_uuid: str, timeout: float = 10.0) -> None:  # noqa: ASYNC109 — uses asyncio.wait_for internally
         if self.client and self.client.is_connected:
             try:
-                await asyncio.wait_for(self.client.write_gatt_char(char_uuid, data, response=None), timeout=timeout)
+                await asyncio.wait_for(self.client.write_gatt_char(char_uuid, data, response=False), timeout=timeout)
             except TimeoutError:
                 raise BLEException(f"BLE write timed out after {timeout}s") from None
             except BleakError as e:

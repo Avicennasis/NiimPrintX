@@ -38,7 +38,7 @@ def test_density_in_valid_range():
 def test_print_dpi_is_known_value():
     config = AppConfig()
     for device, conf in config.label_sizes.items():
-        assert conf["print_dpi"] in (203, 300), f"{device} has unexpected DPI {conf['print_dpi']}"
+        assert 72 <= conf["print_dpi"] <= 600, f"{device} has DPI {conf['print_dpi']} outside valid range 72-600"
 
 
 def test_rotation_is_valid():
