@@ -38,11 +38,30 @@
 - [ ] **Architecture: Move UserConfig.py** — From ui/ to nimmy/ (no UI dependency)
 - [ ] **Architecture: FileMenu callbacks** — Use callbacks instead of reaching into root.text_tab
 - [ ] **Thread safety: printer_connected** — Written from async thread (PrinterOperation) and main thread (heartbeat callback); works via GIL but architecturally fragile
-- [ ] **Dependabot pip ecosystem** — `dependabot.yml` uses `pip` ecosystem which doesn't parse `[tool.poetry.dependencies]`; Python deps get no automated update PRs
+- [ ] **Dependabot pip ecosystem** — `dependabot.yml` uses `pip` ecosystem which doesn't parse `[tool.poetry.dependencies]`; Python deps get no automated update PRs; comment added documenting this
+- [ ] **CI: Move pyinstaller to build group** — pyinstaller installs needlessly in test/lint/audit CI jobs; should be in `[tool.poetry.group.build]`
+- [ ] **Add _ALL_MODELS parity test** — CLI `_ALL_MODELS` list should have a test asserting it matches `AppConfig.label_sizes.keys()`
+- [ ] **BLE unsolicited notification handling** — Notification handler silently drops unsolicited BLE notifications that could be consumed as command responses; needs hardware testing to verify impact
 
 ---
 
 ## Completed
+
+### Rounds 14–16 Deep Code Review (2026-04-12, eighth session)
+
+- [x] **Round 14: 25-agent burn** — 40 fixes across 24 files (8 CRITICAL, 24 HIGH, 8 MEDIUM)
+- [x] **Protocol safety** — end_page_print in error cleanup (C1), _encode_image width+offset check (C8), height >65535 guard (H24), notification_data immutable copy (H14), char_uuid None guard (H16), effective height after vertical offset validation (R16)
+- [x] **BLE hardening** — bleak 3.0 write-without-response explicit (H2→R16), start/stop notification TOCTOU fixes (H3/M1), scan_timeout parameter (M2), connect() dead branch removed (H1), printer=None on failed connect (R15)
+- [x] **Shutdown safety** — asyncio loop stop race fix (C3), on_close early return (H21), dead screen_dpi removed (M10)
+- [x] **UI robustness** — tag_bind accumulation fix (C2), font_props size mutation order (H19), PrintOption button label from result (C4), print_job stuck on rotate failure (H12), _connecting guard (H13), winfo_width for export (H18), canvas deselect before load (H20), item count includes existing (M5), dynamic device default (H17), move_image KeyError guard (M8), print area min 1px clamp (R16), double-destroy guard (M6)
+- [x] **Security** — MAX_IMAGE_PIXELS 5M in CLI/PrintOption/FileMenu/process_png (H23/H25/M4)
+- [x] **Cairo cleanup** — surfaces freed with .finish() after export (R16 memory leak fix)
+- [x] **Type safety** — TextItem/ImageItem NotRequired fields (H8), FontProps.size int|float (H9), notification_data bytes|None (R15), PrintStatus annotation (R15), packet repr !r (R15)
+- [x] **Config** — UserConfig isinstance guard (H10), label overwrite warning (H11), NO_COLOR spec fix (H7), _ALL_MODELS constant (H6), rotation is not None (H4), logger exc_info=True (H5)
+- [x] **CI/CD** — poetry-plugin-export for audit (C5), mypy step for nimmy/cli (M13), ubuntu-24.04 pinned (M14), tag version validation job (C6), branch filter documented (C7), mypy config in pyproject.toml
+- [x] **Build** — macOS CLI upx=False (H28), entitlements TODO (H29), strip removed from Analysis() specs, dependabot Poetry limitation documented (H26)
+- [x] **Tests** — dead make_fake_write removed from conftest (H33), dead branch test replaced, DPI test range (R16), FileMenu JSON type validation, temp file cleanup
+- [x] **Docs** — README updated: v0.4.0→v0.6.1, 100+→315 tests, 6→15 review rounds
 
 ### Round 13 Deep Code Review (2026-04-12, seventh session)
 
