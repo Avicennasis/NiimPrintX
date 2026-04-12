@@ -135,6 +135,47 @@ def test_print_info_writes_to_stdout():
     assert "test msg" in output
 
 
+def test_print_info_escapes_rich_markup():
+    """print_info should escape Rich markup characters in the message."""
+    from rich.console import Console
+
+    buf = StringIO()
+    cap_console = Console(file=buf, color_system=None)
+
+    import NiimPrintX.nimmy.helper as helper_mod
+
+    orig = helper_mod.console
+    helper_mod.console = cap_console
+    try:
+        print_info("[bold red]injected[/bold red]")
+    finally:
+        helper_mod.console = orig
+
+    output = buf.getvalue()
+    # The literal brackets should appear in the output, not be rendered as markup
+    assert "[bold red]" in output
+
+
+def test_print_error_escapes_rich_markup():
+    """print_error should escape Rich markup characters in the message."""
+    from rich.console import Console
+
+    buf = StringIO()
+    cap_console = Console(file=buf, color_system=None)
+
+    import NiimPrintX.nimmy.helper as helper_mod
+
+    orig = helper_mod.err_console
+    helper_mod.err_console = cap_console
+    try:
+        print_error("device [malicious] name")
+    finally:
+        helper_mod.err_console = orig
+
+    output = buf.getvalue()
+    assert "[malicious]" in output
+
+
 def test_print_success_no_trailing_space():
     """print_success output should not end with a space before the newline."""
     from rich.console import Console

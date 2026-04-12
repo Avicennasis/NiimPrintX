@@ -28,7 +28,7 @@
 
 ## Outstanding (Blocking before v0.6.0)
 
-- [ ] **Bleak migration** — bleak 0.22.x → 3.0+ has breaking API changes (connect return type, is_connected→connected, discover API); only bluetooth.py needs changes but needs hardware testing
+- [x] **Bleak migration** — bleak 0.22.x → 3.0+ (minimal breaking changes: connect() returns None instead of bool, new exception types; `is_connected` property unchanged); pyproject.toml updated to `^3.0`
 - [ ] **ImageMagick Windows URL** — Download URL hardcoded to 7.1.1-33; needs auto-latest or pinned artifact
 
 ## Outstanding (Important)
@@ -38,10 +38,28 @@
 - [ ] **Architecture: Move UserConfig.py** — From ui/ to nimmy/ (no UI dependency)
 - [ ] **Architecture: FileMenu callbacks** — Use callbacks instead of reaching into root.text_tab
 - [ ] **Thread safety: printer_connected** — Written from async thread (PrinterOperation) and main thread (heartbeat callback); works via GIL but architecturally fragile
+- [ ] **Dependabot pip ecosystem** — `dependabot.yml` uses `pip` ecosystem which doesn't parse `[tool.poetry.dependencies]`; Python deps get no automated update PRs
 
 ---
 
 ## Completed
+
+### Round 12 Deep Code Review (2026-04-12, seventh session)
+
+- [x] **Bleak 0.22 → 3.0 migration** — pyproject.toml `^3.0`, poetry.lock updated, all 309 tests pass
+- [x] **4-agent parallel audit** — BLE+protocol, CLI+config, UI widgets, tests+CI/CD
+- [x] **BleakError wrapping** — bleak 3.0's `BleakGATTProtocolError` and `BleakError` now caught and wrapped as `BLEException` in both `connect()` and `write()`
+- [x] **find_characteristics fix** — No longer skips services with multiple characteristics; searches all characteristics across all services
+- [x] **Rich markup injection** — `rich.markup.escape()` applied in all 3 helper functions (`print_info`, `print_error`, `print_success`)
+- [x] **Canvas label size on file load** — Added `update_canvas_size()` call after setting saved label size in FileMenu
+- [x] **toolbar_print_button recovery** — `display_print` now re-enables button on `export_to_png` failure
+- [x] **Print error dialog guard** — `_print_handler` checks if popup still exists before showing error dialog
+- [x] **update_image_offset guard** — `image_label.config()` wrapped in `contextlib.suppress(tk.TclError)`
+- [x] **UserConfig rotation default** — Changed from `270` to `-90` (matches README docs; functionally equivalent after `% 360`)
+- [x] **Coverage threshold** — Raised `fail_under` from 60 to 90
+- [x] **download-artifact SHA** — Fixed truncated 39-char SHA to full 40-char in `tag.yaml`
+- [x] **Linux spec Tcl/Tk** — Changed `warnings.warn` to `raise RuntimeError` for missing Tcl/Tk paths
+- [x] **Tests** — 309 → 315 (6 new: BleakError wrapping, multi-char service, Rich markup escaping, negative rotation)
 
 ### Round 11 Deep Code Review (2026-04-12, sixth session)
 

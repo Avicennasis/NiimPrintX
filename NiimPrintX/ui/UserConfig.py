@@ -89,7 +89,7 @@ def merge_label_sizes(builtin_sizes: dict[str, Any], user_config: dict[str, Any]
                         logger.warning(f"Skipping invalid dims for {device_name!r} label {k!r}: {v!r}")
             if not sizes:
                 continue
-            raw_rot = _safe_int(device_conf.get("rotation", 270), 270) % 360
+            raw_rot = _safe_int(device_conf.get("rotation", -90), -90) % 360
             if raw_rot not in (0, 90, 180, 270):
                 logger.warning(f"Invalid rotation {raw_rot} for '{device_name}'; defaulting to 270")
                 raw_rot = 270

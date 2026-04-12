@@ -95,10 +95,10 @@ class PrinterClient:
 
         candidates: list[str] = []
         for characteristics in services.values():
-            if len(characteristics) == 1:  # Check if there's exactly one characteristic
-                props = characteristics[0]["properties"]
+            for char in characteristics:
+                props = char["properties"]
                 if "read" in props and "write-without-response" in props and "notify" in props:
-                    candidates.append(characteristics[0]["id"])
+                    candidates.append(char["id"])
         if not candidates:
             raise PrinterException("Cannot find bluetooth characteristics.")
         if len(candidates) > 1:

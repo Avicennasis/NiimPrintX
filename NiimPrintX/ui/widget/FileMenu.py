@@ -140,6 +140,7 @@ class FileMenu:
             self.root.canvas_selector.selected_device.set(data["device"].upper())
             self.root.canvas_selector.update_device_label_size()  # repopulate label dropdown
             self.root.canvas_selector.selected_label_size.set(data["current_label_size"])
+            self.root.canvas_selector.update_canvas_size()  # resize canvas to the saved label size
 
             if data.get("text"):
                 for item_data in data["text"].values():

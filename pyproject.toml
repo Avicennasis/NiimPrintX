@@ -14,8 +14,7 @@ niimprintx-ui = "NiimPrintX.ui.__main__:main"
 [tool.poetry.dependencies]
 python = ">=3.12,<3.14"
 click = "^8.3"
-# TODO: bleak 0.22.x is end-of-life; plan migration to bleak >=1.0 (API breaking changes in connect/disconnect return types)
-bleak = "^0.22.3"
+bleak = "^3.0"
 loguru = "^0.7.2"
 pillow = "^12.1.1"
 platformdirs = "^4.0"
@@ -48,7 +47,7 @@ omit = [
 ]
 
 [tool.coverage.report]
-fail_under = 60
+fail_under = 90
 
 [build-system]
 requires = ["poetry-core"]

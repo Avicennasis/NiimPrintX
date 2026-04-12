@@ -2,6 +2,7 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from bleak.exc import BleakError
 
 from NiimPrintX.nimmy.bluetooth import BLETransport, find_device
 from NiimPrintX.nimmy.exception import BLEException
@@ -222,3 +223,34 @@ async def test_disconnect_clears_state(MockBleakClient):
 
     assert transport.client is None
     assert len(transport._notifying_uuids) == 0
+
+
+# ---------------------------------------------------------------------------
+# Round 12: BleakError wrapping tests
+# ---------------------------------------------------------------------------
+
+
+async def test_write_bleak_error_wrapped_as_ble_exception():
+    """BleakError from write_gatt_char should be wrapped as BLEException."""
+    transport = BLETransport()
+
+    mock_client = MagicMock()
+    mock_client.is_connected = True
+    mock_client.write_gatt_char = AsyncMock(side_effect=BleakError("GATT protocol error"))
+    transport.client = mock_client
+
+    with pytest.raises(BLEException, match="BLE GATT write error"):
+        await transport.write(b"\x01\x02", "some-uuid")
+
+
+@patch("NiimPrintX.nimmy.bluetooth.BleakClient")
+async def test_connect_bleak_error_wrapped_as_ble_exception(MockBleakClient):
+    """BleakError from BleakClient.connect() should be wrapped as BLEException."""
+    mock_instance = MockBleakClient.return_value
+    mock_instance.connect = AsyncMock(side_effect=BleakError("Device not found"))
+
+    transport = BLETransport()
+    with pytest.raises(BLEException, match="BLE connect failed"):
+        await transport.connect("AA:BB:CC:DD:EE:FF")
+
+    assert transport.client is None

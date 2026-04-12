@@ -6,6 +6,7 @@ from collections.abc import Awaitable, Callable
 
 from bleak import BleakClient, BleakGATTCharacteristic, BleakScanner
 from bleak.backends.device import BLEDevice
+from bleak.exc import BleakError
 
 from .exception import BLEException
 from .logger_config import get_logger
@@ -53,7 +54,7 @@ class BLETransport:
             await self.disconnect()
         self.address = address
         if self.client is not None and not self.client.is_connected:
-            # Bleak 0.22+ clients are single-use; discard stale instance
+            # Bleak clients are single-use; discard stale instance
             self.client = None
             self._notifying_uuids.clear()
         if self.client is None:
@@ -61,6 +62,9 @@ class BLETransport:
             self._notifying_uuids.clear()
             try:
                 await self.client.connect()
+            except BleakError as e:
+                self.client = None
+                raise BLEException(f"BLE connect failed: {e}") from e
             except Exception:
                 self.client = None
                 raise
@@ -80,6 +84,8 @@ class BLETransport:
                 await asyncio.wait_for(self.client.write_gatt_char(char_uuid, data, response=False), timeout=timeout)
             except TimeoutError:
                 raise BLEException(f"BLE write timed out after {timeout}s") from None
+            except BleakError as e:
+                raise BLEException(f"BLE GATT write error: {e}") from e
         else:
             raise BLEException("BLE client is not connected.")
 

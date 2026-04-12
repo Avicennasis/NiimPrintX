@@ -113,6 +113,21 @@ def test_merge_custom_device_default_rotation():
     assert result["z999"]["rotation"] == 270
 
 
+def test_merge_custom_device_negative_rotation():
+    """rotation: -90 should be accepted and stored as 270 (matching README docs)."""
+    builtin = _make_builtin()
+    user_config = {
+        "devices": {
+            "z999": {
+                "size": {"10x20": [10, 20]},
+                "rotation": -90,
+            },
+        },
+    }
+    result = merge_label_sizes(builtin, user_config)
+    assert result["z999"]["rotation"] == 270
+
+
 # ---------------------------------------------------------------------------
 # 5. merge — custom device with invalid rotation defaults to 270 + warning
 # ---------------------------------------------------------------------------

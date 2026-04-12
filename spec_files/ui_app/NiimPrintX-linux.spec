@@ -27,11 +27,9 @@ tcl_library = os.environ.get('TCL_LIBRARY', '/usr/share/tcltk/tcl8.6')
 tk_library = os.environ.get('TK_LIBRARY', '/usr/share/tcltk/tk8.6')
 
 if not os.path.exists(tcl_library):
-    import warnings
-    warnings.warn(f"TCL_LIBRARY not found: {tcl_library}")
+    raise RuntimeError(f"TCL_LIBRARY not found: {tcl_library}. Set TCL_LIBRARY env var to the correct path.")
 if not os.path.exists(tk_library):
-    import warnings
-    warnings.warn(f"TK_LIBRARY not found: {tk_library}")
+    raise RuntimeError(f"TK_LIBRARY not found: {tk_library}. Set TK_LIBRARY env var to the correct path.")
 
 datas += [
     (tcl_library, 'tcl'),

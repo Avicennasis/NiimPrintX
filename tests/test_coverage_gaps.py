@@ -18,7 +18,7 @@ from NiimPrintX.ui.UserConfig import _safe_int
 
 
 async def test_find_characteristics_no_match_raises(make_client):
-    """When no service has exactly one char with read+write-without-response+notify,
+    """When no characteristic has read+write-without-response+notify,
     find_characteristics must raise PrinterException."""
     client = make_client()
 
@@ -36,6 +36,32 @@ async def test_find_characteristics_no_match_raises(make_client):
 
     with pytest.raises(PrinterException, match="Cannot find bluetooth characteristics"):
         await client.find_characteristics()
+
+
+async def test_find_characteristics_multi_char_service(make_client):
+    """A matching characteristic in a service with multiple characteristics
+    should still be found (not skipped)."""
+    client = make_client()
+
+    # Build a service with two characteristics — only the second matches
+    battery_char = MagicMock()
+    battery_char.uuid = "00002a19-0000-1000-8000-00805f9b34fb"
+    battery_char.handle = 1
+    battery_char.properties = ["read", "notify"]
+
+    printer_char = MagicMock()
+    printer_char.uuid = "0000ae01-0000-1000-8000-00805f9b34fb"
+    printer_char.handle = 2
+    printer_char.properties = ["read", "write-without-response", "notify"]
+
+    service = MagicMock()
+    service.uuid = "0000ae00-0000-1000-8000-00805f9b34fb"
+    service.characteristics = [battery_char, printer_char]
+
+    client.transport.client.services = [service]
+
+    await client.find_characteristics()
+    assert client.char_uuid == "0000ae01-0000-1000-8000-00805f9b34fb"
 
 
 # ---------------------------------------------------------------------------

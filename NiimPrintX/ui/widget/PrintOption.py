@@ -105,20 +105,24 @@ class PrintOption:
         if self.config.print_job:
             return
         self.toolbar_print_button.config(state=tk.DISABLED)
-        # Export to PNG and display it in a pop-up window
-        if self.config.os_system == "Windows":
-            # Windows-specific logic using tempfile.mkstemp()
-            fd, tmp_file_path = tempfile.mkstemp(suffix=".png")
-            try:
-                self.export_to_png(tmp_file_path)  # Save to file
-                self.display_image_in_popup(tmp_file_path)  # Display in pop-up window
-            finally:
-                os.close(fd)  # Close the file descriptor
-                os.remove(tmp_file_path)  # Remove the temporary file
-        else:
-            with tempfile.NamedTemporaryFile(suffix=".png") as tmp_file:
-                self.export_to_png(tmp_file.name)  # Save to file
-                self.display_image_in_popup(tmp_file.name)
+        try:
+            # Export to PNG and display it in a pop-up window
+            if self.config.os_system == "Windows":
+                # Windows-specific logic using tempfile.mkstemp()
+                fd, tmp_file_path = tempfile.mkstemp(suffix=".png")
+                try:
+                    self.export_to_png(tmp_file_path)  # Save to file
+                    self.display_image_in_popup(tmp_file_path)  # Display in pop-up window
+                finally:
+                    os.close(fd)  # Close the file descriptor
+                    os.remove(tmp_file_path)  # Remove the temporary file
+            else:
+                with tempfile.NamedTemporaryFile(suffix=".png") as tmp_file:
+                    self.export_to_png(tmp_file.name)  # Save to file
+                    self.display_image_in_popup(tmp_file.name)
+        except Exception as e:  # noqa: BLE001 — GUI must re-enable button on any export failure
+            self.toolbar_print_button.config(state=tk.NORMAL)
+            mb.showerror("Export Error", f"Failed to prepare print preview:\n{e}")
 
     def save_image(self):
         if self.config.print_job:
@@ -341,11 +345,13 @@ class PrintOption:
                 self.print_image.close()
         self.print_image = result
         img_tk = ImageTk.PhotoImage(self.print_image)
-        self.image_label.config(image=img_tk)
-        self.image_label.image = img_tk
+        with contextlib.suppress(tk.TclError):
+            self.image_label.config(image=img_tk)
+            self.image_label.image = img_tk
 
     def print_label(self, image, density, quantity):
         self.print_button.config(state=tk.DISABLED)
+        self._popup_ref = self.image_label.winfo_toplevel()
         self.config.print_job = True
 
         # Validate density
@@ -385,8 +391,15 @@ class PrintOption:
                 with contextlib.suppress(tk.TclError):
                     self.root.status_bar.update_status(result)
             else:
-                with contextlib.suppress(tk.TclError):
-                    mb.showerror("Print Failed", "The print job failed. Check the printer connection and try again.")
+                popup_alive = hasattr(self, "_popup_ref") and self._popup_ref is not None
+                if popup_alive:
+                    with contextlib.suppress(tk.TclError):
+                        popup_alive = self._popup_ref.winfo_exists()
+                if popup_alive:
+                    with contextlib.suppress(tk.TclError):
+                        mb.showerror(
+                            "Print Failed", "The print job failed. Check the printer connection and try again."
+                        )
             with contextlib.suppress(tk.TclError):
                 self.print_button.config(state=tk.NORMAL)
             with contextlib.suppress(tk.TclError):
