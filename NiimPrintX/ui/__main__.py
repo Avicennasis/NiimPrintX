@@ -39,19 +39,27 @@ def resource_path(relative_path):
 def main():
     load_libraries()
     setup_logger()
+    app = None
+    splash = None
     try:
         app = LabelPrinterApp()
         image_path = resource_path("NiimPrintX/ui/assets/Niimprintx.png")
         splash = SplashScreen(image_path, app)  # Create the splash screen
-        splash.update()  # Force Tk to paint before blocking on load_resources
+        import contextlib as _ctx  # noqa: PLC0415 — lazy import for splash guard
+        import tkinter  # noqa: PLC0415
+
+        with _ctx.suppress(tkinter.TclError):
+            splash.update()  # Force Tk to paint before blocking on load_resources
 
         app.load_resources()  # Start loading resources, then show the main window
-        splash.destroy()
+        splash.close()  # Use close() which suppresses TclError on double-destroy
+        splash = None
         app.deiconify()
 
         # Open file from command-line if provided (after deiconify so resources are ready)
         if len(sys.argv) > 1 and os.path.isfile(sys.argv[1]):
-            app.after(100, lambda: app.file_menu.load_from_file(sys.argv[1]))
+            file_arg = sys.argv[1]  # capture value to avoid late-binding closure
+            app.after(100, lambda: app.file_menu.load_from_file(file_arg))
 
         app.mainloop()
     except Exception as e:
@@ -59,7 +67,13 @@ def main():
         import tkinter.messagebox as mb  # noqa: PLC0415 — lazy import for error handling
 
         with contextlib.suppress(Exception):
+            if splash is not None:
+                splash.close()
+        with contextlib.suppress(Exception):
             mb.showerror("Startup Error", f"NiimPrintX failed to start:\n{e}")
+        with contextlib.suppress(Exception):
+            if app is not None:
+                app.destroy()
         raise
 
 

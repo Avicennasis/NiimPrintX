@@ -53,7 +53,6 @@ async def test_printer_connect_success(mock_find_device, MockPrinterClient):
     result = await op.printer_connect("d110")
 
     assert result is True
-    assert config.printer_connected is True
     assert op.printer is mock_printer
     mock_find_device.assert_awaited_once_with("d110")
     mock_printer.connect.assert_awaited_once()
@@ -113,7 +112,7 @@ async def test_printer_connect_connection_fails(mock_find_device, MockPrinterCli
 
 
 async def test_printer_disconnect():
-    """Disconnecting a connected printer must clear printer_connected and printer."""
+    """Disconnecting a connected printer must clear printer reference."""
     config = _make_config(printer_connected=True)
     op = PrinterOperation(config)
     op.printer = _make_mock_printer()
@@ -121,7 +120,6 @@ async def test_printer_disconnect():
     result = await op.printer_disconnect()
 
     assert result is True
-    assert config.printer_connected is False
     assert op.printer is None
 
 

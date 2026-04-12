@@ -11,6 +11,11 @@ from NiimPrintX.nimmy.helper import print_error, print_info, print_success
 from NiimPrintX.nimmy.logger_config import get_logger, logger_enable, setup_logger
 from NiimPrintX.nimmy.printer import DEFAULT_MAX_DENSITY, MODEL_MAX_DENSITY, V2_MODELS, InfoEnum, PrinterClient
 
+# Max print width per model in pixels (derived from label width x DPI)
+# V2 models (b1/b18/b21) use 384px; 300 DPI models use 354px (30mm @ 300 DPI)
+MODEL_MAX_WIDTH = {"d11_h": 354, "d110_m": 354}
+DEFAULT_MAX_WIDTH_V1 = 240  # 30mm @ 203 DPI
+
 logger = get_logger()
 
 _ALL_MODELS = ["b1", "b18", "b21", "d11", "d11_h", "d101", "d110", "d110_m"]
@@ -93,7 +98,7 @@ def print_command(
 ) -> None:
     logger.info("Niimbot Printing Start")
 
-    max_width_px = 384 if model in V2_MODELS else 240
+    max_width_px = 384 if model in V2_MODELS else MODEL_MAX_WIDTH.get(model, DEFAULT_MAX_WIDTH_V1)
 
     # Cap density to the per-model hardware limit
     max_density = MODEL_MAX_DENSITY.get(model, DEFAULT_MAX_DENSITY)
@@ -162,7 +167,7 @@ async def _print(
         print_success("Print job completed")
         return True
     except Exception as e:
-        logger.debug("Command failed: %s", e, exc_info=True)
+        logger.opt(exception=True).debug(f"Command failed: {e}")
         print_error(f"{e}")
         return False
     finally:
@@ -210,7 +215,7 @@ async def _info(model: str) -> bool:
         print_info(f"Hardware Version : {hardware_version}")
         return True
     except Exception as e:
-        logger.debug("Command failed: %s", e, exc_info=True)
+        logger.opt(exception=True).debug(f"Command failed: {e}")
         print_error(f"{e}")
         return False
     finally:

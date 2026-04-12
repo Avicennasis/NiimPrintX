@@ -101,6 +101,8 @@ class BLETransport:
                 raise
 
     async def stop_notification(self, char_uuid: str) -> None:
-        if char_uuid in self._notifying_uuids and self.client and self.client.is_connected:
-            await self.client.stop_notify(char_uuid)
-        self._notifying_uuids.discard(char_uuid)
+        try:
+            if char_uuid in self._notifying_uuids and self.client and self.client.is_connected:
+                await self.client.stop_notify(char_uuid)
+        finally:
+            self._notifying_uuids.discard(char_uuid)

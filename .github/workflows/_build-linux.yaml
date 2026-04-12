@@ -27,8 +27,10 @@ jobs:
         run: echo "ARCH=$(uname -m)" >> $GITHUB_OUTPUT
 
       - name: Validate tag
+        env:
+          VERSION: ${{ steps.get_tag_name.outputs.VERSION }}
         run: |
-          if [[ -z "${{ steps.get_tag_name.outputs.VERSION }}" ]]; then
+          if [[ -z "$VERSION" ]]; then
             echo "ERROR: VERSION is empty — this workflow must be triggered from a v* tag."
             exit 1
           fi
@@ -60,13 +62,19 @@ jobs:
         run: poetry run pyinstaller spec_files/ui_app/NiimPrintX-linux.spec --noconfirm --clean
 
       - name: Create GUI compressed file
-        run: cd dist && tar -czf NiimPrintX-App-${{ steps.get_tag_name.outputs.VERSION }}-Linux-${{ steps.get_architecture.outputs.ARCH }}.tar.gz NiimPrintX
+        env:
+          VERSION: ${{ steps.get_tag_name.outputs.VERSION }}
+          ARCH: ${{ steps.get_architecture.outputs.ARCH }}
+        run: cd dist && tar -czf "NiimPrintX-App-${VERSION}-Linux-${ARCH}.tar.gz" NiimPrintX
 
       - name: Package CLI with PyInstaller
         run: poetry run pyinstaller spec_files/cli_app/NiimPrintX-linux.spec --noconfirm --clean
 
       - name: Create CLI compressed file
-        run: cd dist && tar -czf NiimPrintX-CLI-${{ steps.get_tag_name.outputs.VERSION }}-Linux-${{ steps.get_architecture.outputs.ARCH }}.tar.gz niimprintx
+        env:
+          VERSION: ${{ steps.get_tag_name.outputs.VERSION }}
+          ARCH: ${{ steps.get_architecture.outputs.ARCH }}
+        run: cd dist && tar -czf "NiimPrintX-CLI-${VERSION}-Linux-${ARCH}.tar.gz" niimprintx
 
       - name: Upload GUI package
         uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08  # v4

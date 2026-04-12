@@ -40,22 +40,16 @@ datas = collect_and_adjust_files(imagemagick_path, 'imagemagick')
 current_path = os.getcwd()
 if os.path.basename(current_path) == "ui_app":
     src_path = os.path.join(current_path, '..', '..', 'NiimPrintX', 'ui')
-    hook_path = os.path.join(current_path, '..', '..', 'runtime_hooks', 'macOS')
 elif os.path.basename(current_path) == "NiimPrintX":
     src_path = os.path.join(current_path, 'NiimPrintX', 'ui')
-    hook_path = os.path.join(current_path, 'runtime_hooks', 'macOS')
 else:
     src_path = os.path.join(current_path, 'ui')
-    hook_path = os.path.join(current_path, 'runtime_hooks', 'macOS')
 
 # Add custom assets
 datas += [
     (os.path.join(src_path, 'icons'), 'NiimPrintX/ui/icons'),
     (os.path.join(src_path, 'assets'), 'NiimPrintX/ui/assets')
 ]
-
-# Include the runtime hook
-runtime_hooks = [os.path.join(hook_path, 'runtime_hook.py')]
 
 a = Analysis(
     [os.path.join(src_path, '__main__.py')],
@@ -65,7 +59,7 @@ a = Analysis(
     hiddenimports=['tkinter'] + hiddenimports,
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=runtime_hooks,
+    runtime_hooks=[],  # runtime hook removed — load_libraries() in __main__.py handles env setup
     excludes=[],
     noarchive=False,
     optimize=0,

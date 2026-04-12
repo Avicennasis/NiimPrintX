@@ -221,8 +221,9 @@ class PrintOption:
             if output_filename:
                 cropped_surface.write_to_png(output_filename)
                 return None
-            image_bytes = cropped_surface.get_data()
-            return Image.frombuffer("RGBA", (int(bbox_width), int(bbox_height)), image_bytes, "raw", "BGRA", 0, 1)
+            stride = cropped_surface.get_stride()
+            image_bytes = bytes(cropped_surface.get_data())  # copy before finish()
+            return Image.frombuffer("RGBA", (int(bbox_width), int(bbox_height)), image_bytes, "raw", "BGRA", stride, 1)
         finally:
             cropped_surface.finish()
             surface.finish()

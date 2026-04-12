@@ -16,14 +16,11 @@ class PrinterOperation:
             client = PrinterClient(device)
             if await client.connect():
                 self.printer = client
-                self.config.printer_connected = True
                 return True
-            self.config.printer_connected = False
             self.printer = None
             return False
         except Exception as e:
             logger.error(f"Cannot connect to printer {model}: {e}")
-            self.config.printer_connected = False
             self.printer = None
             return False
 
@@ -31,11 +28,9 @@ class PrinterOperation:
         try:
             if self.printer:
                 await self.printer.disconnect()
-            self.config.printer_connected = False
             self.printer = None
             return True
         except Exception as e:
-            self.config.printer_connected = False
             self.printer = None
             logger.error(f"Disconnect error: {e}")
             return False
@@ -65,6 +60,5 @@ class PrinterOperation:
             return False, {}
         except Exception as e:
             logger.error(f"Heartbeat error: {e}")
-            self.config.printer_connected = False
             self.printer = None
             return False, {}

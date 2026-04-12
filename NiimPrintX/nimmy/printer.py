@@ -256,6 +256,7 @@ class PrinterClient:
 
                 for _ in range(200):  # ~10 seconds at 0.05s interval
                     if await self.end_page_print():
+                        page_started = False  # page cleanly closed; don't re-send in cleanup
                         break
                     await asyncio.sleep(0.05)
                 else:
@@ -303,8 +304,15 @@ class PrinterClient:
                 f"exceeds protocol limit of {max_width}px"
             )
 
-        # Convert the image to monochrome, closing intermediate images
-        gray = image.convert("L")
+        # Composite alpha onto white background before grayscale conversion
+        # (RGBA/LA/PA images have undefined RGB in transparent regions)
+        if image.mode in ("RGBA", "LA", "PA"):
+            background = Image.new("RGB", image.size, (255, 255, 255))
+            background.paste(image, mask=image.split()[-1])
+            gray = background.convert("L")
+            background.close()
+        else:
+            gray = image.convert("L")
         try:
             inverted = ImageOps.invert(gray)
         finally:
