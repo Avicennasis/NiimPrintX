@@ -66,10 +66,6 @@ module = [
 disallow_untyped_defs = true
 warn_unreachable = true
 
-[[tool.mypy.overrides]]
-module = "NiimPrintX.ui.*"
-disallow_untyped_defs = false
-
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

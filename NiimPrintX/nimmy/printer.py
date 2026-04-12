@@ -59,7 +59,7 @@ class PrinterClient:
         self.device = device
         self.transport: BLETransport = BLETransport()
         self.notification_event: asyncio.Event = asyncio.Event()
-        self.notification_data: bytearray | None = None
+        self.notification_data: bytes | None = None
         self._loop: asyncio.AbstractEventLoop | None = None
         self._command_lock: asyncio.Lock = asyncio.Lock()
         self._print_lock: asyncio.Lock = asyncio.Lock()
@@ -262,7 +262,7 @@ class PrinterClient:
                     raise PrinterException("end_page_print timed out")
 
                 max_status_checks = 600  # ~60 seconds at 0.1s interval
-                status = {"page": 0, "progress1": 0, "progress2": 0}
+                status: PrintStatus = {"page": 0, "progress1": 0, "progress2": 0}
                 for _ in range(max_status_checks):
                     status = await self.get_print_status()
                     if status["page"] >= quantity:

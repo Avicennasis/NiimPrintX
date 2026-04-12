@@ -50,4 +50,4 @@ class NiimbotPacket:
         return bytes((0x55, 0x55, self.type, len(self.data), *self.data, checksum, 0xAA, 0xAA))
 
     def __repr__(self) -> str:
-        return f"<NiimbotPacket type={self.type} data={self.data}>"
+        return f"<NiimbotPacket type={self.type} data={self.data!r}>"
