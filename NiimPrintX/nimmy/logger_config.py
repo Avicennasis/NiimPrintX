@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import contextlib
-import os
 import sys
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import platformdirs
@@ -12,10 +12,10 @@ if TYPE_CHECKING:
     from loguru import Logger
 
 
-def _get_log_path() -> str:
-    log_dir = platformdirs.user_log_dir("NiimPrintX")
-    os.makedirs(log_dir, exist_ok=True)
-    return os.path.join(log_dir, "nimmy.log")
+def _get_log_path() -> Path:
+    log_dir = Path(platformdirs.user_log_dir("NiimPrintX"))
+    log_dir.mkdir(parents=True, exist_ok=True)
+    return log_dir / "nimmy.log"
 
 
 def _add_handlers(level: str) -> None:

@@ -806,3 +806,50 @@ async def test_print_job_cleanup_skips_end_page_when_not_started(mock_sleep, mak
     assert not end_page_called
     # end_print SHOULD have been called because print_started was True
     assert end_print_called
+
+
+# ---------------------------------------------------------------------------
+# P2 gap: notification_handler idempotency (second call ignored)
+# ---------------------------------------------------------------------------
+
+
+async def test_notification_handler_second_call_is_noop(make_client):
+    """Second notification while first is pending should be discarded."""
+    client = make_client()
+
+    mock_loop = MagicMock()
+    callbacks = []
+    mock_loop.call_soon_threadsafe = MagicMock(side_effect=callbacks.append)
+    client._loop = mock_loop
+
+    # Simulate first notification
+    client.notification_handler(MagicMock(), bytearray(b"\x01\x02"))
+    # Execute the first callback — sets data and event
+    assert len(callbacks) == 1
+    callbacks[0]()
+    first_data = client.notification_data
+
+    # Simulate second notification (event is already set, so _set is a noop)
+    client.notification_handler(MagicMock(), bytearray(b"\x03\x04"))
+    assert len(callbacks) == 2
+    callbacks[1]()
+    assert client.notification_data == first_data
+
+
+# ---------------------------------------------------------------------------
+# P2 gap: set_label_type upper bound / set_label_density lower bound
+# ---------------------------------------------------------------------------
+
+
+async def test_set_label_type_upper_bound_invalid(make_client):
+    """set_label_type(4) must raise PrinterException (valid range is 1-3)."""
+    client = make_client()
+    with pytest.raises(PrinterException, match="Label type must be 1-3"):
+        await client.set_label_type(4)
+
+
+async def test_set_label_density_lower_bound_invalid(make_client):
+    """set_label_density(0) must raise PrinterException (valid range is 1-5)."""
+    client = make_client()
+    with pytest.raises(PrinterException, match="Label density must be 1-5"):
+        await client.set_label_density(0)

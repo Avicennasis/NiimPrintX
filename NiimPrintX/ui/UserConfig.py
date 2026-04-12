@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import copy
 import math
-import os
 import tomllib
+from pathlib import Path
 from typing import Any
 
 from platformdirs import user_config_dir
@@ -12,13 +12,13 @@ from NiimPrintX.nimmy.logger_config import get_logger
 
 logger = get_logger()
 
-CONFIG_DIR = user_config_dir("NiimPrintX")
-CONFIG_FILE = os.path.join(CONFIG_DIR, "config.toml")
+CONFIG_DIR = Path(user_config_dir("NiimPrintX"))
+CONFIG_FILE = CONFIG_DIR / "config.toml"
 
 
 def load_user_config() -> dict[str, Any]:
     """Load user config, return empty dict if not found."""
-    if not os.path.isfile(CONFIG_FILE):
+    if not CONFIG_FILE.is_file():
         return {}
     try:
         with open(CONFIG_FILE, "rb") as f:

@@ -23,13 +23,10 @@ hidden_imports += collect_submodules('bleak')
 hidden_imports += collect_submodules('wand')
 hidden_imports += ['platformdirs', 'sv_ttk', 'cairo']
 
-tcl_library = os.environ.get('TCL_LIBRARY', '/usr/share/tcltk/tcl8.6')
-tk_library = os.environ.get('TK_LIBRARY', '/usr/share/tcltk/tk8.6')
-
-if not os.path.exists(tcl_library):
-    raise RuntimeError(f"TCL_LIBRARY not found: {tcl_library}. Set TCL_LIBRARY env var to the correct path.")
-if not os.path.exists(tk_library):
-    raise RuntimeError(f"TK_LIBRARY not found: {tk_library}. Set TK_LIBRARY env var to the correct path.")
+import tkinter
+_tcl = tkinter.Tcl()
+tcl_library = os.environ.get('TCL_LIBRARY') or _tcl.eval('info library')
+tk_library = os.environ.get('TK_LIBRARY') or os.path.join(os.path.dirname(tcl_library), f'tk{_tcl.eval("info patchlevel").rsplit(".", 1)[0]}')
 
 datas += [
     (tcl_library, 'tcl'),

@@ -2,6 +2,7 @@ import copy
 import math
 import os
 import tempfile
+from pathlib import Path
 from unittest.mock import patch
 
 from NiimPrintX.ui.UserConfig import _validate_dims, load_user_config, merge_label_sizes
@@ -195,7 +196,7 @@ def test_toml_decode_error_handling():
         f.write("this is not valid toml = = = [[[")
         tmp_path = f.name
     try:
-        with patch("NiimPrintX.ui.UserConfig.CONFIG_FILE", tmp_path):
+        with patch("NiimPrintX.ui.UserConfig.CONFIG_FILE", Path(tmp_path)):
             result = load_user_config()
         assert result == {}
     finally:
@@ -211,7 +212,7 @@ def test_load_user_config_toml_parse_error():
         f.write("[broken\nkey without value\n!!!")
         tmp_path = f.name
     try:
-        with patch("NiimPrintX.ui.UserConfig.CONFIG_FILE", tmp_path):
+        with patch("NiimPrintX.ui.UserConfig.CONFIG_FILE", Path(tmp_path)):
             result = load_user_config()
         assert result == {}
     finally:
@@ -233,7 +234,7 @@ def test_load_user_config_valid_config():
         f.write(toml_content)
         tmp_path = f.name
     try:
-        with patch("NiimPrintX.ui.UserConfig.CONFIG_FILE", tmp_path):
+        with patch("NiimPrintX.ui.UserConfig.CONFIG_FILE", Path(tmp_path)):
             result = load_user_config()
         assert "devices" in result
         assert "custom1" in result["devices"]
@@ -309,6 +310,6 @@ def test_merge_custom_device_without_sizes_skipped():
 
 
 def test_load_user_config_missing_file_returns_empty():
-    with patch("NiimPrintX.ui.UserConfig.CONFIG_FILE", "/nonexistent/path/config.toml"):
+    with patch("NiimPrintX.ui.UserConfig.CONFIG_FILE", Path("/nonexistent/path/config.toml")):
         result = load_user_config()
     assert result == {}

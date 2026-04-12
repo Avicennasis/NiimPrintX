@@ -126,14 +126,15 @@ class PrintOption:
         try:
             # Export to PNG and display it in a pop-up window
             if self.config.os_system == "Windows":
-                # Windows-specific logic using tempfile.mkstemp()
+                # Windows-specific: close fd immediately so Cairo can reopen by path
                 fd, tmp_file_path = tempfile.mkstemp(suffix=".png")
+                os.close(fd)
                 try:
                     self.export_to_png(tmp_file_path)  # Save to file
                     self.display_image_in_popup(tmp_file_path)  # Display in pop-up window
                 finally:
-                    os.close(fd)  # Close the file descriptor
-                    os.remove(tmp_file_path)  # Remove the temporary file
+                    with contextlib.suppress(OSError):
+                        os.remove(tmp_file_path)
             else:
                 with tempfile.NamedTemporaryFile(suffix=".png") as tmp_file:
                     self.export_to_png(tmp_file.name)  # Save to file

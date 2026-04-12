@@ -129,3 +129,28 @@ def test_encode_image_one_over_width_limit(make_client):
     img = Image.new("L", (1993, 1), color=255)
     with pytest.raises(PrinterException, match="protocol limit"):
         list(client._encode_image(img))
+
+
+def test_encode_image_rgba_alpha_composited_on_white(make_client):
+    """RGBA image with transparent background should composite onto white."""
+    client = make_client()
+    # Create an RGBA image: 8px wide, 2px tall, black pixels with full alpha
+    img = Image.new("RGBA", (8, 2), (0, 0, 0, 255))
+    packets = list(client._encode_image(img))
+    assert len(packets) == 2
+    # Black on white background → inverted to white (1 bits) → all 0xFF
+    for pkt in packets:
+        line_data = pkt.data[6:]
+        assert line_data == bytes([0xFF])
+
+
+def test_encode_image_rgba_transparent_becomes_white(make_client):
+    """Fully transparent RGBA pixels should composite as white (no print)."""
+    client = make_client()
+    img = Image.new("RGBA", (8, 2), (0, 0, 0, 0))  # fully transparent
+    packets = list(client._encode_image(img))
+    assert len(packets) == 2
+    # Transparent → white background → gray=255 → inverted=0 → 1-bit=0
+    for pkt in packets:
+        line_data = pkt.data[6:]
+        assert line_data == bytes([0x00])

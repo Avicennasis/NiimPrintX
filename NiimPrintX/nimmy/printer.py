@@ -15,7 +15,7 @@ from .logger_config import get_logger
 from .packet import NiimbotPacket, packet_to_int
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Iterator
 
     from .types import HeartbeatResponse, PrintStatus, RFIDResponse
 
@@ -109,18 +109,20 @@ class PrinterClient:
     async def send_command(self, request_code: int, data: bytes, timeout: float = 10) -> NiimbotPacket:  # noqa: ASYNC109 — uses asyncio.wait_for internally
         async with self._command_lock:
             notifying = False
+            char_uuid: str | None = None  # capture before any await can race with disconnect()
             try:
                 if (not self.transport.client or not self.transport.client.is_connected) and not await self.connect():
                     raise PrinterException("Failed to reconnect to printer")
                 if self.char_uuid is None:
                     raise PrinterException("No characteristic UUID available")
+                char_uuid = self.char_uuid  # snapshot for use in finally
                 # Clear stale state BEFORE arming notifications
                 self.notification_event.clear()
                 self.notification_data = None
                 packet = NiimbotPacket(request_code, data)
-                await self.transport.start_notification(self.char_uuid, self.notification_handler)
+                await self.transport.start_notification(char_uuid, self.notification_handler)
                 notifying = True
-                await self.transport.write(packet.to_bytes(), self.char_uuid)
+                await self.transport.write(packet.to_bytes(), char_uuid)
                 try:
                     code_label = RequestCodeEnum(request_code).name
                 except ValueError:
@@ -152,9 +154,9 @@ class PrinterClient:
                 logger.debug(f"Malformed response for {code_label}: {e}")
                 raise PrinterException(f"Malformed printer response: {e}") from e
             finally:
-                if notifying:
+                if notifying and char_uuid is not None:
                     try:
-                        await self.transport.stop_notification(self.char_uuid)
+                        await self.transport.stop_notification(char_uuid)
                     except Exception as e:  # noqa: BLE001 — best-effort cleanup during notification teardown
                         logger.warning(f"stop_notify failed: {e}")
                 self.notification_event.clear()
@@ -288,7 +290,7 @@ class PrinterClient:
 
     def _encode_image(
         self, image: Image.Image, vertical_offset: int = 0, horizontal_offset: int = 0
-    ) -> Generator[NiimbotPacket, None, None]:
+    ) -> Iterator[NiimbotPacket]:
         effective_height = image.height + max(0, vertical_offset)
         if effective_height > 65535:
             raise PrinterException(

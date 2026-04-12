@@ -205,3 +205,14 @@ def test_logger_enable_trace_level():
 def test_logger_enable_high_verbose():
     """logger_enable(99) should clamp to TRACE and not raise."""
     logger_enable(99)  # must not raise
+
+
+# ---------------------------------------------------------------------------
+# 10. _safe_int — boolean input returns default
+# ---------------------------------------------------------------------------
+
+
+def test_safe_int_bool_returns_default():
+    """Boolean values should be rejected (TOML true/false)."""
+    assert _safe_int(True, 3) == 3
+    assert _safe_int(False, 3) == 3

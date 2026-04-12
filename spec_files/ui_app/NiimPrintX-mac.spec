@@ -84,7 +84,7 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,  # TODO: set to entitlements.plist when code signing is configured (needed for Bluetooth TCC approval)
     icon=os.path.join(src_path, 'assets', 'icon.icns'),
-    onefile=False,  # Ensure this is set for onefile build
+    onefile=False,  # Must be False for .app bundle (COLLECT+BUNDLE pattern)
 )
 
 coll = COLLECT(
@@ -105,5 +105,6 @@ app = BUNDLE(
     info_plist={
         'NSBluetoothAlwaysUsageDescription': 'NiimPrintX requires Bluetooth to communicate with Niimbot printers.',
         'NSBluetoothPeripheralUsageDescription': 'NiimPrintX requires Bluetooth to communicate with Niimbot printers.',
+        'NSHighResolutionCapable': True,
     },
 )

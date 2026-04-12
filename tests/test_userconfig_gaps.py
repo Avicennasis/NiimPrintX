@@ -3,6 +3,7 @@
 import copy
 import os
 import tempfile
+from pathlib import Path
 from unittest.mock import patch
 
 from NiimPrintX.ui.UserConfig import load_user_config, merge_label_sizes
@@ -32,7 +33,7 @@ def test_load_user_config_os_error():
         tmp_path = f.name
     try:
         with (
-            patch("NiimPrintX.ui.UserConfig.CONFIG_FILE", tmp_path),
+            patch("NiimPrintX.ui.UserConfig.CONFIG_FILE", Path(tmp_path)),
             patch("builtins.open", side_effect=OSError("permission denied")),
         ):
             result = load_user_config()
