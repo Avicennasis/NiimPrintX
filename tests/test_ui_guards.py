@@ -91,18 +91,3 @@ def test_packet_to_int_empty_raises():
     pkt = NiimbotPacket(0x00, b"")
     with pytest.raises(ValueError, match="empty"):
         packet_to_int(pkt)
-
-
-# ---------------------------------------------------------------------------
-# 6. from_bytes — trailing bytes after footer raise ValueError (strict length)
-# ---------------------------------------------------------------------------
-
-
-def test_packet_trailing_bytes_tolerated():
-    """from_bytes accepts trailing bytes for BLE hardware compatibility."""
-    pkt = NiimbotPacket(0x01, b"\x02\x03")
-    raw = bytearray(pkt.to_bytes())
-    raw.extend(b"\xff\xff")  # trailing garbage
-    parsed = NiimbotPacket.from_bytes(bytes(raw))
-    assert parsed.type == 0x01
-    assert parsed.data == b"\x02\x03"

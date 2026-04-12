@@ -1,9 +1,23 @@
 import copy
+import math
 import os
 import tempfile
 from unittest.mock import patch
 
 from NiimPrintX.ui.UserConfig import _validate_dims, load_user_config, merge_label_sizes
+
+
+def _make_builtin():
+    """Return a minimal built-in sizes dict for testing (rotation=270, canonical)."""
+    return {
+        "d110": {
+            "size": {"12x40": (12.0, 40.0), "15x30": (15.0, 30.0)},
+            "density": 3,
+            "print_dpi": 203,
+            "rotation": 270,
+        }
+    }
+
 
 # --- _validate_dims tests ---
 
@@ -28,22 +42,12 @@ def test_validate_dims_non_numeric():
     assert _validate_dims(["a", "b"]) is None
 
 
+def test_validate_dims_inf_returns_none():
+    assert _validate_dims([math.inf, 10]) is None
+    assert _validate_dims([10, math.nan]) is None
+
+
 # --- merge_label_sizes tests ---
-
-
-def _make_builtin():
-    """Return a minimal built-in sizes dict for testing."""
-    return {
-        "d110": {
-            "size": {
-                "12x40": (12.0, 40.0),
-                "15x30": (15.0, 30.0),
-            },
-            "density": 3,
-            "print_dpi": 203,
-            "rotation": -90,
-        }
-    }
 
 
 def test_merge_adds_size_to_existing_device():
@@ -299,3 +303,12 @@ def test_merge_custom_device_without_sizes_skipped():
     result = merge_label_sizes(builtin, user_config)
     assert "custom1" not in result
     assert result == original
+
+
+# --- load_user_config missing file test ---
+
+
+def test_load_user_config_missing_file_returns_empty():
+    with patch("NiimPrintX.ui.UserConfig.CONFIG_FILE", "/nonexistent/path/config.toml"):
+        result = load_user_config()
+    assert result == {}

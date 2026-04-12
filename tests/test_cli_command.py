@@ -13,16 +13,10 @@ Focuses on areas not covered by test_cli.py:
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from click.testing import CliRunner
 from PIL import Image
 
 from NiimPrintX.cli.command import niimbot_cli
 from NiimPrintX.nimmy.printer import DEFAULT_MAX_DENSITY, V2_MODELS, InfoEnum
-
-
-@pytest.fixture
-def runner():
-    return CliRunner()
 
 
 def _mock_printer(*, connect_ok=True):

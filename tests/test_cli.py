@@ -1,15 +1,8 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
-from click.testing import CliRunner
 from PIL import Image
 
 from NiimPrintX.cli.command import niimbot_cli
-
-
-@pytest.fixture
-def runner():
-    return CliRunner()
 
 
 def test_cli_help(runner):
@@ -131,41 +124,6 @@ def test_print_image_too_tall(runner):
         result = runner.invoke(niimbot_cli, ["print", "-m", "d110", "-i", "tall.png"])
         assert result.exit_code == 1
         assert "height" in result.output.lower() or "exceeds" in result.output.lower()
-
-
-def test_info_command_success(runner):
-    """Info command with mocked printer returns version strings."""
-    mock_device = MagicMock()
-    mock_device.name = "D110"
-    mock_printer = AsyncMock()
-    mock_printer.connect.return_value = True
-    mock_printer.disconnect.return_value = None
-    mock_printer.get_info.side_effect = lambda key: {
-        1: "SN-TEST-1234",  # DEVICESERIAL (11) mapped by call order
-        2: "V2.11",
-        3: "HW1.5",
-    }.get(mock_printer.get_info.call_count, "unknown")
-    # Simpler: return different values per InfoEnum
-    from NiimPrintX.nimmy.printer import InfoEnum
-
-    async def fake_get_info(info_enum):
-        return {
-            InfoEnum.DEVICESERIAL: "SN-TEST-1234",
-            InfoEnum.SOFTVERSION: "V2.11",
-            InfoEnum.HARDVERSION: "HW1.5",
-        }[info_enum]
-
-    mock_printer.get_info = AsyncMock(side_effect=fake_get_info)
-
-    with (
-        patch("NiimPrintX.cli.command.find_device", new_callable=AsyncMock, return_value=mock_device),
-        patch("NiimPrintX.cli.command.PrinterClient", return_value=mock_printer),
-    ):
-        result = runner.invoke(niimbot_cli, ["info", "-m", "d110"])
-        assert result.exit_code == 0
-        assert "V2.11" in result.output
-        assert "HW1.5" in result.output
-        assert "SN-TEST-1234" in result.output
 
 
 def test_print_rotation_applied(runner):

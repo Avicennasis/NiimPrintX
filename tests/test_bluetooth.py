@@ -254,3 +254,38 @@ async def test_connect_bleak_error_wrapped_as_ble_exception(MockBleakClient):
         await transport.connect("AA:BB:CC:DD:EE:FF")
 
     assert transport.client is None
+
+
+# ---------------------------------------------------------------------------
+# find_device: nameless device handling
+# ---------------------------------------------------------------------------
+
+
+@patch("NiimPrintX.nimmy.bluetooth.BleakScanner.discover", new_callable=AsyncMock)
+async def test_find_device_skips_nameless(mock_discover):
+    """Devices with name=None should be skipped without crashing."""
+    nameless = MagicMock()
+    nameless.name = None
+    adv_none = MagicMock()
+    adv_none.service_uuids = []
+    named = MagicMock()
+    named.name = "D110_ABC"
+    adv_named = MagicMock()
+    adv_named.service_uuids = []
+    mock_discover.return_value = {
+        "AA:00:00:00:00:01": (nameless, adv_none),
+        "AA:00:00:00:00:02": (named, adv_named),
+    }
+    result = await find_device("d110")
+    assert result is named
+
+
+# --- start_notification: not connected ---
+
+
+async def test_start_notification_not_connected_raises():
+    transport = BLETransport()
+    transport.client = MagicMock()
+    transport.client.is_connected = False
+    with pytest.raises(BLEException, match="not connected"):
+        await transport.start_notification("some-uuid", MagicMock())

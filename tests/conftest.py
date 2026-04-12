@@ -2,6 +2,7 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from click.testing import CliRunner
 from PIL import Image
 
 from NiimPrintX.nimmy.printer import PrinterClient
@@ -55,3 +56,9 @@ def make_client():
         return client
 
     return _make_client
+
+
+@pytest.fixture
+def runner():
+    """Shared Click CLI test runner."""
+    return CliRunner()

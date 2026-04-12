@@ -92,3 +92,24 @@ def test_cache_dir_is_string():
     config = AppConfig()
     assert isinstance(config.cache_dir, str)
     assert len(config.cache_dir) > 0
+
+
+# ---------------------------------------------------------------------------
+# mm_to_pixels tests
+# ---------------------------------------------------------------------------
+
+
+def test_mm_to_pixels_d110_203dpi():
+    """25.4mm at 203 DPI should equal 203 pixels (1 inch)."""
+    with patch("NiimPrintX.ui.AppConfig.load_user_config", return_value={}):
+        config = AppConfig()
+    config.device = "d110"  # 203 DPI
+    assert config.mm_to_pixels(25.4) == 203
+
+
+def test_mm_to_pixels_zero():
+    """0mm should return 0 pixels."""
+    with patch("NiimPrintX.ui.AppConfig.load_user_config", return_value={}):
+        config = AppConfig()
+    config.device = "d110"
+    assert config.mm_to_pixels(0) == 0

@@ -6,35 +6,22 @@ import pytest
 from PIL import Image
 
 from NiimPrintX.nimmy.bluetooth import BLETransport
+from NiimPrintX.nimmy.exception import PrinterException
 from NiimPrintX.nimmy.packet import NiimbotPacket
 from NiimPrintX.nimmy.printer import RequestCodeEnum
 
-# --- 1. Packet from_bytes with trailing bytes ---
-
-
-def test_packet_from_bytes_oversized_packet():
-    """Packets with trailing bytes after footer are accepted (BLE hardware compatibility)."""
-    pkt = NiimbotPacket(0x01, b"\x02\x03")
-    raw = bytearray(pkt.to_bytes())
-    raw.extend(b"\xaa\xaa\xff\xff")  # extra trailing bytes
-    # Trailing bytes are tolerated for BLE hardware compatibility
-    parsed = NiimbotPacket.from_bytes(bytes(raw))
-    assert parsed.type == 0x01
-    assert parsed.data == b"\x02\x03"
-
-
-# --- 2. set_quantity validation ---
+# --- 1. set_quantity validation ---
 
 
 async def test_set_quantity_negative_raises(make_client):
     client = make_client()
-    with pytest.raises(ValueError, match="Quantity must be"):
+    with pytest.raises(PrinterException, match="Quantity must be"):
         await client.set_quantity(-1)
 
 
 async def test_set_quantity_overflow_raises(make_client):
     client = make_client()
-    with pytest.raises(ValueError, match="Quantity must be"):
+    with pytest.raises(PrinterException, match="Quantity must be"):
         await client.set_quantity(70000)
 
 

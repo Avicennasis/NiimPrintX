@@ -5,17 +5,14 @@ import os
 import tempfile
 from unittest.mock import patch
 
-from NiimPrintX.ui.UserConfig import _validate_dims, load_user_config, merge_label_sizes
+from NiimPrintX.ui.UserConfig import load_user_config, merge_label_sizes
 
 
 def _make_builtin():
-    """Return a minimal built-in sizes dict for testing."""
+    """Return a minimal built-in sizes dict for testing (rotation=270, canonical)."""
     return {
         "d110": {
-            "size": {
-                "12x40": (12.0, 40.0),
-                "15x30": (15.0, 30.0),
-            },
+            "size": {"12x40": (12.0, 40.0), "15x30": (15.0, 30.0)},
             "density": 3,
             "print_dpi": 203,
             "rotation": 270,
@@ -151,23 +148,3 @@ def test_merge_custom_device_invalid_rotation():
     mock_logger.warning.assert_called()
     warning_calls = [call[0][0] for call in mock_logger.warning.call_args_list]
     assert any("rotation" in msg.lower() for msg in warning_calls)
-
-
-# ---------------------------------------------------------------------------
-# 6. _validate_dims — non-numeric strings return None
-# ---------------------------------------------------------------------------
-
-
-def test_validate_dims_non_numeric():
-    """Passing non-numeric strings as dims should return None."""
-    assert _validate_dims(["abc", "def"]) is None
-
-
-# ---------------------------------------------------------------------------
-# 7. _validate_dims — negative values return None
-# ---------------------------------------------------------------------------
-
-
-def test_validate_dims_negative():
-    """Passing a negative value in dims should return None."""
-    assert _validate_dims([-5, 10]) is None

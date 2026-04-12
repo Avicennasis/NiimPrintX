@@ -114,7 +114,10 @@ class PrintOption:
             with contextlib.suppress(tk.TclError):
                 self.root.status_bar.update_status(self.config.printer_connected)
 
-        self.root.after(0, _update)
+        try:
+            self.root.after(0, _update)
+        except tk.TclError:
+            self._connecting = False
 
     def display_print(self):
         if self.config.print_job:

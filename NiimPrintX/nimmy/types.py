@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, NotRequired, TypedDict
+from typing import TypedDict
 
 
 class HeartbeatResponse(TypedDict):
@@ -23,32 +23,3 @@ class PrintStatus(TypedDict):
     page: int
     progress1: int
     progress2: int
-
-
-class FontProps(TypedDict):
-    family: str
-    size: int | float
-    slant: str
-    weight: str
-    underline: bool
-    kerning: float
-
-
-class TextItem(TypedDict):
-    font_props: FontProps
-    font_image: Any
-    content: str
-    handle: int | None
-    bbox: int | None
-    initial_x: NotRequired[int]
-    initial_y: NotRequired[int]
-    initial_size: NotRequired[int]
-
-
-class ImageItem(TypedDict):
-    image: Any
-    original_image: Any
-    bbox: int | None
-    handle: int | None
-    initial_x: NotRequired[int]
-    initial_y: NotRequired[int]

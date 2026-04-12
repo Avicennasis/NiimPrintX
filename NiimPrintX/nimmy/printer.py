@@ -135,21 +135,21 @@ class PrinterClient:
                     code_label = RequestCodeEnum(request_code).name
                 except ValueError:
                     code_label = hex(request_code)
-                logger.error(f"Timeout occurred for request {code_label}")
+                logger.debug(f"Timeout occurred for request {code_label}")
                 raise PrinterException(f"Printer timed out on {code_label}") from None
             except BLEException as e:
                 try:
                     code_label = RequestCodeEnum(request_code).name
                 except ValueError:
                     code_label = hex(request_code)
-                logger.error(f"An error occurred: {e}")
+                logger.debug(f"BLE error during command: {e}")
                 raise PrinterException(f"BLE error during {code_label}: {e}") from e
             except (ValueError, TypeError) as e:
                 try:
                     code_label = RequestCodeEnum(request_code).name
                 except ValueError:
                     code_label = hex(request_code)
-                logger.error(f"Malformed response for {code_label}: {e}")
+                logger.debug(f"Malformed response for {code_label}: {e}")
                 raise PrinterException(f"Malformed printer response: {e}") from e
             finally:
                 if notifying:
@@ -308,8 +308,16 @@ class PrinterClient:
             )
 
         # Composite alpha onto white background before grayscale conversion
-        # (RGBA/LA/PA images have undefined RGB in transparent regions)
-        if image.mode in ("RGBA", "LA", "PA"):
+        # (RGBA/LA images have undefined RGB in transparent regions;
+        #  PA mode stores transparency in palette, not per-pixel — convert first)
+        if image.mode == "PA":
+            rgba = image.convert("RGBA")
+            background = Image.new("RGB", image.size, (255, 255, 255))
+            background.paste(rgba, mask=rgba.split()[-1])
+            rgba.close()
+            gray = background.convert("L")
+            background.close()
+        elif image.mode in ("RGBA", "LA"):
             background = Image.new("RGB", image.size, (255, 255, 255))
             background.paste(image, mask=image.split()[-1])
             gray = background.convert("L")
@@ -460,7 +468,7 @@ class PrinterClient:
 
     async def set_label_type(self, n: int) -> bool:
         if not 1 <= n <= 3:
-            raise ValueError(f"Label type must be 1-3, got {n}")
+            raise PrinterException(f"Label type must be 1-3, got {n}")
         packet = await self.send_command(RequestCodeEnum.SET_LABEL_TYPE, bytes((n,)))
         if len(packet.data) < 1:
             raise PrinterException("Empty response from printer for SET_LABEL_TYPE")
@@ -468,7 +476,7 @@ class PrinterClient:
 
     async def set_label_density(self, n: int) -> bool:
         if not 1 <= n <= 5:
-            raise ValueError(f"Label density must be 1-5, got {n}")
+            raise PrinterException(f"Label density must be 1-5, got {n}")
         packet = await self.send_command(RequestCodeEnum.SET_LABEL_DENSITY, bytes((n,)))
         if len(packet.data) < 1:
             raise PrinterException("Empty response from printer for SET_LABEL_DENSITY")
@@ -482,7 +490,7 @@ class PrinterClient:
 
     async def start_printV2(self, quantity: int) -> bool:
         if not 1 <= quantity <= 65535:
-            raise ValueError(f"Quantity must be 1-65535, got {quantity}")
+            raise PrinterException(f"Quantity must be 1-65535, got {quantity}")
         command = struct.pack(">H", quantity)
         packet = await self.send_command(RequestCodeEnum.START_PRINT, b"\x00" + command + b"\x00\x00\x00\x00")
         if len(packet.data) < 1:
@@ -509,9 +517,9 @@ class PrinterClient:
 
     async def set_dimension(self, height: int, width: int) -> bool:
         if not 1 <= height <= 65535:
-            raise ValueError(f"Height must be 1-65535, got {height}")
+            raise PrinterException(f"Height must be 1-65535, got {height}")
         if not 1 <= width <= 65535:
-            raise ValueError(f"Width must be 1-65535, got {width}")
+            raise PrinterException(f"Width must be 1-65535, got {width}")
         packet = await self.send_command(RequestCodeEnum.SET_DIMENSION, struct.pack(">HH", height, width))
         if len(packet.data) < 1:
             raise PrinterException("Empty response from printer for SET_DIMENSION")
@@ -519,9 +527,9 @@ class PrinterClient:
 
     async def set_dimensionV2(self, height: int, width: int, copies: int) -> bool:
         if not 1 <= height <= 65535:
-            raise ValueError(f"Height must be 1-65535, got {height}")
+            raise PrinterException(f"Height must be 1-65535, got {height}")
         if not 1 <= width <= 65535:
-            raise ValueError(f"Width must be 1-65535, got {width}")
+            raise PrinterException(f"Width must be 1-65535, got {width}")
         logger.debug(f"Setting dimension: {height}x{width}")
         packet = await self.send_command(RequestCodeEnum.SET_DIMENSION, struct.pack(">HHH", height, width, copies))
         if len(packet.data) < 1:
@@ -530,7 +538,7 @@ class PrinterClient:
 
     async def set_quantity(self, n: int) -> bool:
         if not 1 <= n <= 65535:
-            raise ValueError(f"Quantity must be 1-65535, got {n}")
+            raise PrinterException(f"Quantity must be 1-65535, got {n}")
         packet = await self.send_command(RequestCodeEnum.SET_QUANTITY, struct.pack(">H", n))
         if len(packet.data) < 1:
             raise PrinterException("Empty response from printer for SET_QUANTITY")

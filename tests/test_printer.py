@@ -105,23 +105,23 @@ async def test_send_command_timeout_raises_printer_exception(make_client):
 
 
 async def test_set_label_type_invalid_raises(make_client):
-    """set_label_type(0) must raise ValueError (valid range is 1-3)."""
+    """set_label_type(0) must raise PrinterException (valid range is 1-3)."""
     client = make_client()
-    with pytest.raises(ValueError, match="Label type must be 1-3"):
+    with pytest.raises(PrinterException, match="Label type must be 1-3"):
         await client.set_label_type(0)
 
 
 async def test_set_label_density_invalid_raises(make_client):
-    """set_label_density(6) must raise ValueError (valid range is 1-5)."""
+    """set_label_density(6) must raise PrinterException (valid range is 1-5)."""
     client = make_client()
-    with pytest.raises(ValueError, match="Label density must be 1-5"):
+    with pytest.raises(PrinterException, match="Label density must be 1-5"):
         await client.set_label_density(6)
 
 
 async def test_start_printV2_quantity_validation(make_client):
-    """start_printV2(quantity=-1) must raise ValueError."""
+    """start_printV2(quantity=-1) must raise PrinterException."""
     client = make_client()
-    with pytest.raises(ValueError, match="Quantity must be 1-65535"):
+    with pytest.raises(PrinterException, match="Quantity must be 1-65535"):
         await client.start_printV2(quantity=-1)
 
 
