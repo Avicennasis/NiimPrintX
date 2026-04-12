@@ -9,7 +9,7 @@ permissions:
 jobs:
   windows:
     name: "Windows"
-    runs-on: windows-latest
+    runs-on: windows-2022
 
     steps:
       - name: Extract Tag

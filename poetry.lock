@@ -6,7 +6,7 @@ version = "0.17.4"
 description = "Python graph (network) package"
 optional = false
 python-versions = "*"
-groups = ["dev"]
+groups = ["build"]
 files = [
     {file = "altgraph-0.17.4-py2.py3-none-any.whl", hash = "sha256:642743b4750de17e655e6711601b077bc6598dbfa3ba5fa2b2a35ce12b508dff"},
     {file = "altgraph-0.17.4.tar.gz", hash = "sha256:1b5afbb98f6c4dcadb2e2ae6ab9fa994bbb8c1d75f4fa96d340f9437ae454406"},
@@ -372,7 +372,7 @@ version = "1.16.3"
 description = "Mach-O header analysis and editing"
 optional = false
 python-versions = "*"
-groups = ["dev"]
+groups = ["build"]
 markers = "sys_platform == \"darwin\""
 files = [
     {file = "macholib-1.16.3-py2.py3-none-any.whl", hash = "sha256:0e315d7583d38b8c77e815b1ecbdbf504a8258d8b3e17b61165c6feb60d18f2c"},
@@ -505,7 +505,7 @@ version = "24.0"
 description = "Core utilities for Python packages"
 optional = false
 python-versions = ">=3.7"
-groups = ["dev"]
+groups = ["build", "dev"]
 files = [
     {file = "packaging-24.0-py3-none-any.whl", hash = "sha256:2ddfb553fdf02fb784c234c7ba6ccc288296ceabec964ad2eae3777778130bc5"},
     {file = "packaging-24.0.tar.gz", hash = "sha256:eb82c5e3e56209074766e6885bb04b8c38a0c015d0a30036ebe7ece34c9989e9"},
@@ -535,7 +535,7 @@ version = "2023.2.7"
 description = "Python PE parsing module"
 optional = false
 python-versions = ">=3.6.0"
-groups = ["dev"]
+groups = ["build"]
 markers = "sys_platform == \"win32\""
 files = [
     {file = "pefile-2023.2.7-py3-none-any.whl", hash = "sha256:da185cd2af68c08a6cd4481f7325ed600a88f6a813bad9dea07ab3ef73d8d8d6"},
@@ -727,7 +727,7 @@ version = "6.19.0"
 description = "PyInstaller bundles a Python application and all its dependencies into a single package."
 optional = false
 python-versions = "<3.15,>=3.8"
-groups = ["dev"]
+groups = ["build"]
 files = [
     {file = "pyinstaller-6.19.0-py3-none-macosx_10_13_universal2.whl", hash = "sha256:4190e76b74f0c4b5c5f11ac360928cd2e36ec8e3194d437bf6b8648c7bc0c134"},
     {file = "pyinstaller-6.19.0-py3-none-manylinux2014_aarch64.whl", hash = "sha256:8bd68abd812d8a6ba33b9f1810e91fee0f325969733721b78151f0065319ca11"},
@@ -762,7 +762,7 @@ version = "2026.4"
 description = "Community maintained hooks for PyInstaller"
 optional = false
 python-versions = ">=3.8"
-groups = ["dev"]
+groups = ["build"]
 files = [
     {file = "pyinstaller_hooks_contrib-2026.4-py3-none-any.whl", hash = "sha256:1de1a5e49a878122010b88c7e295502bc69776c157c4a4dc78741a4e6178b00f"},
     {file = "pyinstaller_hooks_contrib-2026.4.tar.gz", hash = "sha256:766c281acb1ecc32e21c8c667056d7ebf5da0aabd5e30c219f9c2a283620eeaa"},
@@ -926,7 +926,7 @@ version = "0.2.2"
 description = "A (partial) reimplementation of pywin32 using ctypes/cffi"
 optional = false
 python-versions = ">=3.6"
-groups = ["dev"]
+groups = ["build"]
 markers = "sys_platform == \"win32\""
 files = [
     {file = "pywin32-ctypes-0.2.2.tar.gz", hash = "sha256:3426e063bdd5fd4df74a14fa3cf80a0b42845a87e1d1e81f6549f9daec593a60"},
@@ -986,7 +986,7 @@ version = "82.0.1"
 description = "Most extensible Python build backend with support for C/C++ extension modules"
 optional = false
 python-versions = ">=3.9"
-groups = ["dev"]
+groups = ["build"]
 files = [
     {file = "setuptools-82.0.1-py3-none-any.whl", hash = "sha256:a59e362652f08dcd477c78bb6e7bd9d80a7995bc73ce773050228a348ce2e5bb"},
     {file = "setuptools-82.0.1.tar.gz", hash = "sha256:7d872682c5d01cfde07da7bccc7b65469d3dca203318515ada1de5eda35efbf9"},
@@ -1386,5 +1386,5 @@ gui = ["pycairo", "sv-ttk", "wand"]
 
 [metadata]
 lock-version = "2.1"
-python-versions = ">=3.12,<3.14"
-content-hash = "6a6d17a66ff472c7a7f0cced7176eb512f1b22445862b7677b019cdd0dc89e93"
+python-versions = ">=3.12,<3.15"
+content-hash = "1be466653378ea994eee5908e61a0f6a65fc58e43a51fe62a6910045a3de19d5"

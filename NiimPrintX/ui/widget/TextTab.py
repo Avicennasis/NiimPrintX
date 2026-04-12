@@ -132,7 +132,13 @@ class TextTab:
         )
         self.sample_text_label.config(font=label_font, text=f"{content} in {font_props['family'].replace('-', ' ')}")
         if self.config.current_selected:
-            self.text_op.update_canvas_text(self.config.current_selected)
+            # Debounce Wand re-render: cancel any pending update and schedule
+            # a new one 150ms out. Prevents UI freezes during fast spinbox changes.
+            if hasattr(self, "_render_after_id") and self._render_after_id is not None:
+                self.frame.after_cancel(self._render_after_id)
+            self._render_after_id = self.frame.after(
+                150, lambda tid=self.config.current_selected: self.text_op.update_canvas_text(tid)
+            )
 
     def get_font_properties(self):
         family = self.font_family_dropdown.get().strip()

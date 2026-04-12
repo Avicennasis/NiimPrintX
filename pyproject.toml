@@ -12,7 +12,7 @@ niimprintx = "NiimPrintX.cli.command:niimbot_cli"
 niimprintx-ui = "NiimPrintX.ui.__main__:main"
 
 [tool.poetry.dependencies]
-python = ">=3.12,<3.16"
+python = ">=3.12,<3.15"
 click = "^8.3"
 bleak = "^3.0"
 loguru = "^0.7.2"

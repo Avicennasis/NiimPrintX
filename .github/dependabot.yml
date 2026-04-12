@@ -7,7 +7,7 @@ updates:
   # NOTE: The 'pip' ecosystem does not parse Poetry's [tool.poetry.dependencies]
   # format. Python dependency updates require manual `poetry update` or migrating
   # to Renovate Bot which has native Poetry support.
-  - package-ecosystem: "pip"
-    directory: "/"
-    schedule:
-      interval: "weekly"
+  # - package-ecosystem: "pip"
+  #   directory: "/"
+  #   schedule:
+  #     interval: "weekly"
