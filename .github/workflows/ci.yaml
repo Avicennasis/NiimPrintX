@@ -30,9 +30,7 @@ jobs:
           cache: 'poetry'
 
       - name: Install dependencies
-        # TODO(H27): move pyinstaller to a [tool.poetry.group.build] group,
-        # then use 'poetry install --without build' here to skip it.
-        run: poetry install
+        run: poetry install --without build
 
       - name: CLI smoke test
         run: poetry run niimprintx --help
@@ -64,9 +62,7 @@ jobs:
           cache: 'poetry'
 
       - name: Install dependencies
-        # TODO(H27): move pyinstaller to a [tool.poetry.group.build] group,
-        # then use 'poetry install --without build' here to skip it.
-        run: poetry install
+        run: poetry install --without build
 
       - name: Lint with ruff
         run: poetry run ruff check NiimPrintX/ tests/
@@ -93,9 +89,7 @@ jobs:
           cache: 'poetry'
 
       - name: Install dependencies
-        # TODO(H27): move pyinstaller to a [tool.poetry.group.build] group,
-        # then use 'poetry install --without build' here to skip it.
-        run: poetry install
+        run: poetry install --without build
 
       - name: Install poetry-plugin-export
         run: pipx inject poetry poetry-plugin-export

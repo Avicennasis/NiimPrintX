@@ -113,3 +113,20 @@ def test_mm_to_pixels_zero():
         config = AppConfig()
     config.device = "d110"
     assert config.mm_to_pixels(0) == 0
+
+
+# ---------------------------------------------------------------------------
+# CLI / AppConfig parity
+# ---------------------------------------------------------------------------
+
+
+def test_all_models_parity_with_cli():
+    """CLI _ALL_MODELS must match AppConfig.label_sizes keys."""
+    from NiimPrintX.cli.command import _ALL_MODELS
+
+    config = AppConfig()
+    assert set(_ALL_MODELS) == set(config.label_sizes.keys()), (
+        f"CLI _ALL_MODELS and AppConfig.label_sizes out of sync: "
+        f"CLI-only={set(_ALL_MODELS) - set(config.label_sizes.keys())}, "
+        f"Config-only={set(config.label_sizes.keys()) - set(_ALL_MODELS)}"
+    )

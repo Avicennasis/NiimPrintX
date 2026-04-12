@@ -331,7 +331,7 @@ class PrinterClient:
         finally:
             gray.close()
         try:
-            img = inverted.convert("1")
+            img = inverted.convert("1", dither=Image.Dither.NONE)  # threshold, no Floyd-Steinberg — crisp for thermal
         finally:
             inverted.close()
 

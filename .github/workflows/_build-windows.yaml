@@ -44,7 +44,7 @@ jobs:
           cache: 'poetry'
 
       - name: Install dependencies
-        run: poetry install --all-extras
+        run: poetry install --all-extras --with build
 
       - name: Show TKinter version
         run: |

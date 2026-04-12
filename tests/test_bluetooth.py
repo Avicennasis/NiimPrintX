@@ -289,3 +289,18 @@ async def test_start_notification_not_connected_raises():
     transport.client.is_connected = False
     with pytest.raises(BLEException, match="not connected"):
         await transport.start_notification("some-uuid", MagicMock())
+
+
+async def test_stop_notification_failure_still_discards_uuid():
+    """UUID must be removed from _notifying_uuids even if stop_notify raises."""
+    transport = BLETransport()
+    transport.client = MagicMock()
+    transport.client.is_connected = True
+    transport.client.stop_notify = AsyncMock(side_effect=BleakError("GATT error"))
+    uuid = "test-uuid"
+    transport._notifying_uuids.add(uuid)
+
+    with pytest.raises(BleakError):
+        await transport.stop_notification(uuid)
+
+    assert uuid not in transport._notifying_uuids

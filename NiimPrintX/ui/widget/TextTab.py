@@ -1,3 +1,4 @@
+import threading
 import tkinter as tk
 from tkinter import font as tk_font
 from tkinter import ttk
@@ -12,8 +13,18 @@ class TextTab:
         self.config = config
         self.frame = ttk.Frame(parent)
         self.text_op = TextOperation(self, config)
-        self.fonts = fonts()
+        self.fonts = {}  # populated async by _load_fonts thread
         self.create_widgets()
+        threading.Thread(target=self._load_fonts, daemon=True).start()
+
+    def _load_fonts(self):
+        """Load system fonts in a background thread to avoid blocking the UI."""
+        import contextlib  # noqa: PLC0415
+
+        result = fonts()
+        self.fonts = result
+        with contextlib.suppress(tk.TclError):
+            self.frame.after(0, lambda: self.font_family_dropdown.config(values=list(result.keys())))
 
     def create_widgets(self):
         if self.config.os_system == "Darwin":
