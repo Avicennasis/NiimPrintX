@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from NiimPrintX.nimmy.logger_config import get_logger
+
+logger = get_logger()
+
 
 def packet_to_int(x: NiimbotPacket) -> int:
     if not x.data:
@@ -27,6 +31,8 @@ class NiimbotPacket:
         expected_end = 4 + len_ + 3  # header(4) + data(len_) + checksum(1) + footer(2)
         if expected_end > len(pkt):
             raise ValueError(f"Packet length mismatch: expected {expected_end}, got {len(pkt)}")
+        if expected_end < len(pkt):
+            logger.warning(f"from_bytes: {len(pkt) - expected_end} trailing byte(s) ignored after packet")
         if pkt[expected_end - 2 : expected_end] != b"\xaa\xaa":
             raise ValueError(f"Invalid packet footer: {pkt[expected_end - 2 : expected_end].hex()}")
         data = bytes(pkt[4 : 4 + len_])

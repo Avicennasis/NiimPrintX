@@ -192,7 +192,10 @@ class FileMenu:
             if not isinstance(data.get("content"), str):
                 raise ValueError("'content' must be a string")
 
-            font_img_data = base64.b64decode(data["font_image"])
+            raw_b64 = data.get("font_image", "")
+            if not isinstance(raw_b64, str) or len(raw_b64) > 10 * 1024 * 1024:
+                raise ValueError("Image data too large or wrong type")
+            font_img_data = base64.b64decode(raw_b64)
             font_image = Image.open(io.BytesIO(font_img_data))
             if font_image.width * font_image.height > _MAX_LABEL_PIXELS:
                 w, h = font_image.width, font_image.height
@@ -227,7 +230,10 @@ class FileMenu:
             ):
                 raise ValueError("Invalid or missing coords: expected a list with at least 2 numeric elements")
 
-            original_image_data = base64.b64decode(data["original_image"])
+            raw_orig_b64 = data.get("original_image", "")
+            if not isinstance(raw_orig_b64, str) or len(raw_orig_b64) > 10 * 1024 * 1024:
+                raise ValueError("Original image data too large or wrong type")
+            original_image_data = base64.b64decode(raw_orig_b64)
             original_image = Image.open(io.BytesIO(original_image_data))
             if original_image.width * original_image.height > _MAX_LABEL_PIXELS:
                 w, h = original_image.width, original_image.height
@@ -235,7 +241,10 @@ class FileMenu:
                 raise ValueError(f"Image too large: {w}x{h}")
             original_image.load()
 
-            image_data = base64.b64decode(data["image"])
+            raw_img_b64 = data.get("image", "")
+            if not isinstance(raw_img_b64, str) or len(raw_img_b64) > 10 * 1024 * 1024:
+                raise ValueError("Resized image data too large or wrong type")
+            image_data = base64.b64decode(raw_img_b64)
             image = Image.open(io.BytesIO(image_data))
             if image.width * image.height > _MAX_LABEL_PIXELS:
                 w, h = image.width, image.height

@@ -16,7 +16,7 @@ class AppConfig:
         self.current_selected = None
         self.current_selected_image = None
         self.current_dir = os.path.dirname(os.path.realpath(__file__))
-        self.icon_folder = f"{self.current_dir}/icons"
+        self.icon_folder = os.path.join(self.current_dir, "icons")
         self.canvas = None
         self.bounding_box = None
         self.label_sizes = {

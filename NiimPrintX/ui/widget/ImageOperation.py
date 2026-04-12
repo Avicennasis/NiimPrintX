@@ -52,6 +52,7 @@ class ImageOperation:
         if image_id not in self.config.image_items:
             return
         self.config.image_items[image_id]["initial_x"] = event.x
+        self.config.image_items[image_id]["initial_y"] = event.y
 
     def select_image(self, event, image_id):
         """Select and draw a bounding box around the image."""
@@ -59,6 +60,8 @@ class ImageOperation:
         self.config.current_selected_image = image_id
         # Draw a bounding box
         bb = self.config.canvas.bbox(image_id)
+        if bb is None:
+            return
         bbox = self.config.canvas.create_rectangle(bb, outline="blue", width=2)
         handle = self.config.canvas.create_oval(bb[2] - 5, bb[3] - 5, bb[2] + 5, bb[3] + 5, outline="blue", fill="gray")
 

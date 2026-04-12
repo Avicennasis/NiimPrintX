@@ -185,6 +185,7 @@ async def _print(
 def info_command(model: str) -> None:
     logger.info("Niimbot Information")
     print_info("Niimbot Information")
+    success = False
     try:
         success = asyncio.run(_info(model))
     except KeyboardInterrupt:

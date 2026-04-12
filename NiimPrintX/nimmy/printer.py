@@ -85,6 +85,8 @@ class PrinterClient:
         logger.info(f"Printer {self.device.name!r} disconnected.")
 
     async def find_characteristics(self) -> None:
+        if self.transport.client is None:
+            raise PrinterException("BLE client not initialized")
         services: dict[str, list[dict[str, Any]]] = {}
         for service in self.transport.client.services:
             s = [
@@ -119,38 +121,31 @@ class PrinterClient:
                 # Clear stale state BEFORE arming notifications
                 self.notification_event.clear()
                 self.notification_data = None
+                try:
+                    code_label = RequestCodeEnum(request_code).name
+                except ValueError:
+                    code_label = hex(request_code)
                 packet = NiimbotPacket(request_code, data)
                 await self.transport.start_notification(char_uuid, self.notification_handler)
                 notifying = True
                 await self.transport.write(packet.to_bytes(), char_uuid)
-                try:
-                    code_label = RequestCodeEnum(request_code).name
-                except ValueError:
-                    code_label = hex(request_code)
                 logger.debug(f"Printer command sent - {code_label}:{request_code} - {list(data)}")
                 await asyncio.wait_for(self.notification_event.wait(), timeout)
-                response = NiimbotPacket.from_bytes(self.notification_data)
+                # notification_data is set by notification_handler callback via call_soon_threadsafe;
+                # mypy can't see the cross-thread assignment, so we guard and assert.
+                response_data = self.notification_data
+                if response_data is None:
+                    raise PrinterException("Notification arrived but contained no data")
+                response = NiimbotPacket.from_bytes(response_data)  # type: ignore[unreachable]
                 logger.debug(f"Printer response received - {list(response.data)} - {len(response.data)} bytes")
                 return response
             except TimeoutError:
-                try:
-                    code_label = RequestCodeEnum(request_code).name
-                except ValueError:
-                    code_label = hex(request_code)
                 logger.debug(f"Timeout occurred for request {code_label}")
                 raise PrinterException(f"Printer timed out on {code_label}") from None
             except BLEException as e:
-                try:
-                    code_label = RequestCodeEnum(request_code).name
-                except ValueError:
-                    code_label = hex(request_code)
                 logger.debug(f"BLE error during command: {e}")
                 raise PrinterException(f"BLE error during {code_label}: {e}") from e
             except (ValueError, TypeError) as e:
-                try:
-                    code_label = RequestCodeEnum(request_code).name
-                except ValueError:
-                    code_label = hex(request_code)
                 logger.debug(f"Malformed response for {code_label}: {e}")
                 raise PrinterException(f"Malformed printer response: {e}") from e
             finally:
@@ -176,6 +171,7 @@ class PrinterClient:
     def notification_handler(self, sender: Any, data: bytearray) -> None:
         logger.trace(f"Notification: {data}")
         if self._loop is None:
+            logger.warning("Notification received but event loop is None; dropping")
             return
 
         def _set() -> None:
@@ -312,14 +308,9 @@ class PrinterClient:
         # Composite alpha onto white background before grayscale conversion
         # (RGBA/LA images have undefined RGB in transparent regions;
         #  PA mode stores transparency in palette, not per-pixel — convert first)
-        if image.mode == "PA":
-            rgba = image.convert("RGBA")
-            background = Image.new("RGB", image.size, (255, 255, 255))
-            background.paste(rgba, mask=rgba.split()[-1])
-            rgba.close()
-            gray = background.convert("L")
-            background.close()
-        elif image.mode in ("RGBA", "LA"):
+        if image.mode in ("PA", "P"):
+            image = image.convert("RGBA")
+        if image.mode in ("RGBA", "LA"):
             background = Image.new("RGB", image.size, (255, 255, 255))
             background.paste(image, mask=image.split()[-1])
             gray = background.convert("L")
@@ -406,6 +397,7 @@ class PrinterClient:
                 logger.error("Malformed RFID response: barcode length exceeds data bounds")
                 return None
             barcode = data[idx : idx + barcode_len].decode("utf-8", errors="replace")
+            barcode = barcode.replace("\n", " ").replace("\r", " ")
 
             idx += barcode_len
             serial_len = data[idx]
@@ -414,6 +406,7 @@ class PrinterClient:
                 logger.error("Malformed RFID response: serial length exceeds data bounds")
                 return None
             serial = data[idx : idx + serial_len].decode("utf-8", errors="replace")
+            serial = serial.replace("\n", " ").replace("\r", " ")
 
             idx += serial_len
             if idx + 5 > len(data):
@@ -532,6 +525,8 @@ class PrinterClient:
             raise PrinterException(f"Height must be 1-65535, got {height}")
         if not 1 <= width <= 65535:
             raise PrinterException(f"Width must be 1-65535, got {width}")
+        if not 1 <= copies <= 65535:
+            raise PrinterException(f"Copies must be 1-65535, got {copies}")
         logger.debug(f"Setting dimension: {height}x{width}")
         packet = await self.send_command(RequestCodeEnum.SET_DIMENSION, struct.pack(">HHH", height, width, copies))
         if len(packet.data) < 1:

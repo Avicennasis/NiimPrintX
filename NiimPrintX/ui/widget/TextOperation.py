@@ -82,9 +82,11 @@ class TextOperation:
     def delete_text(self):
         if self.config.current_selected and self.config.current_selected in self.config.text_items:
             self.config.canvas.delete(self.config.current_selected)
-            if self.config.text_items[self.config.current_selected].get("bbox") is not None:
-                self.config.canvas.delete(self.config.text_items[self.config.current_selected]["bbox"])
-                self.config.canvas.delete(self.config.text_items[self.config.current_selected]["handle"])
+            item = self.config.text_items[self.config.current_selected]
+            if item.get("bbox") is not None:
+                self.config.canvas.delete(item["bbox"])
+            if item.get("handle") is not None:
+                self.config.canvas.delete(item["handle"])
             del self.config.text_items[self.config.current_selected]
             self.config.current_selected = None
             self.parent.add_button.config(text="Add", command=self.add_text_to_canvas)

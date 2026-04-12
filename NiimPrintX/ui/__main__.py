@@ -13,14 +13,20 @@ def load_libraries():
         magick_path = os.path.join(base_path, "imagemagick")
 
         match platform.system():
-            case "Linux" | "Darwin":
+            case "Linux":
                 os.environ["MAGICK_HOME"] = magick_path
                 os.environ["PATH"] = os.path.join(magick_path, "bin") + os.pathsep + os.environ.get("PATH", "")
                 os.environ["LD_LIBRARY_PATH"] = (
                     os.path.join(magick_path, "lib") + os.pathsep + os.environ.get("LD_LIBRARY_PATH", "")
                 )
                 os.environ["MAGICK_CONFIGURE_PATH"] = os.path.join(magick_path, "etc", "ImageMagick-7")
-                os.environ["DYLD_LIBRARY_PATH"] = magick_path + ":" + os.environ.get("DYLD_LIBRARY_PATH", "")
+            case "Darwin":
+                os.environ["MAGICK_HOME"] = magick_path
+                os.environ["PATH"] = os.path.join(magick_path, "bin") + os.pathsep + os.environ.get("PATH", "")
+                os.environ["DYLD_LIBRARY_PATH"] = (
+                    os.path.join(magick_path, "lib") + os.pathsep + os.environ.get("DYLD_LIBRARY_PATH", "")
+                )
+                os.environ["MAGICK_CONFIGURE_PATH"] = os.path.join(magick_path, "etc", "ImageMagick-7")
             case "Windows":
                 os.environ["MAGICK_HOME"] = magick_path
                 os.environ["PATH"] = magick_path + os.pathsep + os.environ.get("PATH", "")

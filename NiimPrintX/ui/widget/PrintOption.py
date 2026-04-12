@@ -155,8 +155,11 @@ class PrintOption:
         # Open the save as dialog and get the selected file name
         file_path = filedialog.asksaveasfilename(**options)
         if file_path:
-            self.export_to_png(file_path)
-            self.display_image_in_popup(file_path)
+            try:
+                self.export_to_png(file_path)
+                self.display_image_in_popup(file_path)
+            except Exception as e:  # noqa: BLE001 — UI-facing catch-all for user feedback dialog
+                mb.showerror("Save Error", f"Failed to save image:\n{e}")
 
     def export_to_png(self, output_filename=None, horizontal_offset=0.0, vertical_offset=0.0):
         if cairo is None:
@@ -406,11 +409,11 @@ class PrintOption:
                 self.print_op.print(self._rotated_image, density, quantity), self.root.async_loop
             )
             future.add_done_callback(self._print_handler)
-        except Exception as e:
+        except Exception:
             self.config.print_job = False
             with contextlib.suppress(tk.TclError):
                 self.print_button.config(state=tk.NORMAL)
-            raise e
+            raise
 
     def _print_handler(self, future):
         try:
@@ -426,7 +429,7 @@ class PrintOption:
                 self._rotated_image = None
             if result:
                 with contextlib.suppress(tk.TclError):
-                    self.root.status_bar.update_status(result)
+                    self.root.status_bar.update_status(self.config.printer_connected)
             else:
                 popup_alive = hasattr(self, "_popup_ref") and self._popup_ref is not None
                 if popup_alive:

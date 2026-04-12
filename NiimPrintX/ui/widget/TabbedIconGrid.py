@@ -112,6 +112,7 @@ class TabbedIconGrid(tk.Frame):
             if filename.lower().endswith((".png", ".jpg", ".jpeg")):
                 image_path = os.path.join(icon_folder, filename)
                 try:
+                    PIL.Image.MAX_IMAGE_PIXELS = 5_000_000
                     img = Image.open(image_path)
                     # I16: img.load() forces full pixel decode into memory in this thread.
                     # After this call the PIL Image holds a fully-decoded raster buffer

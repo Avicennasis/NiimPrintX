@@ -57,11 +57,12 @@ omit = [
     "NiimPrintX/ui/widget/FileMenu.py",
     "NiimPrintX/ui/widget/ImageOperation.py",
     "NiimPrintX/ui/widget/TextOperation.py",
+    "NiimPrintX/ui/widget/PrintOption.py",
     "NiimPrintX/ui/component/__init__.py",
 ]
 
 [tool.coverage.report]
-fail_under = 80
+fail_under = 90
 
 [tool.mypy]
 python_version = "3.12"

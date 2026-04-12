@@ -65,7 +65,10 @@ jobs:
 
       - name: Create DMG package
         if: ${{ inputs.os == 'macos-latest' }}
-        run: ./.github/workflows/mac-dmg-builder.sh "${{ steps.get_tag_name.outputs.VERSION }}" "${{ steps.get_architecture.outputs.ARCH }}"
+        env:
+          VERSION: ${{ steps.get_tag_name.outputs.VERSION }}
+          ARCH: ${{ steps.get_architecture.outputs.ARCH }}
+        run: ./.github/workflows/mac-dmg-builder.sh "$VERSION" "$ARCH"
 
       - name: Create GUI compressed file
         if: ${{ inputs.os == 'macos-13' }}

@@ -1,3 +1,4 @@
+import os
 from unittest.mock import patch
 
 import pytest
@@ -64,7 +65,7 @@ def test_device_is_first_label_size_key():
 def test_icon_folder_exists_or_is_valid_path():
     config = AppConfig()
     assert isinstance(config.icon_folder, str)
-    assert config.icon_folder.endswith("/icons")
+    assert config.icon_folder.endswith(os.sep + "icons") or config.icon_folder.endswith("/icons")
 
 
 def test_user_config_merged():

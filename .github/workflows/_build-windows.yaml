@@ -106,15 +106,19 @@ jobs:
 
 
       - name: Create GUI compressed file
+        env:
+          VERSION: ${{ steps.get_tag_name.outputs.VERSION }}
         run: |
           $outputFolder = "$env:GITHUB_WORKSPACE\release\NiimPrintX-App"
-          $zipPath = "$env:GITHUB_WORKSPACE\release\NiimPrintX-App-${{ steps.get_tag_name.outputs.VERSION }}-Windows-X64.zip"
+          $zipPath = "$env:GITHUB_WORKSPACE\release\NiimPrintX-App-$env:VERSION-Windows-X64.zip"
           Compress-Archive -Path "$outputFolder\*" -DestinationPath $zipPath
 
       - name: Create CLI compressed file
+        env:
+          VERSION: ${{ steps.get_tag_name.outputs.VERSION }}
         run: |
           $outputFolder = "$env:GITHUB_WORKSPACE\release\NiimPrintX-Cli"
-          $zipPath = "$env:GITHUB_WORKSPACE\release\NiimPrintX-CLI-${{ steps.get_tag_name.outputs.VERSION }}-Windows-X64.zip"
+          $zipPath = "$env:GITHUB_WORKSPACE\release\NiimPrintX-CLI-$env:VERSION-Windows-X64.zip"
           Compress-Archive -Path "$outputFolder\*" -DestinationPath $zipPath
 
       - name: List dist directory
