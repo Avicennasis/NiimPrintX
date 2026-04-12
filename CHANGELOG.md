@@ -5,6 +5,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-04-12
+
+25-agent deep-dive code review (Round 22). 60+ fixes, 15 new tests, architecture refactors.
+
+### Added
+- 15 new tests covering PA/LA/P image modes, RFID edge cases, BLE guards, and more (331 → 346)
+- CHANGELOG.md (Keep a Changelog format)
+- CI concurrency groups to prevent duplicate runs
+- CLI spec excludes to reduce binary size (~5-8 MB savings)
+- Wand render debounce (150ms) in TextTab to prevent UI freeze
+
+### Changed
+- Move `helper.py` from `nimmy/` to `cli/` (Rich presentation layer belongs in CLI)
+- Move `UserConfig.py` from `ui/` to `nimmy/userconfig.py` (no UI dependency; enables CLI config sharing)
+- FileMenu fully decoupled via 5 callbacks (no more direct widget access)
+- `NiimbotPacket.to_bytes` uses pre-allocated bytearray instead of tuple spread
+- Python constraint narrowed to `>=3.12,<3.15` (pyinstaller 6.19 requires <3.15)
+- Coverage threshold unified at 90% (was mismatched 80%/90%)
+- README modernized: entry points, dev commands, arch-agnostic macOS paths
+- Tag workflow version extraction uses Python tomllib instead of fragile sed
+- Pin Windows runner to windows-2022 (was floating windows-latest)
+- isinstance() modernized to union form; FontList uses match/case
+- Boolean assignment simplification in TextOperation
+
+### Fixed
+- 2 mypy errors: None guards for `transport.client` and `notification_data`
+- 4 UI bugs: ImageOp bbox None dereference, start_image_resize missing initial_y, PrintOption wrong status bar value, TextOp delete handle None check
+- P-mode palette images losing transparency (now composite via RGBA)
+- `send_command` code_label resolved 4x per call (now once)
+- `set_dimensionV2` missing copies bounds check
+- `info_command` unbound `success` variable
+- `raise e` → `raise` in print_label (preserves traceback)
+- `save_image()` silently swallowing exceptions (now shows error dialog)
+- Cross-platform: hardcoded `/` in AppConfig icon_folder
+- Cross-platform: DYLD_LIBRARY_PATH set on Linux and pointing to wrong dir on macOS
+- Windows build spec: ImageMagick path relative to CWD instead of spec file
+- Linux build spec: TK path derivation has no existence guard
+
+### Security
+- Base64 memory bomb guard: 10MB cap before decode in FileMenu (3 sites)
+- TabbedIconGrid missing PIL MAX_IMAGE_PIXELS guard
+- RFID barcode/serial control-character sanitization
+- Packet trailing bytes warning log
+- CI script injection: Windows+macOS build workflows use env: context for VERSION
+- Dependabot pip entry commented out (was silently non-functional with Poetry)
+
 ## [0.7.0] - 2026-04-12
 
 22 rounds of deep code review. Major hardening across protocol, BLE, UI, and build layers.
