@@ -34,19 +34,18 @@ def fonts():
     if hasattr(sys, "_MEIPASS"):
         base_path = sys._MEIPASS
         imagemagick_base_path = os.path.join(base_path, "imagemagick")
-        if platform.system() == "Darwin":
-            magick_path = os.path.join(imagemagick_base_path, "bin", "magick")
-        elif platform.system() == "Windows":
-            magick_path = os.path.join(imagemagick_base_path, "magick.exe")
-        elif platform.system() == "Linux":
-            magick_path = os.path.join(imagemagick_base_path, "bin", "magick")
-        else:
-            magick_path = shutil.which("magick")
-            if magick_path is None:
-                logger.warning("ImageMagick 'magick' not found in PATH")
-                return {}
-            path_fallback = True
-            logger.warning("Using PATH fallback for 'magick': %s", magick_path)
+        match platform.system():
+            case "Darwin" | "Linux":
+                magick_path = os.path.join(imagemagick_base_path, "bin", "magick")
+            case "Windows":
+                magick_path = os.path.join(imagemagick_base_path, "magick.exe")
+            case _:
+                magick_path = shutil.which("magick")
+                if magick_path is None:
+                    logger.warning("ImageMagick 'magick' not found in PATH")
+                    return {}
+                path_fallback = True
+                logger.warning("Using PATH fallback for 'magick': %s", magick_path)
     else:
         magick_path = shutil.which("magick")
         if magick_path is None:

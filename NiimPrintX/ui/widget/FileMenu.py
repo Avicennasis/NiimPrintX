@@ -173,9 +173,9 @@ class FileMenu:
             # Validate coords
             coords = data.get("coords")
             if (
-                not isinstance(coords, (list, tuple))
+                not isinstance(coords, list | tuple)
                 or len(coords) < 2
-                or not all(isinstance(c, (int, float)) for c in coords[:2])
+                or not all(isinstance(c, int | float) for c in coords[:2])
             ):
                 raise ValueError("Invalid or missing coords: expected a list with at least 2 numeric elements")
 
@@ -224,9 +224,9 @@ class FileMenu:
             # Validate coords
             coords = data.get("coords")
             if (
-                not isinstance(coords, (list, tuple))
+                not isinstance(coords, list | tuple)
                 or len(coords) < 2
-                or not all(isinstance(c, (int, float)) for c in coords[:2])
+                or not all(isinstance(c, int | float) for c in coords[:2])
             ):
                 raise ValueError("Invalid or missing coords: expected a list with at least 2 numeric elements")
 

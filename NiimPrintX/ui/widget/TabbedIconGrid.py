@@ -168,8 +168,7 @@ class TabbedIconGrid(tk.Frame):
     def on_mouse_wheel(self, event, canvas):
         """Handle mouse wheel scrolling."""
         direction = 1 if event.delta < 0 else -1
-        for _ in range(3):  # More scrolling with each wheel event
-            canvas.yview_scroll(direction, "units")
+        canvas.yview_scroll(3 * direction, "units")
 
     def on_icon_click(self, index, icons):
         """Handle icon click and trigger callback."""

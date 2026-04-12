@@ -18,7 +18,7 @@ class NiimbotPacket:
 
     @classmethod
     def from_bytes(cls, pkt: bytes | bytearray | memoryview) -> NiimbotPacket:
-        if not isinstance(pkt, (bytes, bytearray, memoryview)):
+        if not isinstance(pkt, bytes | bytearray | memoryview):
             raise TypeError(f"from_bytes requires bytes-like object, got {type(pkt).__name__}")
         if len(pkt) < 7:
             raise ValueError(

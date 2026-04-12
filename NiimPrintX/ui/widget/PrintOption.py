@@ -85,8 +85,7 @@ class PrintOption:
     def printer_connect(self):
         self.connect_button.config(state=tk.DISABLED)
         self._connecting = True
-        was_connecting = not self.config.printer_connected
-        if was_connecting:
+        if not self.config.printer_connected:
             future = asyncio.run_coroutine_threadsafe(
                 self.print_op.printer_connect(self.config.device), self.root.async_loop
             )

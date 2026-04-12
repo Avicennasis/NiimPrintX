@@ -48,7 +48,7 @@ A huge thank you to [labbots](https://github.com/labbots) for creating NiimPrint
 To run NiimPrintX, you need to have the following installed:
 
 * **Python 3.12 or later** -- `bleak`'s winrt backend requires Python 3.12+, and the TOML config parser (`tomllib`) requires Python 3.11+
-* ImageMagick library
+* ImageMagick library (GUI only -- not required for CLI usage)
 * Poetry for dependency management
 
 ### Supported Printer Models
@@ -58,7 +58,7 @@ D11, D11_H, D101, D110, D110_M, B1, B18, B21
 
 ## Installation
 
-Ensure that ImageMagick is installed and properly configured on your system. You can download it from [here](https://imagemagick.org/script/download.php).
+If you plan to use the GUI, ensure that ImageMagick is installed and properly configured on your system. You can download it from [here](https://imagemagick.org/script/download.php). The CLI does not require ImageMagick.
 
 Clone the repository:
 
@@ -78,16 +78,28 @@ To include the optional GUI dependencies (Tkinter theme):
 poetry install --extras gui
 ```
 
+After installation, two console entry points are available:
+
+```shell
+niimprintx --help    # CLI interface
+niimprintx-ui        # GUI application
+```
+
+These are the recommended way to run NiimPrintX. The `python -m` invocations shown in the Usage section below also work.
+
 ### Note:
+
+**ImageMagick** is only required for the GUI (`--extras gui`). The CLI works without it.
+
 macOS specific setup for local development:
 
 ```shell
 brew install libffi
 brew install glib gobject-introspection cairo pkg-config
 
-export PKG_CONFIG_PATH="/usr/local/opt/libffi/lib/pkgconfig"
-export LDFLAGS="-L/usr/local/opt/libffi/lib"
-export CFLAGS="-I/usr/local/opt/libffi/include"
+export PKG_CONFIG_PATH="$(brew --prefix libffi)/lib/pkgconfig"
+export LDFLAGS="-L$(brew --prefix libffi)/lib"
+export CFLAGS="-I$(brew --prefix libffi)/include"
 ```
 
 
@@ -203,7 +215,19 @@ poetry run pytest -v
 ### Running Lint
 
 ```shell
-poetry run ruff check NiimPrintX/
+poetry run ruff check NiimPrintX/ tests/
+```
+
+### Formatting
+
+```shell
+poetry run ruff format NiimPrintX/ tests/
+```
+
+### Type Checking
+
+```shell
+poetry run mypy NiimPrintX/nimmy/ NiimPrintX/cli/
 ```
 
 ### Building

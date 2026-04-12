@@ -33,7 +33,7 @@ def load_user_config() -> dict[str, Any]:
 
 def _validate_dims(dims: Any) -> tuple[float, float] | None:
     """Validate that dims is a list/tuple of 2 positive numbers."""
-    if not isinstance(dims, (list, tuple)) or len(dims) != 2:
+    if not isinstance(dims, list | tuple) or len(dims) != 2:
         return None
     try:
         w, h = float(dims[0]), float(dims[1])

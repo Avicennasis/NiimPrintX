@@ -108,20 +108,9 @@ class TextOperation:
         self.parent.size_var.set(font_prop["size"])
         self.parent.kerning_var.set(font_prop["kerning"])
 
-        if font_prop["slant"] == "roman":
-            self.parent.italic_var.set(False)
-        else:
-            self.parent.italic_var.set(True)
-
-        if font_prop["weight"] == "normal":
-            self.parent.bold_var.set(False)
-        else:
-            self.parent.bold_var.set(True)
-
-        if not font_prop["underline"]:
-            self.parent.underline_var.set(False)
-        else:
-            self.parent.underline_var.set(True)
+        self.parent.italic_var.set(font_prop["slant"] != "roman")
+        self.parent.bold_var.set(font_prop["weight"] != "normal")
+        self.parent.underline_var.set(bool(font_prop["underline"]))
 
         self.parent.add_button.config(text="Update", command=lambda t_id=text_id: self.update_canvas_text(t_id))
 

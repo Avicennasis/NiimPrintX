@@ -1,18 +1,20 @@
 import asyncio
 import contextlib
-import logging
 import threading
 import tkinter as tk
 from tkinter import messagebox, ttk
 
-from NiimPrintX.ui.widget.CanvasSelector import CanvasSelector
-from NiimPrintX.ui.widget.FileMenu import FileMenu
+from NiimPrintX.nimmy.logger_config import get_logger
 
 from .AppConfig import AppConfig
+from .widget.CanvasSelector import CanvasSelector
+from .widget.FileMenu import FileMenu
 from .widget.IconTab import IconTab
 from .widget.PrintOption import PrintOption
 from .widget.StatusBar import StatusBar
 from .widget.TextTab import TextTab
+
+logger = get_logger()
 
 
 class LabelPrinterApp(tk.Tk):
@@ -103,10 +105,11 @@ class LabelPrinterApp(tk.Tk):
             return
         # H21: If load_resources failed before app_config was created, skip the
         # quit dialog entirely — there is nothing to clean up.
-        if getattr(self, "app_config", None) is None or getattr(self, "print_option", None) is None:
+        app_config = getattr(self, "app_config", None)
+        if app_config is None or getattr(self, "print_option", None) is None:
             self.destroy()
             return
-        if getattr(self, "app_config", None) and self.app_config.print_job:
+        if app_config.print_job:
             if not messagebox.askokcancel("Quit", "A print job is in progress. Quit anyway?"):
                 return
         elif not messagebox.askokcancel("Quit", "Do you want to quit?"):
@@ -154,9 +157,8 @@ class LabelPrinterApp(tk.Tk):
             # the coroutine.  Use call_soon_threadsafe so the stop is
             # dispatched on the loop's own thread, giving gather a chance to
             # finalise before the loop exits.
-            logging.getLogger(__name__).warning(
-                "Shutdown timed out after %d poll attempts; force-stopping event loop",
-                attempts,
+            logger.warning(
+                f"Shutdown timed out after {attempts} poll attempts; force-stopping event loop"
             )
             with contextlib.suppress(RuntimeError):
                 self.async_loop.call_soon_threadsafe(self.async_loop.stop)

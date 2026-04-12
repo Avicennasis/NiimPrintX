@@ -21,7 +21,7 @@ NotifyCallback = Callable[[BleakGATTCharacteristic, bytearray], None | Awaitable
 
 
 async def find_device(device_name_prefix: str | None = None, *, scan_timeout: float = 5.0) -> BLEDevice:
-    if device_name_prefix is None or device_name_prefix == "":
+    if not device_name_prefix:
         raise BLEException("No device name prefix specified")
     devices = await BleakScanner.discover(return_adv=True, timeout=scan_timeout)
     # For D110 variants, prefer the device without service UUIDs.
