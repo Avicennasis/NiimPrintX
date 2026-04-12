@@ -3,13 +3,16 @@ from __future__ import annotations
 import asyncio
 import contextlib
 from collections.abc import Awaitable, Callable
+from typing import TYPE_CHECKING
 
 from bleak import BleakClient, BleakGATTCharacteristic, BleakScanner
-from bleak.backends.device import BLEDevice
 from bleak.exc import BleakError
 
 from .exception import BLEException
 from .logger_config import get_logger
+
+if TYPE_CHECKING:
+    from bleak.backends.device import BLEDevice
 
 logger = get_logger()
 

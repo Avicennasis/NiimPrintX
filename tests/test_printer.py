@@ -721,3 +721,88 @@ async def test_print_job_cleanup_skips_reconnect_when_disconnected(mock_sleep, m
 
     # end_print should NOT have been called because is_connected was False
     assert not end_print_called
+
+
+# ---------------------------------------------------------------------------
+# P1 gap: _encode_image effective-width overflow after positive horizontal_offset
+# ---------------------------------------------------------------------------
+
+
+def test_encode_image_positive_offset_exceeds_width_limit(make_client):
+    """Positive horizontal_offset pushing effective width past 1992px must raise."""
+    client = make_client()
+    img = Image.new("L", (1984, 4), color=0)  # 1984 alone is fine
+    with pytest.raises(PrinterException, match="exceeds protocol limit"):
+        list(client._encode_image(img, horizontal_offset=16))  # 1984+16=2000 > 1992
+
+
+# ---------------------------------------------------------------------------
+# P1 gap: _encode_image effective-height overflow (height + offset > 65535)
+# ---------------------------------------------------------------------------
+
+
+def test_encode_image_height_plus_offset_exceeds_limit(make_client):
+    """Vertical offset pushing effective height past 65535 must raise."""
+    client = make_client()
+    img = Image.new("1", (8, 65530), color=0)
+    with pytest.raises(PrinterException, match="exceeds protocol limit"):
+        list(client._encode_image(img, vertical_offset=10))
+
+
+# ---------------------------------------------------------------------------
+# P1 gap: send_command when char_uuid is None
+# ---------------------------------------------------------------------------
+
+
+async def test_send_command_no_char_uuid_raises(make_client):
+    """send_command with char_uuid=None must raise PrinterException."""
+    client = make_client()
+    client.char_uuid = None
+    client.transport.client = MagicMock()
+    client.transport.client.is_connected = True
+    with pytest.raises(PrinterException, match="No characteristic UUID available"):
+        await client.send_command(RequestCodeEnum.GET_INFO, b"\x01")
+
+
+# ---------------------------------------------------------------------------
+# P1 gap: _print_job cleanup when page_started=False (skips end_page_print)
+# ---------------------------------------------------------------------------
+
+
+@patch("asyncio.sleep", new_callable=AsyncMock)
+async def test_print_job_cleanup_skips_end_page_when_not_started(mock_sleep, make_client):
+    """When start_page_print fails, the except handler must NOT call
+    end_page_print (page_started is still False)."""
+    client = make_client()
+
+    end_page_called = False
+    end_print_called = False
+
+    async def fake_write(data, char_uuid):
+        nonlocal end_page_called, end_print_called
+        pkt = NiimbotPacket.from_bytes(data)
+
+        if pkt.type == RequestCodeEnum.START_PAGE_PRINT:
+            raise PrinterException("Simulated START_PAGE_PRINT failure")
+        if pkt.type == RequestCodeEnum.END_PAGE_PRINT:
+            end_page_called = True
+            resp = NiimbotPacket(RequestCodeEnum.END_PAGE_PRINT, b"\x01")
+        elif pkt.type == RequestCodeEnum.END_PRINT:
+            end_print_called = True
+            resp = NiimbotPacket(RequestCodeEnum.END_PRINT, b"\x01")
+        else:
+            resp = NiimbotPacket(pkt.type, b"\x01")
+
+        client.notification_data = resp.to_bytes()
+        client.notification_event.set()
+
+    client.transport.write = AsyncMock(side_effect=fake_write)
+
+    img = Image.new("1", (100, 50), color=0)
+    with pytest.raises(PrinterException, match="Simulated START_PAGE_PRINT failure"):
+        await client.print_image(img, quantity=1)
+
+    # end_page_print should NOT have been called because page_started was False
+    assert not end_page_called
+    # end_print SHOULD have been called because print_started was True
+    assert end_print_called

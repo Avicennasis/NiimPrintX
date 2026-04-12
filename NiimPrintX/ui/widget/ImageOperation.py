@@ -1,5 +1,5 @@
 import contextlib
-import tkinter.messagebox as messagebox
+from tkinter import messagebox
 
 import PIL.Image
 from PIL import Image, ImageTk
@@ -49,6 +49,8 @@ class ImageOperation:
         self.config.canvas.tag_bind(image_id, "<B1-Motion>", lambda e, img_id=image_id: self.move_image(e, img_id))
 
     def start_image_resize(self, event, image_id):
+        if image_id not in self.config.image_items:
+            return
         self.config.image_items[image_id]["initial_x"] = event.x
 
     def select_image(self, event, image_id):

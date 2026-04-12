@@ -1,7 +1,18 @@
 import subprocess
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from NiimPrintX.ui.component.FontList import _run_font_list, fonts, group_fonts_by_family, parse_font_details
+
+
+@pytest.fixture(autouse=True)
+def _clear_fonts_cache():
+    """Clear the @lru_cache on fonts() before each test to prevent cross-test contamination."""
+    fonts.cache_clear()
+    yield
+    fonts.cache_clear()
+
 
 # ---------- parse_font_details ----------
 

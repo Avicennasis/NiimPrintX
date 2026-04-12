@@ -231,3 +231,27 @@ async def test_heartbeat_failure_clears_printer():
     assert success is False
     assert hb == {}
     assert op.printer is None
+
+
+# ---------------------------------------------------------------------------
+# P1 gap: print() failure path returns False
+# ---------------------------------------------------------------------------
+
+
+@patch("NiimPrintX.ui.widget.PrinterOperation.PrinterClient")
+@patch("NiimPrintX.ui.widget.PrinterOperation.find_device", new_callable=AsyncMock)
+async def test_print_exception_returns_false(mock_find_device, MockPrinterClient):
+    """When print_image raises, print() must return False."""
+    mock_device = MagicMock()
+    mock_find_device.return_value = mock_device
+
+    mock_printer = _make_mock_printer()
+    mock_printer.print_image = AsyncMock(side_effect=Exception("BLE dropped"))
+    MockPrinterClient.return_value = mock_printer
+
+    config = _make_config(printer_connected=True, device="d110")
+    op = PrinterOperation(config)
+    op.printer = mock_printer
+
+    result = await op.print(Image.new("1", (8, 4)), density=3, quantity=1)
+    assert result is False

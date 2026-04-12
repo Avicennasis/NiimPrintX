@@ -1,3 +1,4 @@
+import functools
 import os
 import platform
 import re
@@ -27,6 +28,7 @@ def _run_font_list(cmd):
         return None
 
 
+@functools.lru_cache(maxsize=1)
 def fonts():
     path_fallback = False
     if hasattr(sys, "_MEIPASS"):

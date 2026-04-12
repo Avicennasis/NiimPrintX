@@ -2,8 +2,8 @@ target-version = "py312"
 line-length = 120
 
 [lint]
-select = ["E", "F", "W", "I", "B", "UP", "C4", "RUF", "SIM", "S", "PT", "DTZ", "PERF", "PIE", "RET", "PLW", "PLC", "ERA", "BLE", "ASYNC"]
-ignore = ["E501", "B008"]  # E501: line length enforced by formatter only
+select = ["E", "F", "W", "I", "B", "UP", "C4", "RUF", "SIM", "S", "PT", "DTZ", "PERF", "PIE", "RET", "PLW", "PLC", "ERA", "BLE", "ASYNC", "TC", "PLR"]
+ignore = ["E501", "B008", "PLR0913", "PLR2004", "PLR0912", "PLR0915"]  # E501: line length enforced by formatter; PLR0913: printer API needs many params; PLR2004: protocol constants are self-documenting; PLR0912/PLR0915: BLE state machine methods are complex by nature
 
 [lint.isort]
 known-first-party = ["NiimPrintX"]

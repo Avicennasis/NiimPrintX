@@ -29,11 +29,8 @@ _ALL_MODELS = ["b1", "b18", "b21", "d11", "d11_h", "d101", "d110", "d110_m"]
     default=0,
     help="Enable verbose logging",
 )
-@click.pass_context
-def niimbot_cli(ctx: click.Context, verbose: int) -> None:
-    ctx.ensure_object(dict)
+def niimbot_cli(verbose: int) -> None:
     setup_logger()
-    ctx.obj["VERBOSE"] = verbose
     logger_enable(verbose)
 
 
@@ -115,7 +112,8 @@ def print_command(
                 if prepared.width > max_width_px:
                     print_error(f"Image width {prepared.width}px exceeds max {max_width_px}px for {model.upper()}")
                     sys.exit(1)
-                if prepared.height > 65535:
+                _MAX_HEIGHT_PX = 65535  # 16-bit row index protocol limit
+                if prepared.height > _MAX_HEIGHT_PX:
                     print_error(f"Image height {prepared.height}px exceeds protocol limit")
                     sys.exit(1)
                 success = asyncio.run(_print(model, density, prepared, quantity, vertical_offset, horizontal_offset))
@@ -145,7 +143,7 @@ async def _print(
         if not await printer.connect():
             print_error("Failed to connect to printer")
             return False
-        print_info(f"Connected to {device.name}")
+        print_info(f"Connected to {device.name!r}")
         if model in V2_MODELS:
             print_info("Printing with V2 protocol")
             await printer.print_imageV2(

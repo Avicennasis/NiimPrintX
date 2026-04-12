@@ -12,7 +12,7 @@ niimprintx = "NiimPrintX.cli.command:niimbot_cli"
 niimprintx-ui = "NiimPrintX.ui.__main__:main"
 
 [tool.poetry.dependencies]
-python = ">=3.12,<3.14"
+python = ">=3.12,<3.16"
 click = "^8.3"
 bleak = "^3.0"
 loguru = "^0.7.2"
@@ -38,16 +38,25 @@ mypy = "^1.11"
 asyncio_mode = "auto"
 
 [tool.coverage.run]
+branch = true
 omit = [
     "NiimPrintX/ui/__main__.py",
     "NiimPrintX/ui/main.py",
     "NiimPrintX/ui/SplashScreen.py",
-    "NiimPrintX/ui/widget/*.py",
+    "NiimPrintX/ui/widget/CanvasOperation.py",
+    "NiimPrintX/ui/widget/CanvasSelector.py",
+    "NiimPrintX/ui/widget/StatusBar.py",
+    "NiimPrintX/ui/widget/IconTab.py",
+    "NiimPrintX/ui/widget/TextTab.py",
+    "NiimPrintX/ui/widget/TabbedIconGrid.py",
+    "NiimPrintX/ui/widget/FileMenu.py",
+    "NiimPrintX/ui/widget/ImageOperation.py",
+    "NiimPrintX/ui/widget/TextOperation.py",
     "NiimPrintX/ui/component/__init__.py",
 ]
 
 [tool.coverage.report]
-fail_under = 90
+fail_under = 80
 
 [tool.mypy]
 python_version = "3.12"

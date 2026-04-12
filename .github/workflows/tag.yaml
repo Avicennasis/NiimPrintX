@@ -48,7 +48,7 @@ jobs:
 
   release:
     name: "Release"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     needs:
@@ -69,8 +69,7 @@ jobs:
       - name: Generate SHA256SUMS
         run: |
           cd release
-          sha256sum * > SHA256SUMS.txt
-          cat SHA256SUMS.txt
+          find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -exec sha256sum {} + | sed 's|\./||' | tee SHA256SUMS.txt
 
       - name: Create GitHub Release
         id: create_release

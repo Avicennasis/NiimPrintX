@@ -156,7 +156,13 @@ class TabbedIconGrid(tk.Frame):
                     icon_label.bind("<Button-1>", lambda event, idx=index, ic=icons: self.on_icon_click(idx, ic))
 
         # M13: Configure scrollregion AFTER all widgets are placed, not before the bg thread completes
-        canvas.after_idle(lambda: canvas.configure(scrollregion=canvas.bbox("all")) if canvas.bbox("all") else None)
+        def _update_scrollregion():
+            with contextlib.suppress(tk.TclError):
+                bbox = canvas.bbox("all")
+                if bbox:
+                    canvas.configure(scrollregion=bbox)
+
+        canvas.after_idle(_update_scrollregion)
 
     def on_mouse_wheel(self, event, canvas):
         """Handle mouse wheel scrolling."""

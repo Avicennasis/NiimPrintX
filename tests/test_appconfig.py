@@ -44,7 +44,7 @@ def test_print_dpi_is_known_value():
 def test_rotation_is_valid():
     config = AppConfig()
     for device, conf in config.label_sizes.items():
-        assert conf["rotation"] in (0, -90, 90, 180), f"{device} has unexpected rotation {conf['rotation']}"
+        assert conf["rotation"] in (0, 90, 180, 270), f"{device} has unexpected rotation {conf['rotation']}"
 
 
 def test_expected_devices_present():

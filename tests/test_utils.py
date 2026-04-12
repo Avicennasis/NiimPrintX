@@ -2,7 +2,7 @@ from io import StringIO
 
 import pytest
 
-from NiimPrintX.nimmy.exception import BLEException, ConfigException, NiimPrintXException, PrinterException
+from NiimPrintX.nimmy.exception import BLEException, NiimPrintXException, PrinterException
 from NiimPrintX.nimmy.helper import print_error, print_info, print_success
 from NiimPrintX.nimmy.logger_config import get_logger, logger_enable, setup_logger
 from NiimPrintX.nimmy.packet import NiimbotPacket, packet_to_int
@@ -280,15 +280,6 @@ def test_logger_enable_verbose_changes_level():
         loguru_logger.remove(handler_id)
 
     assert any("verbose debug message" in m for m in captured)
-
-
-def test_config_exception_hierarchy():
-    """ConfigException should be a subclass of NiimPrintXException."""
-    assert issubclass(ConfigException, NiimPrintXException)
-    assert issubclass(ConfigException, Exception)
-
-    with pytest.raises(NiimPrintXException):
-        raise ConfigException("bad config")
 
 
 # ---------- packet.py — packet_to_int ----------

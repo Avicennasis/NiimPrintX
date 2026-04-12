@@ -128,10 +128,10 @@ class TextTab:
         if not family or family not in self.fonts:
             family = next(iter(self.fonts), "Arial")
         try:
-            size = int(self.font_size_dropdown.get())
+            size = max(4, min(int(self.font_size_dropdown.get()), 500))
         except (ValueError, tk.TclError):
             size = 16
-            self.size_var.set(size)
+        self.size_var.set(size)
         try:
             kerning = float(self.font_kerning_dropdown.get())
         except (ValueError, tk.TclError):

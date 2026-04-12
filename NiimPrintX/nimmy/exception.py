@@ -11,7 +11,3 @@ class BLEException(NiimPrintXException):
 
 class PrinterException(NiimPrintXException):
     """Raised for printer-level protocol errors."""
-
-
-class ConfigException(NiimPrintXException):
-    """Raised for configuration validation or loading errors."""

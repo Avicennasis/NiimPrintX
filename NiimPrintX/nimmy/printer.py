@@ -5,8 +5,7 @@ import contextlib
 import enum
 import math
 import struct
-from collections.abc import Generator
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from PIL import Image, ImageOps
 
@@ -14,7 +13,11 @@ from .bluetooth import BLETransport
 from .exception import BLEException, PrinterException
 from .logger_config import get_logger
 from .packet import NiimbotPacket, packet_to_int
-from .types import HeartbeatResponse, PrintStatus, RFIDResponse
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
+
+    from .types import HeartbeatResponse, PrintStatus, RFIDResponse
 
 logger = get_logger()
 
@@ -73,13 +76,13 @@ class PrinterClient:
                 await self.transport.disconnect()
                 raise
         self._loop = asyncio.get_running_loop()
-        logger.info(f"Successfully connected to {self.device.name}")
+        logger.info(f"Successfully connected to {self.device.name!r}")
         return True
 
     async def disconnect(self) -> None:
         self.char_uuid = None
         await self.transport.disconnect()
-        logger.info(f"Printer {self.device.name} disconnected.")
+        logger.info(f"Printer {self.device.name!r} disconnected.")
 
     async def find_characteristics(self) -> None:
         services: dict[str, list[dict[str, Any]]] = {}

@@ -103,7 +103,7 @@ class LabelPrinterApp(tk.Tk):
             return
         # H21: If load_resources failed before app_config was created, skip the
         # quit dialog entirely — there is nothing to clean up.
-        if getattr(self, "app_config", None) is None and getattr(self, "print_option", None) is None:
+        if getattr(self, "app_config", None) is None or getattr(self, "print_option", None) is None:
             self.destroy()
             return
         if getattr(self, "app_config", None) and self.app_config.print_job:

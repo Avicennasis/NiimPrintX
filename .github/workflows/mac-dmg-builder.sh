@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ -z "${1:-}" || -z "${2:-}" ]]; then
+    echo "Usage: $0 <VERSION> <ARCH>"
+    exit 1
+fi
+
 VERSION="${1}"
 ARCH="${2}"
 APP_NAME="NiimPrintX"
@@ -28,7 +33,12 @@ kill_xprotect() {
   echo "Killing XProtect processes..."
   sudo pkill -9 XProtect || true
   echo "Waiting for XProtect processes to terminate..."
-  while pgrep XProtect; do sleep 5; done
+  local max_wait=60
+  local waited=0
+  while pgrep XProtect && [[ $waited -lt $max_wait ]]; do
+      sleep 5
+      ((waited += 5))
+  done
   echo "XProtect processes terminated."
   sudo mdutil -a -i off || true
 }

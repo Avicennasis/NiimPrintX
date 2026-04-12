@@ -30,7 +30,7 @@ class AppConfig:
                 },
                 "density": 3,
                 "print_dpi": 203,
-                "rotation": -90,
+                "rotation": 270,
             },
             "d11": {
                 "size": {
@@ -42,7 +42,7 @@ class AppConfig:
                 },
                 "density": 3,
                 "print_dpi": 203,
-                "rotation": -90,
+                "rotation": 270,
             },
             "d11_h": {
                 "size": {
@@ -54,7 +54,7 @@ class AppConfig:
                 },
                 "density": 3,
                 "print_dpi": 300,
-                "rotation": -90,
+                "rotation": 270,
             },
             "d101": {
                 "size": {
@@ -66,7 +66,7 @@ class AppConfig:
                 },
                 "density": 3,
                 "print_dpi": 203,
-                "rotation": -90,
+                "rotation": 270,
             },
             "d110_m": {
                 "size": {
@@ -78,7 +78,7 @@ class AppConfig:
                 },
                 "density": 3,
                 "print_dpi": 300,
-                "rotation": -90,
+                "rotation": 270,
             },
             "b18": {
                 "size": {

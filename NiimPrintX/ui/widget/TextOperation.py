@@ -1,6 +1,6 @@
 import base64
 import tkinter as tk
-import tkinter.messagebox as messagebox
+from tkinter import messagebox
 
 try:
     from wand.color import Color

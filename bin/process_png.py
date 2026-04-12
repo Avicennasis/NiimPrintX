@@ -25,9 +25,9 @@ def process_images(image_directory):
     # Run mogrify commands
     png_files = glob.glob(os.path.join(resized_dir, "*.png"))
     if png_files:
-        subprocess.run(["mogrify", "-resize", "50x50", *png_files], check=False)
-        subprocess.run(["mogrify", "-format", "png", "-alpha", "on", *png_files], check=False)
-        subprocess.run(["mogrify", "-fill", "black", "-colorize", "100", *png_files], check=False)
+        subprocess.run(["mogrify", "-resize", "50x50", "--", *png_files], check=True)
+        subprocess.run(["mogrify", "-format", "png", "-alpha", "on", "--", *png_files], check=True)
+        subprocess.run(["mogrify", "-fill", "black", "-colorize", "100", "--", *png_files], check=True)
 
     # Process images with PIL
     Image.MAX_IMAGE_PIXELS = 5_000_000
