@@ -17,10 +17,10 @@ logger = get_logger()
 NotifyCallback = Callable[[BleakGATTCharacteristic, bytearray], None | Awaitable[None]]
 
 
-async def find_device(device_name_prefix: str | None = None) -> BLEDevice:
+async def find_device(device_name_prefix: str | None = None, *, scan_timeout: float = 5.0) -> BLEDevice:
     if device_name_prefix is None or device_name_prefix == "":
         raise BLEException("No device name prefix specified")
-    devices = await BleakScanner.discover(return_adv=True)
+    devices = await BleakScanner.discover(return_adv=True, timeout=scan_timeout)
     # For D110 variants, prefer the device without service UUIDs.
     # D110 appears as two BLE devices; the printing-capable one has no UUIDs.
     is_d110 = device_name_prefix.lower().startswith("d110")
@@ -81,7 +81,7 @@ class BLETransport:
     async def write(self, data: bytes | bytearray, char_uuid: str, timeout: float = 10.0) -> None:  # noqa: ASYNC109 — uses asyncio.wait_for internally
         if self.client and self.client.is_connected:
             try:
-                await asyncio.wait_for(self.client.write_gatt_char(char_uuid, data, response=False), timeout=timeout)
+                await asyncio.wait_for(self.client.write_gatt_char(char_uuid, data, response=None), timeout=timeout)
             except TimeoutError:
                 raise BLEException(f"BLE write timed out after {timeout}s") from None
             except BleakError as e:
@@ -93,11 +93,14 @@ class BLETransport:
         if not (self.client and self.client.is_connected):
             raise BLEException("BLE client is not connected.")
         if char_uuid not in self._notifying_uuids:
-            await self.client.start_notify(char_uuid, handler)
             self._notifying_uuids.add(char_uuid)
+            try:
+                await self.client.start_notify(char_uuid, handler)
+            except Exception:
+                self._notifying_uuids.discard(char_uuid)
+                raise
 
     async def stop_notification(self, char_uuid: str) -> None:
-        was_notifying = char_uuid in self._notifying_uuids
-        self._notifying_uuids.discard(char_uuid)
-        if was_notifying and self.client and self.client.is_connected:
+        if char_uuid in self._notifying_uuids and self.client and self.client.is_connected:
             await self.client.stop_notify(char_uuid)
+        self._notifying_uuids.discard(char_uuid)

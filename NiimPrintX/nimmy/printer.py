@@ -65,18 +65,16 @@ class PrinterClient:
         self._print_lock: asyncio.Lock = asyncio.Lock()
 
     async def connect(self) -> bool:
-        if await self.transport.connect(self.device.address):
-            if not self.char_uuid:
-                try:
-                    await self.find_characteristics()
-                except PrinterException:
-                    await self.transport.disconnect()
-                    raise
-            self._loop = asyncio.get_running_loop()
-            logger.info(f"Successfully connected to {self.device.name}")
-            return True
-        logger.error("Connection failed.")
-        return False
+        await self.transport.connect(self.device.address)
+        if not self.char_uuid:
+            try:
+                await self.find_characteristics()
+            except PrinterException:
+                await self.transport.disconnect()
+                raise
+        self._loop = asyncio.get_running_loop()
+        logger.info(f"Successfully connected to {self.device.name}")
+        return True
 
     async def disconnect(self) -> None:
         self.char_uuid = None
@@ -111,6 +109,8 @@ class PrinterClient:
             try:
                 if (not self.transport.client or not self.transport.client.is_connected) and not await self.connect():
                     raise PrinterException("Failed to reconnect to printer")
+                if self.char_uuid is None:
+                    raise PrinterException("No characteristic UUID available")
                 # Clear stale state BEFORE arming notifications
                 self.notification_event.clear()
                 self.notification_data = None
@@ -118,21 +118,35 @@ class PrinterClient:
                 await self.transport.start_notification(self.char_uuid, self.notification_handler)
                 notifying = True
                 await self.transport.write(packet.to_bytes(), self.char_uuid)
-                logger.debug(
-                    f"Printer command sent - {RequestCodeEnum(request_code).name}:{request_code} - {list(data)}"
-                )
+                try:
+                    code_label = RequestCodeEnum(request_code).name
+                except ValueError:
+                    code_label = hex(request_code)
+                logger.debug(f"Printer command sent - {code_label}:{request_code} - {list(data)}")
                 await asyncio.wait_for(self.notification_event.wait(), timeout)
                 response = NiimbotPacket.from_bytes(self.notification_data)
                 logger.debug(f"Printer response received - {list(response.data)} - {len(response.data)} bytes")
                 return response
             except TimeoutError:
-                logger.error(f"Timeout occurred for request {RequestCodeEnum(request_code).name}")
-                raise PrinterException(f"Printer timed out on {RequestCodeEnum(request_code).name}") from None
+                try:
+                    code_label = RequestCodeEnum(request_code).name
+                except ValueError:
+                    code_label = hex(request_code)
+                logger.error(f"Timeout occurred for request {code_label}")
+                raise PrinterException(f"Printer timed out on {code_label}") from None
             except BLEException as e:
+                try:
+                    code_label = RequestCodeEnum(request_code).name
+                except ValueError:
+                    code_label = hex(request_code)
                 logger.error(f"An error occurred: {e}")
-                raise PrinterException(f"BLE error during {RequestCodeEnum(request_code).name}: {e}") from e
+                raise PrinterException(f"BLE error during {code_label}: {e}") from e
             except (ValueError, TypeError) as e:
-                logger.error(f"Malformed response for {RequestCodeEnum(request_code).name}: {e}")
+                try:
+                    code_label = RequestCodeEnum(request_code).name
+                except ValueError:
+                    code_label = hex(request_code)
+                logger.error(f"Malformed response for {code_label}: {e}")
                 raise PrinterException(f"Malformed printer response: {e}") from e
             finally:
                 if notifying:
@@ -147,6 +161,8 @@ class PrinterClient:
             try:
                 if (not self.transport.client or not self.transport.client.is_connected) and not await self.connect():
                     raise PrinterException("Failed to reconnect to printer")
+                if self.char_uuid is None:
+                    raise PrinterException("No characteristic UUID available")
                 await self.transport.write(data.to_bytes(), self.char_uuid)
             except (BLEException, ValueError, TypeError) as e:
                 logger.error(f"Write error: {e}")
@@ -159,7 +175,7 @@ class PrinterClient:
 
         def _set() -> None:
             if not self.notification_event.is_set():
-                self.notification_data = data
+                self.notification_data = bytes(data)
                 self.notification_event.set()
 
         self._loop.call_soon_threadsafe(_set)
@@ -196,6 +212,7 @@ class PrinterClient:
     ) -> None:
         async with self._print_lock:
             print_started = False
+            page_started = False
             try:
                 await self.set_label_density(density)
                 await self.set_label_type(1)
@@ -207,6 +224,7 @@ class PrinterClient:
                 print_started = True
 
                 await self.start_page_print()
+                page_started = True
 
                 # Calculate post-offset dimensions
                 effective_height = image.height
@@ -257,6 +275,9 @@ class PrinterClient:
             except BaseException as e:
                 logger.error(f"Print job failed: {e}")
                 if print_started and self.transport.client and self.transport.client.is_connected:
+                    if page_started:
+                        with contextlib.suppress(Exception):
+                            await self.end_page_print()
                     with contextlib.suppress(Exception):
                         await self.end_print()
                 raise
@@ -264,8 +285,19 @@ class PrinterClient:
     def _encode_image(
         self, image: Image.Image, vertical_offset: int = 0, horizontal_offset: int = 0
     ) -> Generator[NiimbotPacket, None, None]:
-        if image.width > (255 - 6) * 8:  # 6-byte header (>HBBBB): row_idx(2)+counts(3)+flag(1)
-            raise PrinterException(f"Image width {image.width}px exceeds protocol limit of {(255 - 6) * 8}px")
+        if image.height > 65535:
+            raise PrinterException(f"Image height {image.height}px exceeds protocol limit of 65535 rows")
+
+        max_width = (255 - 6) * 8  # 6-byte header (>HBBBB): row_idx(2)+counts(3)+flag(1) → 1992px
+        if image.width > max_width:
+            raise PrinterException(f"Image width {image.width}px exceeds protocol limit of {max_width}px")
+
+        effective_width = image.width + max(0, horizontal_offset)
+        if effective_width > max_width:
+            raise PrinterException(
+                f"Effective width {effective_width}px (image {image.width}px + offset {horizontal_offset}px) "
+                f"exceeds protocol limit of {max_width}px"
+            )
 
         # Convert the image to monochrome, closing intermediate images
         gray = image.convert("L")

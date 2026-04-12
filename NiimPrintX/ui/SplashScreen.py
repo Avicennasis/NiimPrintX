@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import tkinter as tk
 
 
@@ -28,4 +29,5 @@ class SplashScreen(tk.Toplevel):
 
     def close(self) -> None:
         self.image = None
-        self.destroy()
+        with contextlib.suppress(tk.TclError):
+            self.destroy()

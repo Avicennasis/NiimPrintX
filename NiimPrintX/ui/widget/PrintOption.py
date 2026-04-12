@@ -24,6 +24,7 @@ class PrintOption:
         self.frame = ttk.Frame(parent)
         self.create_widgets()
         self.print_op = PrinterOperation(self.config)
+        self._connecting = False
         self._heartbeat_active = False
         self.check_heartbeat()
 
@@ -65,7 +66,8 @@ class PrintOption:
             await asyncio.sleep(5)
 
     def update_status(self, connected=False, hb_data=None):
-        self.config.printer_connected = connected
+        if not self._connecting:
+            self.config.printer_connected = connected
         if not connected and self.connect_button["state"] != tk.DISABLED:
             self.connect_button.config(text="Connect")
             self.connect_button.config(state=tk.NORMAL)
@@ -82,30 +84,35 @@ class PrintOption:
 
     def printer_connect(self):
         self.connect_button.config(state=tk.DISABLED)
-        if not self.config.printer_connected:
+        self._connecting = True
+        was_connecting = not self.config.printer_connected
+        if was_connecting:
             future = asyncio.run_coroutine_threadsafe(
                 self.print_op.printer_connect(self.config.device), self.root.async_loop
             )
-            future.add_done_callback(self._update_device_status)
+            future.add_done_callback(lambda f: self._update_device_status(f, was_connecting=True))
         else:
             future = asyncio.run_coroutine_threadsafe(self.print_op.printer_disconnect(), self.root.async_loop)
-            future.add_done_callback(self._update_device_status)
+            future.add_done_callback(lambda f: self._update_device_status(f, was_connecting=False))
 
-    def _update_device_status(self, future):
+    def _update_device_status(self, future, *, was_connecting):
         try:
             result = future.result()
         except Exception:  # noqa: BLE001 — GUI callback; any async failure means "not connected"
             result = False
 
         def _update():
-            if self.config.printer_connected:
+            self._connecting = False
+            if was_connecting and result:
+                self.config.printer_connected = True
                 self.connect_button.config(text="Disconnect")
-                self.connect_button.config(state=tk.NORMAL)
-            else:
+            elif not was_connecting and result:
+                self.config.printer_connected = False
                 self.connect_button.config(text="Connect")
-                self.connect_button.config(state=tk.NORMAL)
+            # On failure, leave button text matching current state
+            self.connect_button.config(state=tk.NORMAL)
             with contextlib.suppress(tk.TclError):
-                self.root.status_bar.update_status(result if self.config.printer_connected else False)
+                self.root.status_bar.update_status(self.config.printer_connected)
 
         self.root.after(0, _update)
 
@@ -152,8 +159,8 @@ class PrintOption:
             raise ImportError("GUI extras not installed. Run: pip install NiimPrintX[gui]")
         if self.config.canvas is None or self.config.bounding_box is None:
             return None
-        width = self.config.canvas.winfo_reqwidth()
-        height = self.config.canvas.winfo_reqheight()
+        width = self.config.canvas.winfo_width()
+        height = self.config.canvas.winfo_height()
 
         horizontal_offset_pixels = self.config.mm_to_pixels(horizontal_offset)
         vertical_offset_pixels = self.config.mm_to_pixels(vertical_offset)
@@ -226,6 +233,7 @@ class PrintOption:
         if hasattr(self, "print_image") and self.print_image is not None:
             with contextlib.suppress(Exception):
                 self.print_image.close()
+        Image.MAX_IMAGE_PIXELS = 5_000_000
         self.print_image = Image.open(filename)
         self.print_image.load()  # Force decode before tempfile is removed
         img_tk = ImageTk.PhotoImage(self.print_image)
@@ -383,11 +391,17 @@ class PrintOption:
 
         # PIL rotates counter-clockwise, so negate for clockwise
         rotation = -rotation
-        self._rotated_image = image.rotate(rotation, Image.NEAREST, expand=True)
-        future = asyncio.run_coroutine_threadsafe(
-            self.print_op.print(self._rotated_image, density, quantity), self.root.async_loop
-        )
-        future.add_done_callback(self._print_handler)
+        try:
+            self._rotated_image = image.rotate(rotation, expand=True)
+            future = asyncio.run_coroutine_threadsafe(
+                self.print_op.print(self._rotated_image, density, quantity), self.root.async_loop
+            )
+            future.add_done_callback(self._print_handler)
+        except Exception as e:
+            self.config.print_job = False
+            with contextlib.suppress(tk.TclError):
+                self.print_button.config(state=tk.NORMAL)
+            raise e
 
     def _print_handler(self, future):
         try:

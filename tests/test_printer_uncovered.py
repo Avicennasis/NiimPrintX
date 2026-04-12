@@ -96,23 +96,23 @@ async def test_connect_find_chars_raises_disconnects_and_reraises():
 
 
 # ---------------------------------------------------------------------------
-# connect() — transport.connect returns False
+# connect() — transport.connect raises exception
 # ---------------------------------------------------------------------------
 
 
-async def test_connect_transport_returns_false():
-    """When transport.connect() returns False, connect() must return False."""
+async def test_connect_transport_raises_propagates():
+    """When transport.connect() raises, connect() must propagate the exception."""
     device = MagicMock()
     device.name = "test-printer"
     device.address = "AA:BB:CC:DD:EE:FF"
 
     client = PrinterClient(device)
     client.transport = MagicMock()
-    client.transport.connect = AsyncMock(return_value=False)
+    client.transport.connect = AsyncMock(side_effect=BLEException("Connection failed"))
+    client.transport.disconnect = AsyncMock()
 
-    result = await client.connect()
-
-    assert result is False
+    with pytest.raises(BLEException, match="Connection failed"):
+        await client.connect()
 
 
 # ---------------------------------------------------------------------------

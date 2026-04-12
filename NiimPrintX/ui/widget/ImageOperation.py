@@ -79,6 +79,8 @@ class ImageOperation:
 
     def move_image(self, event, image_id):
         """Move the selected image."""
+        if image_id not in self.config.image_items:
+            return
         if self.config.image_items[image_id].get("bbox") is None:
             return
         dx = event.x - self.config.image_items[image_id]["initial_x"]

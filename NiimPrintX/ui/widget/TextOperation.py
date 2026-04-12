@@ -151,6 +151,7 @@ class TextOperation:
             }
         )
 
+        self.config.canvas.tag_unbind(text_id, "<B1-Motion>")
         self.config.canvas.tag_bind(text_id, "<B1-Motion>", lambda e, tid=text_id: self.move_text(e, tid))
         self.config.canvas.tag_bind(handle, "<B1-Motion>", lambda e, tid=text_id: self.resize_text(e, tid))
         self.config.canvas.tag_bind(handle, "<Button-1>", lambda e: self.start_resize(e, text_id))
@@ -179,12 +180,13 @@ class TextOperation:
         # Skip expensive re-render if size hasn't actually changed
         if new_size == self.config.text_items[text_id]["font_props"]["size"]:
             return
-        self.config.text_items[text_id]["font_props"]["size"] = new_size
         tk_image = self.create_text_image(
-            self.config.text_items[text_id]["font_props"], self.config.text_items[text_id]["content"]
+            {**self.config.text_items[text_id]["font_props"], "size": new_size},
+            self.config.text_items[text_id]["content"],
         )
         if tk_image is None:
             return
+        self.config.text_items[text_id]["font_props"]["size"] = new_size
         self.config.canvas.itemconfig(text_id, image=tk_image)
         self.config.text_items[text_id]["font_image"] = tk_image
         self.update_bbox_and_handle(text_id)

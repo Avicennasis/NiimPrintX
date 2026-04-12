@@ -13,6 +13,8 @@ from NiimPrintX.nimmy.printer import DEFAULT_MAX_DENSITY, MODEL_MAX_DENSITY, V2_
 
 logger = get_logger()
 
+_ALL_MODELS = ["b1", "b18", "b21", "d11", "d11_h", "d101", "d110", "d110_m"]
+
 
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
 @click.option(
@@ -34,7 +36,7 @@ def niimbot_cli(ctx: click.Context, verbose: int) -> None:
 @click.option(
     "-m",
     "--model",
-    type=click.Choice(["b1", "b18", "b21", "d11", "d11_h", "d110", "d101", "d110_m"], case_sensitive=False),
+    type=click.Choice(_ALL_MODELS, case_sensitive=False),
     default="d110",
     show_default=True,
     help="Niimbot printer model",
@@ -98,11 +100,12 @@ def print_command(
     if density > max_density:
         print_info(f"Model {model.upper()} supports max density {max_density}; capping {density} to {max_density}")
         density = max_density
+    Image.MAX_IMAGE_PIXELS = 5_000_000
     try:
         with Image.open(image) as raw_img:
             # PIL library rotates counterclockwise, so we need to multiply by -1
             rotated = raw_img.rotate(-int(rotate), expand=True) if rotate != "0" else None
-            prepared = rotated if rotated else raw_img
+            prepared = rotated if rotated is not None else raw_img
             try:
                 if prepared.width > max_width_px:
                     print_error(f"Image width {prepared.width}px exceeds max {max_width_px}px for {model.upper()}")
@@ -159,7 +162,7 @@ async def _print(
         print_success("Print job completed")
         return True
     except Exception as e:
-        logger.debug(f"{e}")
+        logger.debug("Command failed: %s", e, exc_info=True)
         print_error(f"{e}")
         return False
     finally:
@@ -171,7 +174,7 @@ async def _print(
 @click.option(
     "-m",
     "--model",
-    type=click.Choice(["b1", "b18", "b21", "d11", "d11_h", "d110", "d101", "d110_m"], case_sensitive=False),
+    type=click.Choice(_ALL_MODELS, case_sensitive=False),
     default="d110",
     show_default=True,
     help="Niimbot printer model",
@@ -207,7 +210,7 @@ async def _info(model: str) -> bool:
         print_info(f"Hardware Version : {hardware_version}")
         return True
     except Exception as e:
-        logger.debug(f"{e}")
+        logger.debug("Command failed: %s", e, exc_info=True)
         print_error(f"{e}")
         return False
     finally:

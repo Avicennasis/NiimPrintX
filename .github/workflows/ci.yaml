@@ -12,7 +12,7 @@ permissions:
 jobs:
   test:
     name: "Tests"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -30,6 +30,8 @@ jobs:
           cache: 'poetry'
 
       - name: Install dependencies
+        # TODO(H27): move pyinstaller to a [tool.poetry.group.build] group,
+        # then use 'poetry install --without build' here to skip it.
         run: poetry install
 
       - name: CLI smoke test
@@ -48,7 +50,7 @@ jobs:
 
   lint:
     name: "Lint"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4
 
@@ -62,6 +64,8 @@ jobs:
           cache: 'poetry'
 
       - name: Install dependencies
+        # TODO(H27): move pyinstaller to a [tool.poetry.group.build] group,
+        # then use 'poetry install --without build' here to skip it.
         run: poetry install
 
       - name: Lint with ruff
@@ -70,9 +74,12 @@ jobs:
       - name: Format check with ruff
         run: poetry run ruff format --check NiimPrintX/ tests/
 
+      - name: Type check core modules with mypy
+        run: poetry run mypy --ignore-missing-imports NiimPrintX/nimmy/ NiimPrintX/cli/
+
   audit:
     name: "Dependency Audit"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4
 
@@ -86,7 +93,12 @@ jobs:
           cache: 'poetry'
 
       - name: Install dependencies
+        # TODO(H27): move pyinstaller to a [tool.poetry.group.build] group,
+        # then use 'poetry install --without build' here to skip it.
         run: poetry install
+
+      - name: Install poetry-plugin-export
+        run: pipx inject poetry poetry-plugin-export
 
       - name: Export requirements
         run: poetry export -f requirements.txt --output requirements.txt --without-hashes

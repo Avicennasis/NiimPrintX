@@ -88,7 +88,7 @@ exe = EXE(
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
-    entitlements_file=None,
+    entitlements_file=None,  # TODO: set to entitlements.plist when code signing is configured (needed for Bluetooth TCC approval)
     icon=os.path.join(src_path, 'assets', 'icon.icns'),
     onefile=False,  # Ensure this is set for onefile build
 )

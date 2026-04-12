@@ -1,4 +1,5 @@
 import base64
+import contextlib
 import io
 import json
 import os
@@ -11,6 +12,8 @@ from PIL import Image, ImageTk
 
 _MAX_LABEL_PIXELS = 5_000_000  # well above any real label dimensions
 _MAX_ITEMS_PER_FILE = 100
+
+PIL.Image.MAX_IMAGE_PIXELS = _MAX_LABEL_PIXELS
 
 
 class FileMenu:
@@ -120,7 +123,9 @@ class FileMenu:
                 messagebox.showerror("Error", "Invalid .niim file: 'device' and 'current_label_size' must be strings.")
                 return
 
-            total_items = len(data.get("text", {})) + len(data.get("image", {}))
+            existing_items = len(self.config.text_items) + len(self.config.image_items)
+            file_items = len(data.get("text", {})) + len(data.get("image", {}))
+            total_items = existing_items + file_items
             if total_items > _MAX_ITEMS_PER_FILE:
                 messagebox.showerror(
                     "Error",
@@ -136,6 +141,12 @@ class FileMenu:
             if label_size not in self.config.label_sizes[device].get("size", {}):
                 messagebox.showerror("Error", f"Label size '{label_size}' not found for device '{device}'.")
                 return
+
+            with contextlib.suppress(Exception):
+                if self.config.current_selected:
+                    self.root.text_tab.text_op.deselect_text()
+                if self.config.current_selected_image:
+                    self.root.icon_tab.image_op.deselect_image()
 
             self.root.canvas_selector.selected_device.set(data["device"].upper())
             self.root.canvas_selector.update_device_label_size()  # repopulate label dropdown
@@ -175,7 +186,6 @@ class FileMenu:
                 raise ValueError("'content' must be a string")
 
             font_img_data = base64.b64decode(data["font_image"])
-            PIL.Image.MAX_IMAGE_PIXELS = _MAX_LABEL_PIXELS
             font_image = Image.open(io.BytesIO(font_img_data))
             if font_image.width * font_image.height > _MAX_LABEL_PIXELS:
                 w, h = font_image.width, font_image.height
@@ -211,7 +221,6 @@ class FileMenu:
                 raise ValueError("Invalid or missing coords: expected a list with at least 2 numeric elements")
 
             original_image_data = base64.b64decode(data["original_image"])
-            PIL.Image.MAX_IMAGE_PIXELS = _MAX_LABEL_PIXELS
             original_image = Image.open(io.BytesIO(original_image_data))
             if original_image.width * original_image.height > _MAX_LABEL_PIXELS:
                 w, h = original_image.width, original_image.height
@@ -220,7 +229,6 @@ class FileMenu:
             original_image.load()
 
             image_data = base64.b64decode(data["image"])
-            PIL.Image.MAX_IMAGE_PIXELS = _MAX_LABEL_PIXELS
             image = Image.open(io.BytesIO(image_data))
             if image.width * image.height > _MAX_LABEL_PIXELS:
                 w, h = image.width, image.height

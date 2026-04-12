@@ -7,34 +7,6 @@ from PIL import Image
 from NiimPrintX.nimmy.printer import PrinterClient
 
 # ---------------------------------------------------------------------------
-# Shared helper: build a fake_write side-effect for transport.write
-# ---------------------------------------------------------------------------
-
-
-def make_fake_write(client, response_pkt):
-    """Return an async side-effect suitable for ``transport.write``.
-
-    When called, the coroutine sets ``client.notification_data`` to the
-    serialised *response_pkt* and fires ``client.notification_event`` so
-    that ``send_command`` unblocks with the expected response.
-
-    Usage::
-
-        from tests.conftest import make_fake_write
-
-        client = make_client()
-        pkt = NiimbotPacket(RequestCodeEnum.GET_INFO, b"\\x01")
-        client.transport.write = AsyncMock(side_effect=make_fake_write(client, pkt))
-    """
-
-    async def _fake_write(data, char_uuid):
-        client.notification_data = response_pkt.to_bytes()
-        client.notification_event.set()
-
-    return _fake_write
-
-
-# ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 

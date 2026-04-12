@@ -23,11 +23,14 @@ def process_images(image_directory):
         shutil.copy(filename, resized_dir)
 
     # Run mogrify commands
-    subprocess.run(["mogrify", "-resize", "50x50", os.path.join(resized_dir, "*.png")], check=False)
-    subprocess.run(["mogrify", "-format", "png", "-alpha", "on", os.path.join(resized_dir, "*.png")], check=False)
-    subprocess.run(["mogrify", "-fill", "black", "-colorize", "100", os.path.join(resized_dir, "*.png")], check=False)
+    png_files = glob.glob(os.path.join(resized_dir, "*.png"))
+    if png_files:
+        subprocess.run(["mogrify", "-resize", "50x50", *png_files], check=False)
+        subprocess.run(["mogrify", "-format", "png", "-alpha", "on", *png_files], check=False)
+        subprocess.run(["mogrify", "-fill", "black", "-colorize", "100", *png_files], check=False)
 
     # Process images with PIL
+    Image.MAX_IMAGE_PIXELS = 5_000_000
     for image_path in glob.glob(os.path.join(resized_dir, "*.png")):
         with Image.open(image_path).convert("RGBA").resize((50, 50), Image.Resampling.LANCZOS) as image:
             image.save(image_path)

@@ -11,7 +11,6 @@ from NiimPrintX.ui.UserConfig import load_user_config, merge_label_sizes
 class AppConfig:
     def __init__(self) -> None:
         self.os_system = platform.system()
-        self.screen_dpi = 72
         self.text_items = {}
         self.image_items = {}
         self.current_selected = None

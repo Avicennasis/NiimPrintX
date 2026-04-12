@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+import logging
 import threading
 import tkinter as tk
 from tkinter import messagebox, ttk
@@ -64,8 +65,6 @@ class LabelPrinterApp(tk.Tk):
     def create_widgets(self):
         # Top frame to hold the canvas and Notebook
         self.app_config.frames["top_frame"] = tk.Frame(self)
-        self.app_config.screen_dpi = int(self.app_config.frames["top_frame"].winfo_fpixels("1i"))
-
         self.app_config.frames["top_frame"].pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         self.tab_control = ttk.Notebook(self)
@@ -102,6 +101,11 @@ class LabelPrinterApp(tk.Tk):
     def on_close(self):
         if self._shutting_down:
             return
+        # H21: If load_resources failed before app_config was created, skip the
+        # quit dialog entirely — there is nothing to clean up.
+        if getattr(self, "app_config", None) is None and getattr(self, "print_option", None) is None:
+            self.destroy()
+            return
         if getattr(self, "app_config", None) and self.app_config.print_job:
             if not messagebox.askokcancel("Quit", "A print job is in progress. Quit anyway?"):
                 return
@@ -137,7 +141,23 @@ class LabelPrinterApp(tk.Tk):
         self._poll_shutdown()
 
     def _poll_shutdown(self, attempts=0):
-        if self._shutdown_complete.is_set() or attempts >= 30:
+        if self._shutdown_complete.is_set():
+            # Clean shutdown: coroutine finished, safe to stop the loop.
+            with contextlib.suppress(RuntimeError):
+                self.async_loop.call_soon_threadsafe(self.async_loop.stop)
+            with contextlib.suppress(tk.TclError):
+                self.destroy()
+        elif attempts >= 30:
+            # C3: Max attempts exhausted (3 s).  The _shutdown coroutine may
+            # still be suspended inside asyncio.gather.  Calling loop.stop()
+            # directly from the Tk thread while gather is running can strand
+            # the coroutine.  Use call_soon_threadsafe so the stop is
+            # dispatched on the loop's own thread, giving gather a chance to
+            # finalise before the loop exits.
+            logging.getLogger(__name__).warning(
+                "Shutdown timed out after %d poll attempts; force-stopping event loop",
+                attempts,
+            )
             with contextlib.suppress(RuntimeError):
                 self.async_loop.call_soon_threadsafe(self.async_loop.stop)
             with contextlib.suppress(tk.TclError):

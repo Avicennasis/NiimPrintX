@@ -64,6 +64,9 @@ def merge_label_sizes(builtin_sizes: dict[str, Any], user_config: dict[str, Any]
     """Merge user device configs into built-in label sizes."""
     builtin_sizes = copy.deepcopy(builtin_sizes)
     user_devices = user_config.get("devices", {})
+    if not isinstance(user_devices, dict):
+        logger.warning(f"'devices' in user config must be a table, got {type(user_devices).__name__}; ignoring")
+        return builtin_sizes
     for device_name, device_conf in user_devices.items():
         if not isinstance(device_conf, dict):
             continue
@@ -79,6 +82,11 @@ def merge_label_sizes(builtin_sizes: dict[str, Any], user_config: dict[str, Any]
                 for label, dims in device_conf["size"].items():
                     validated = _validate_dims(dims)
                     if validated:
+                        if label in builtin_sizes[device_name]["size"]:
+                            logger.warning(
+                                f"Overwriting built-in label '{label}' for device '{device_name}' "
+                                f"with user dimensions {validated}"
+                            )
                         builtin_sizes[device_name]["size"][label] = validated
                     else:
                         logger.warning(f"Skipping invalid dims for {device_name!r} label {label!r}: {dims!r}")

@@ -24,7 +24,6 @@ a = Analysis(
     excludes=[],
     noarchive=False,
     optimize=0,
-    strip=True,
 )
 
 # PYZ step
