@@ -44,6 +44,19 @@
 
 ## Completed
 
+### Round 13 Deep Code Review (2026-04-12, seventh session)
+
+- [x] **25-agent parallel burn** — full codebase audit across every .py file + CI/CD + build specs
+- [x] **BLE hardening** — stale requirements.txt (bleak 0.22 → 3.0), print_started flag prevents double end_print
+- [x] **Protocol bounds** — set_dimension/set_dimensionV2 height/width validation (1-65535)
+- [x] **Lifecycle fixes** — asyncio.all_tasks() loop param removed (Python 3.10+), destroy() TclError guard, heartbeat CancelledError handler
+- [x] **PrinterOperation safety** — printer assigned only after successful connect, nulled on disconnect failure, printer_connected reset on heartbeat error
+- [x] **UI robustness** — ImageOperation bbox None guard, TextOperation text_id guards in move/resize, StatusBar TclError guard, density default clamped to device max, rotated image leak fixed
+- [x] **Type safety** — ImageItem TypedDict gains bbox/handle fields, TextOperation WandDrawing/Color set to None on ImportError
+- [x] **Config validation** — _safe_int rejects booleans, _validate_dims rejects infinity/NaN, logger_enable handles negative verbosity
+- [x] **CI** — --cov-fail-under=90 enforced in pytest invocation, requirements.txt synced with pyproject.toml
+- [x] **AppConfig** — mm_to_pixels uses round() instead of int() (eliminates systematic under-sizing)
+
 ### Round 12 Deep Code Review (2026-04-12, seventh session)
 
 - [x] **Bleak 0.22 → 3.0 migration** — pyproject.toml `^3.0`, poetry.lock updated, all 309 tests pass

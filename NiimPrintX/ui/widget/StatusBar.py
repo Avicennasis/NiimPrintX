@@ -35,5 +35,8 @@ class StatusBar:
         else:
             text = "Not Connected"
             color = "red"
-        self.status_label.config(text=text, fg=color)
-        self.circle_canvas.itemconfig(self.circle_id, fill=color)
+        try:
+            self.status_label.config(text=text, fg=color)
+            self.circle_canvas.itemconfig(self.circle_id, fill=color)
+        except tk.TclError:
+            pass

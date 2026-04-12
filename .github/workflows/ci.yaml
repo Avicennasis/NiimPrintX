@@ -36,7 +36,7 @@ jobs:
         run: poetry run niimprintx --help
 
       - name: Run tests
-        run: poetry run pytest -v --cov=NiimPrintX --cov-report=term-missing --junitxml=test-results.xml
+        run: poetry run pytest -v --cov=NiimPrintX --cov-report=term-missing --cov-fail-under=90 --junitxml=test-results.xml
 
       - name: Upload test results
         if: always()

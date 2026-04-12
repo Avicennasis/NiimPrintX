@@ -13,12 +13,12 @@ class PrinterOperation:
     async def printer_connect(self, model):
         try:
             device = await find_device(model)
-            self.printer = PrinterClient(device)
-            if await self.printer.connect():
+            client = PrinterClient(device)
+            if await client.connect():
+                self.printer = client
                 self.config.printer_connected = True
                 return True
             self.config.printer_connected = False
-            self.printer = None
             return False
         except Exception as e:
             logger.error(f"Cannot connect to printer {model}: {e}")
@@ -35,6 +35,7 @@ class PrinterOperation:
             return True
         except Exception as e:
             self.config.printer_connected = False
+            self.printer = None
             logger.error(f"Disconnect error: {e}")
             return False
 
@@ -63,5 +64,6 @@ class PrinterOperation:
             return False, {}
         except Exception as e:
             logger.error(f"Heartbeat error: {e}")
+            self.config.printer_connected = False
             self.printer = None
             return False, {}

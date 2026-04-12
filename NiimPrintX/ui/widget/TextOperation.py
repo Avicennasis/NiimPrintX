@@ -8,6 +8,8 @@ try:
     from wand.image import Image as WandImage
 except ImportError:
     WandImage = None
+    WandDrawing = None
+    Color = None
 
 
 class TextOperation:
@@ -154,6 +156,8 @@ class TextOperation:
         self.config.canvas.tag_bind(handle, "<Button-1>", lambda e: self.start_resize(e, text_id))
 
     def move_text(self, event, text_id):
+        if text_id not in self.config.text_items:
+            return
         dx = event.x - self.config.text_items[text_id]["initial_x"]
         dy = event.y - self.config.text_items[text_id]["initial_y"]
         self.config.canvas.move(text_id, dx, dy)
@@ -168,6 +172,8 @@ class TextOperation:
         self.config.text_items[text_id]["initial_size"] = self.config.text_items[text_id]["font_props"]["size"]
 
     def resize_text(self, event, text_id):
+        if text_id not in self.config.text_items:
+            return
         dy = event.y - self.config.text_items[text_id]["initial_y"]
         new_size = max(8, self.config.text_items[text_id]["initial_size"] + round(dy / 10))
         # Skip expensive re-render if size hasn't actually changed

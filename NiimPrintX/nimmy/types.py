@@ -45,3 +45,5 @@ class TextItem(TypedDict):
 class ImageItem(TypedDict):
     image: Any
     original_image: Any
+    bbox: int | None
+    handle: int | None

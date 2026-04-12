@@ -126,7 +126,7 @@ class LabelPrinterApp(tk.Tk):
             if hasattr(self, "print_option"):
                 self.print_option._heartbeat_active = False
             # Cancel remaining tasks
-            tasks = [t for t in asyncio.all_tasks(self.async_loop) if not t.done() and t is not asyncio.current_task()]
+            tasks = [t for t in asyncio.all_tasks() if not t.done() and t is not asyncio.current_task()]
             for t in tasks:
                 t.cancel()
             if tasks:
@@ -140,7 +140,8 @@ class LabelPrinterApp(tk.Tk):
         if self._shutdown_complete.is_set() or attempts >= 30:
             with contextlib.suppress(RuntimeError):
                 self.async_loop.call_soon_threadsafe(self.async_loop.stop)
-            self.destroy()
+            with contextlib.suppress(tk.TclError):
+                self.destroy()
         else:
             self.after(100, lambda: self._poll_shutdown(attempts + 1))
 

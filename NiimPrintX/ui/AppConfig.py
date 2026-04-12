@@ -128,4 +128,4 @@ class AppConfig:
     def mm_to_pixels(self, mm: float) -> int:
         """Convert millimeters to pixels using the current device's DPI."""
         inches = mm / 25.4
-        return int(inches * self.label_sizes[self.device]["print_dpi"])
+        return round(inches * self.label_sizes[self.device]["print_dpi"])

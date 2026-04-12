@@ -195,6 +195,7 @@ class PrinterClient:
         v2: bool = False,
     ) -> None:
         async with self._print_lock:
+            print_started = False
             try:
                 await self.set_label_density(density)
                 await self.set_label_type(1)
@@ -203,6 +204,7 @@ class PrinterClient:
                     await self.start_printV2(quantity=quantity)
                 else:
                     await self.start_print()
+                print_started = True
 
                 await self.start_page_print()
 
@@ -254,7 +256,7 @@ class PrinterClient:
                 await self.end_print()
             except BaseException as e:
                 logger.error(f"Print job failed: {e}")
-                if self.transport.client and self.transport.client.is_connected:
+                if print_started and self.transport.client and self.transport.client.is_connected:
                     with contextlib.suppress(Exception):
                         await self.end_print()
                 raise
@@ -459,12 +461,20 @@ class PrinterClient:
         return bool(packet.data[0])
 
     async def set_dimension(self, height: int, width: int) -> bool:
+        if not 1 <= height <= 65535:
+            raise ValueError(f"Height must be 1-65535, got {height}")
+        if not 1 <= width <= 65535:
+            raise ValueError(f"Width must be 1-65535, got {width}")
         packet = await self.send_command(RequestCodeEnum.SET_DIMENSION, struct.pack(">HH", height, width))
         if len(packet.data) < 1:
             raise PrinterException("Empty response from printer for SET_DIMENSION")
         return bool(packet.data[0])
 
     async def set_dimensionV2(self, height: int, width: int, copies: int) -> bool:
+        if not 1 <= height <= 65535:
+            raise ValueError(f"Height must be 1-65535, got {height}")
+        if not 1 <= width <= 65535:
+            raise ValueError(f"Width must be 1-65535, got {width}")
         logger.debug(f"Setting dimension: {height}x{width}")
         packet = await self.send_command(RequestCodeEnum.SET_DIMENSION, struct.pack(">HHH", height, width, copies))
         if len(packet.data) < 1:

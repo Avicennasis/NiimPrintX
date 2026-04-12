@@ -196,7 +196,7 @@ class FileMenu:
                 "handle": None,
                 "bbox": None,
             }
-        except (OSError, ValueError, TypeError, PIL.UnidentifiedImageError) as e:
+        except (OSError, ValueError, TypeError, KeyError, PIL.UnidentifiedImageError) as e:
             messagebox.showwarning("Warning", f"Failed to load text item: {e}")
 
     def load_image(self, data):
@@ -246,5 +246,5 @@ class FileMenu:
             self.config.canvas.tag_bind(
                 image_id, "<B1-Motion>", lambda e, img_id=image_id: self.root.icon_tab.image_op.move_image(e, img_id)
             )
-        except (OSError, ValueError, TypeError, PIL.UnidentifiedImageError) as e:
+        except (OSError, ValueError, TypeError, KeyError, PIL.UnidentifiedImageError) as e:
             messagebox.showwarning("Warning", f"Failed to load image item: {e}")

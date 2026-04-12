@@ -43,7 +43,7 @@ def setup_logger() -> None:
 # ---------------------------------------------------
 def logger_enable(verbose: int) -> None:
     # At verbose=0, keep the handlers setup_logger() already configured
-    if verbose == 0:
+    if verbose <= 0:
         return
 
     # Mapping verbosity level to Loguru levels

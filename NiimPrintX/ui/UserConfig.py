@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import math
 import os
 import tomllib
 from typing import Any
@@ -33,6 +34,8 @@ def _validate_dims(dims: Any) -> tuple[float, float] | None:
         return None
     try:
         w, h = float(dims[0]), float(dims[1])
+        if not (math.isfinite(w) and math.isfinite(h)):
+            return None
         if w <= 0 or h <= 0:
             return None
         return (w, h)
@@ -42,6 +45,9 @@ def _validate_dims(dims: Any) -> tuple[float, float] | None:
 
 def _safe_int(value: Any, default: int) -> int:
     """Convert to int with fallback for invalid TOML values."""
+    if isinstance(value, bool):
+        logger.warning(f"Expected integer, got boolean {value!r}; using default {default}")
+        return default
     if isinstance(value, float) and not value.is_integer():
         logger.warning(f"Expected integer, got {value}; using default {default}")
         return default

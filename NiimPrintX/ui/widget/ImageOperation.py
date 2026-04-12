@@ -128,6 +128,8 @@ class ImageOperation:
     def update_image_bbox_and_handle(self, image_id):
         """Update bounding box and handle for the image."""
         bbox_coords = self.config.canvas.bbox(image_id)
+        if bbox_coords is None:
+            return
         self.config.canvas.coords(self.config.image_items[image_id]["bbox"], bbox_coords)
         self.config.canvas.coords(
             self.config.image_items[image_id]["handle"],

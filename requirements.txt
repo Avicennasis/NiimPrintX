@@ -3,12 +3,12 @@
 # For the canonical dependency specification, see pyproject.toml.
 # To install: pip install -r requirements.txt
 # For GUI deps: pip install pycairo wand sv-ttk
-bleak>=0.22.3,<0.23
-click>=8.1.7,<9
+bleak>=3.0,<4
+click>=8.3,<9
 loguru>=0.7.2,<1
 pillow>=12.1.1,<13
 platformdirs>=4.0,<5
-rich>=13.7.1,<14
+rich>=14.0,<15
 # Optional GUI dependencies (install manually: pip install pycairo wand sv-ttk)
 # pycairo>=1.26.0,<2
 # wand>=0.6.13,<1

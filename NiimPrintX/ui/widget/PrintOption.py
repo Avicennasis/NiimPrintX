@@ -32,6 +32,14 @@ class PrintOption:
 
     async def schedule_heartbeat(self):
         self._heartbeat_active = True
+        try:
+            await self._heartbeat_loop()
+        except asyncio.CancelledError:
+            pass
+        finally:
+            self._heartbeat_active = False
+
+    async def _heartbeat_loop(self):
         while self._heartbeat_active:
             try:
                 if self.print_op.printer and not self.config.print_job:
@@ -231,7 +239,7 @@ class PrintOption:
         option_frame.grid(row=1, column=0, columnspan=4, padx=20, pady=10, sticky="ew")
 
         self.print_density = tk.StringVar()
-        self.print_density.set("3")
+        self.print_density.set(str(min(3, self.config.label_sizes[self.config.device]["density"])))
         tk.Label(option_frame, text="Density").grid(row=0, column=0, padx=5, pady=5, sticky="e")
         density_slider = tk.Spinbox(
             option_frame,
@@ -375,8 +383,10 @@ class PrintOption:
 
         # PIL rotates counter-clockwise, so negate for clockwise
         rotation = -rotation
-        image = image.rotate(rotation, Image.NEAREST, expand=True)
-        future = asyncio.run_coroutine_threadsafe(self.print_op.print(image, density, quantity), self.root.async_loop)
+        self._rotated_image = image.rotate(rotation, Image.NEAREST, expand=True)
+        future = asyncio.run_coroutine_threadsafe(
+            self.print_op.print(self._rotated_image, density, quantity), self.root.async_loop
+        )
         future.add_done_callback(self._print_handler)
 
     def _print_handler(self, future):
@@ -387,6 +397,10 @@ class PrintOption:
 
         def _update():
             self.config.print_job = False
+            if hasattr(self, "_rotated_image") and self._rotated_image is not None:
+                with contextlib.suppress(Exception):
+                    self._rotated_image.close()
+                self._rotated_image = None
             if result:
                 with contextlib.suppress(tk.TclError):
                     self.root.status_bar.update_status(result)
