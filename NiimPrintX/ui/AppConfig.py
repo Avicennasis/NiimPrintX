@@ -5,7 +5,7 @@ import platform
 
 import platformdirs
 
-from NiimPrintX.ui.UserConfig import load_user_config, merge_label_sizes
+from NiimPrintX.nimmy.userconfig import load_user_config, merge_label_sizes
 
 
 class AppConfig:

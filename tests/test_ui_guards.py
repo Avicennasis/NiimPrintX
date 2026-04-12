@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 
 from NiimPrintX.nimmy.packet import NiimbotPacket, packet_to_int
-from NiimPrintX.ui.UserConfig import _validate_dims, merge_label_sizes
+from NiimPrintX.nimmy.userconfig import _validate_dims, merge_label_sizes
 
 # ---------------------------------------------------------------------------
 # 1. AppConfig.device defaults to first key in label_sizes

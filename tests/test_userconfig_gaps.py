@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-from NiimPrintX.ui.UserConfig import load_user_config, merge_label_sizes
+from NiimPrintX.nimmy.userconfig import load_user_config, merge_label_sizes
 
 
 def _make_builtin():
@@ -33,7 +33,7 @@ def test_load_user_config_os_error():
         tmp_path = f.name
     try:
         with (
-            patch("NiimPrintX.ui.UserConfig.CONFIG_FILE", Path(tmp_path)),
+            patch("NiimPrintX.nimmy.userconfig.CONFIG_FILE", Path(tmp_path)),
             patch("builtins.open", side_effect=OSError("permission denied")),
         ):
             result = load_user_config()
@@ -82,7 +82,7 @@ def test_merge_ignores_non_size_keys_on_builtin():
             },
         },
     }
-    with patch("NiimPrintX.ui.UserConfig.logger") as mock_logger:
+    with patch("NiimPrintX.nimmy.userconfig.logger") as mock_logger:
         result = merge_label_sizes(builtin, user_config)
     # density should be the original, NOT 5
     assert result["d110"]["density"] == 3
@@ -142,7 +142,7 @@ def test_merge_custom_device_invalid_rotation():
             },
         },
     }
-    with patch("NiimPrintX.ui.UserConfig.logger") as mock_logger:
+    with patch("NiimPrintX.nimmy.userconfig.logger") as mock_logger:
         result = merge_label_sizes(builtin, user_config)
     assert result["z999"]["rotation"] == 270
     # Should have logged a warning about invalid rotation

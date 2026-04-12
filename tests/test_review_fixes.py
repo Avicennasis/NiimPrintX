@@ -65,13 +65,13 @@ async def test_heartbeat_unknown_length_returns_all_none(make_client):
 
 
 def test_validate_dims_zero_rejected():
-    from NiimPrintX.ui.UserConfig import _validate_dims
+    from NiimPrintX.nimmy.userconfig import _validate_dims
 
     assert _validate_dims([0, 15]) is None
 
 
 def test_validate_dims_negative_rejected():
-    from NiimPrintX.ui.UserConfig import _validate_dims
+    from NiimPrintX.nimmy.userconfig import _validate_dims
 
     assert _validate_dims([-5, 15]) is None
 

@@ -10,7 +10,7 @@ from NiimPrintX.nimmy.exception import BLEException, PrinterException
 from NiimPrintX.nimmy.logger_config import logger_enable
 from NiimPrintX.nimmy.packet import NiimbotPacket
 from NiimPrintX.nimmy.printer import RequestCodeEnum
-from NiimPrintX.ui.UserConfig import _safe_int
+from NiimPrintX.nimmy.userconfig import _safe_int
 
 # ---------------------------------------------------------------------------
 # 1. find_characteristics — no matching characteristic raises PrinterException

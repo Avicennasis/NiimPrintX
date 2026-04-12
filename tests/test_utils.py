@@ -2,8 +2,8 @@ from io import StringIO
 
 import pytest
 
+from NiimPrintX.cli.helper import print_error, print_info, print_success
 from NiimPrintX.nimmy.exception import BLEException, NiimPrintXException, PrinterException
-from NiimPrintX.nimmy.helper import print_error, print_info, print_success
 from NiimPrintX.nimmy.logger_config import get_logger, logger_enable, setup_logger
 from NiimPrintX.nimmy.packet import NiimbotPacket, packet_to_int
 
@@ -60,7 +60,7 @@ def test_print_success_writes_to_stdout():
     buf = StringIO()
     cap_console = Console(file=buf, color_system=None)
 
-    import NiimPrintX.nimmy.helper as helper_mod
+    import NiimPrintX.cli.helper as helper_mod
 
     orig = helper_mod.console
     helper_mod.console = cap_console
@@ -80,7 +80,7 @@ def test_print_error_writes_to_stderr():
     buf = StringIO()
     cap_console = Console(file=buf, color_system=None)
 
-    import NiimPrintX.nimmy.helper as helper_mod
+    import NiimPrintX.cli.helper as helper_mod
 
     orig = helper_mod.err_console
     helper_mod.err_console = cap_console
@@ -100,7 +100,7 @@ def test_print_info_writes_message():
     buf = StringIO()
     cap_console = Console(file=buf, color_system=None)
 
-    import NiimPrintX.nimmy.helper as helper_mod
+    import NiimPrintX.cli.helper as helper_mod
 
     orig = helper_mod.console
     helper_mod.console = cap_console
@@ -122,7 +122,7 @@ def test_print_info_writes_to_stdout():
     # Build a Console that writes to our buffer (no color to keep output clean)
     cap_console = Console(file=buf, color_system=None)
 
-    import NiimPrintX.nimmy.helper as helper_mod
+    import NiimPrintX.cli.helper as helper_mod
 
     orig = helper_mod.console
     helper_mod.console = cap_console
@@ -142,7 +142,7 @@ def test_print_info_escapes_rich_markup():
     buf = StringIO()
     cap_console = Console(file=buf, color_system=None)
 
-    import NiimPrintX.nimmy.helper as helper_mod
+    import NiimPrintX.cli.helper as helper_mod
 
     orig = helper_mod.console
     helper_mod.console = cap_console
@@ -163,7 +163,7 @@ def test_print_error_escapes_rich_markup():
     buf = StringIO()
     cap_console = Console(file=buf, color_system=None)
 
-    import NiimPrintX.nimmy.helper as helper_mod
+    import NiimPrintX.cli.helper as helper_mod
 
     orig = helper_mod.err_console
     helper_mod.err_console = cap_console
@@ -183,7 +183,7 @@ def test_print_success_no_trailing_space():
     buf = StringIO()
     cap_console = Console(file=buf, color_system=None)
 
-    import NiimPrintX.nimmy.helper as helper_mod
+    import NiimPrintX.cli.helper as helper_mod
 
     orig = helper_mod.console
     helper_mod.console = cap_console

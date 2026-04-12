@@ -6,8 +6,8 @@ import sys
 import click
 from PIL import Image
 
+from NiimPrintX.cli.helper import print_error, print_info, print_success
 from NiimPrintX.nimmy.bluetooth import find_device
-from NiimPrintX.nimmy.helper import print_error, print_info, print_success
 from NiimPrintX.nimmy.logger_config import get_logger, logger_enable, setup_logger
 from NiimPrintX.nimmy.printer import DEFAULT_MAX_DENSITY, MODEL_MAX_DENSITY, V2_MODELS, InfoEnum, PrinterClient
 
