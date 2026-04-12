@@ -201,7 +201,7 @@ class TextOperation:
             self.parent.add_button.config(text="Add", command=self.add_text_to_canvas)
 
     def delete_bounding_box(self, text_id):
-        if "bbox" in self.config.text_items[text_id]:
+        if self.config.text_items[text_id].get("bbox") is not None:
             self.config.canvas.delete(self.config.text_items[text_id]["bbox"])
             self.config.canvas.delete(self.config.text_items[text_id]["handle"])
             self.config.text_items[text_id]["bbox"] = None

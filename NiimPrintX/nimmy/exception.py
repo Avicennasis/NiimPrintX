@@ -11,4 +11,4 @@ class PrinterException(NiimPrintXException):
 
 
 class ConfigException(NiimPrintXException):
-    pass
+    """Raised for configuration validation or loading errors."""

@@ -134,6 +134,7 @@ class TabbedIconGrid(tk.Frame):
         icons = []
         for filename, pil_img, sub_name in pil_images:
             photo = ImageTk.PhotoImage(pil_img)
+            pil_img.close()
             icons.append((filename, photo, sub_name))
 
         # Retain references to prevent GC

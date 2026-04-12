@@ -50,7 +50,8 @@ class LabelPrinterApp(tk.Tk):
                 style = ttk.Style(self)
                 style.theme_use("clam")
 
-        loop_ready.wait(timeout=2)
+        if not loop_ready.wait(timeout=2):
+            raise RuntimeError("Asyncio event loop failed to start within 2 seconds")
         self.create_menu()
         self.create_widgets()
         self.printer = None

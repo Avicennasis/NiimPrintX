@@ -15,6 +15,10 @@ logger = get_logger()
 
 V2_MODELS = frozenset({"b1", "b18", "b21"})
 
+# Maximum density per model (from hardware specs)
+MODEL_MAX_DENSITY = {"b21": 5}  # All other models default to DEFAULT_MAX_DENSITY
+DEFAULT_MAX_DENSITY = 3
+
 
 class InfoEnum(enum.IntEnum):
     DENSITY = 1
@@ -200,7 +204,10 @@ class PrinterClient:
                     effective_height = max(0, effective_height + vertical_offset)
 
                 if effective_width == 0 or effective_height == 0:
-                    raise PrinterException("Image produces no data after applying offsets")
+                    raise PrinterException(
+                        f"Image produces no data after applying offsets "
+                        f"(effective size: {effective_width}x{effective_height})"
+                    )
 
                 if v2:
                     await self.set_dimensionV2(effective_height, effective_width, quantity)
@@ -239,7 +246,7 @@ class PrinterClient:
 
     def _encode_image(self, image: Image.Image, vertical_offset=0, horizontal_offset=0):
         if image.width > (255 - 6) * 8:  # 6-byte header (>HBBBB): row_idx(2)+counts(3)+flag(1)
-            raise PrinterException(f"Image width {image.width}px exceeds protocol limit")
+            raise PrinterException(f"Image width {image.width}px exceeds protocol limit of {(255 - 6) * 8}px")
 
         # Convert the image to monochrome, closing intermediate images
         gray = image.convert("L")
@@ -274,13 +281,16 @@ class PrinterClient:
                 old.close()
 
             if img.width == 0 or img.height == 0:
-                raise PrinterException("Image produces no data after applying offsets")
+                raise PrinterException(
+                    f"Image produces no data after applying offsets (effective size: {img.width}x{img.height})"
+                )
 
             byte_count = math.ceil(img.width / 8)
             all_bytes = img.tobytes()
+            mv = memoryview(all_bytes)
 
             for y in range(img.height):
-                line_data = all_bytes[y * byte_count : (y + 1) * byte_count]
+                line_data = bytes(mv[y * byte_count : (y + 1) * byte_count])
                 counts = (0, 0, 0)  # It seems like you can always send zeros
                 header = struct.pack(">HBBBB", y, *counts, 1)
                 pkt = NiimbotPacket(0x85, header + line_data)
@@ -292,7 +302,7 @@ class PrinterClient:
         response = await self.send_command(RequestCodeEnum.GET_INFO, bytes((key,)))
 
         if len(response.data) < 1:
-            raise PrinterException(f"Empty response for GET_INFO key {key}")
+            raise PrinterException(f"Empty response from printer for GET_INFO key {key}")
 
         match key:
             case InfoEnum.DEVICESERIAL:
@@ -378,7 +388,7 @@ class PrinterClient:
             raise ValueError(f"Label type must be 1-3, got {n}")
         packet = await self.send_command(RequestCodeEnum.SET_LABEL_TYPE, bytes((n,)))
         if len(packet.data) < 1:
-            raise PrinterException("Empty response from printer")
+            raise PrinterException("Empty response from printer for SET_LABEL_TYPE")
         return bool(packet.data[0])
 
     async def set_label_density(self, n):
@@ -386,13 +396,13 @@ class PrinterClient:
             raise ValueError(f"Label density must be 1-5, got {n}")
         packet = await self.send_command(RequestCodeEnum.SET_LABEL_DENSITY, bytes((n,)))
         if len(packet.data) < 1:
-            raise PrinterException("Empty response from printer")
+            raise PrinterException("Empty response from printer for SET_LABEL_DENSITY")
         return bool(packet.data[0])
 
     async def start_print(self):
         packet = await self.send_command(RequestCodeEnum.START_PRINT, b"\x01")
         if len(packet.data) < 1:
-            raise PrinterException("Empty response from printer")
+            raise PrinterException("Empty response from printer for START_PRINT")
         return bool(packet.data[0])
 
     async def start_printV2(self, quantity):
@@ -401,38 +411,38 @@ class PrinterClient:
         command = struct.pack(">H", quantity)
         packet = await self.send_command(RequestCodeEnum.START_PRINT, b"\x00" + command + b"\x00\x00\x00\x00")
         if len(packet.data) < 1:
-            raise PrinterException("Empty response from printer")
+            raise PrinterException("Empty response from printer for START_PRINT")
         return bool(packet.data[0])
 
     async def end_print(self):
         packet = await self.send_command(RequestCodeEnum.END_PRINT, b"\x01")
         if len(packet.data) < 1:
-            raise PrinterException("Empty response from printer")
+            raise PrinterException("Empty response from printer for END_PRINT")
         return bool(packet.data[0])
 
     async def start_page_print(self):
         packet = await self.send_command(RequestCodeEnum.START_PAGE_PRINT, b"\x01")
         if len(packet.data) < 1:
-            raise PrinterException("Empty response from printer")
+            raise PrinterException("Empty response from printer for START_PAGE_PRINT")
         return bool(packet.data[0])
 
     async def end_page_print(self):
         packet = await self.send_command(RequestCodeEnum.END_PAGE_PRINT, b"\x01")
         if len(packet.data) < 1:
-            raise PrinterException("Empty response from printer")
+            raise PrinterException("Empty response from printer for END_PAGE_PRINT")
         return bool(packet.data[0])
 
     async def set_dimension(self, height, width):
         packet = await self.send_command(RequestCodeEnum.SET_DIMENSION, struct.pack(">HH", height, width))
         if len(packet.data) < 1:
-            raise PrinterException("Empty response from printer")
+            raise PrinterException("Empty response from printer for SET_DIMENSION")
         return bool(packet.data[0])
 
     async def set_dimensionV2(self, height, width, copies):
         logger.debug(f"Setting dimension: {height}x{width}")
         packet = await self.send_command(RequestCodeEnum.SET_DIMENSION, struct.pack(">HHH", height, width, copies))
         if len(packet.data) < 1:
-            raise PrinterException("Empty response from printer")
+            raise PrinterException("Empty response from printer for SET_DIMENSION")
         return bool(packet.data[0])
 
     async def set_quantity(self, n):
@@ -440,7 +450,7 @@ class PrinterClient:
             raise ValueError(f"Quantity must be 1-65535, got {n}")
         packet = await self.send_command(RequestCodeEnum.SET_QUANTITY, struct.pack(">H", n))
         if len(packet.data) < 1:
-            raise PrinterException("Empty response from printer")
+            raise PrinterException("Empty response from printer for SET_QUANTITY")
         return bool(packet.data[0])
 
     async def get_print_status(self):

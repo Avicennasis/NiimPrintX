@@ -202,6 +202,9 @@ class PrintOption:
         popup.grab_set()  # Make modal — prevents opening multiple popups
 
         # Load the PNG image with PIL and convert to ImageTk
+        if hasattr(self, "print_image") and self.print_image is not None:
+            with contextlib.suppress(Exception):
+                self.print_image.close()
         self.print_image = Image.open(filename)
         self.print_image.load()  # Force decode before tempfile is removed
         img_tk = ImageTk.PhotoImage(self.print_image)
@@ -292,6 +295,10 @@ class PrintOption:
         def _on_popup_close():
             with contextlib.suppress(tk.TclError):
                 self.toolbar_print_button.config(state=tk.NORMAL)
+            if hasattr(self, "print_image") and self.print_image is not None:
+                with contextlib.suppress(Exception):
+                    self.print_image.close()
+                self.print_image = None
             popup.destroy()
 
         close_button = tk.Button(button_frame, text="Close", command=_on_popup_close)
@@ -320,6 +327,9 @@ class PrintOption:
         )
         if result is None:
             return
+        if hasattr(self, "print_image") and self.print_image is not None:
+            with contextlib.suppress(Exception):
+                self.print_image.close()
         self.print_image = result
         img_tk = ImageTk.PhotoImage(self.print_image)
         self.image_label.config(image=img_tk)

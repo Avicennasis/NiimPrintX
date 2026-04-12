@@ -1,3 +1,5 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 from click.testing import CliRunner
 from PIL import Image
@@ -101,3 +103,96 @@ def test_density_cap_message(runner):
         Image.new("RGB", (200, 100)).save("test.png")
         result = runner.invoke(niimbot_cli, ["print", "-m", "d110", "-d", "4", "-i", "test.png"])
         assert "capping" in result.output.lower() or result.exit_code != 0
+
+
+def test_print_connect_failure(runner):
+    """Printer found but connect() returns False."""
+    mock_device = MagicMock()
+    mock_device.name = "D110"
+    mock_printer = AsyncMock()
+    mock_printer.connect.return_value = False
+    mock_printer.disconnect.return_value = None
+
+    with runner.isolated_filesystem():
+        Image.new("RGB", (200, 100)).save("test.png")
+        with (
+            patch("NiimPrintX.cli.command.find_device", new_callable=AsyncMock, return_value=mock_device),
+            patch("NiimPrintX.cli.command.PrinterClient", return_value=mock_printer),
+        ):
+            result = runner.invoke(niimbot_cli, ["print", "-m", "d110", "-i", "test.png"])
+            assert result.exit_code == 1
+            assert "connect" in result.output.lower() or "failed" in result.output.lower()
+
+
+def test_print_image_too_tall(runner):
+    """Image exceeding 65535px height should be rejected."""
+    with runner.isolated_filesystem():
+        Image.new("RGB", (100, 70000)).save("tall.png")
+        result = runner.invoke(niimbot_cli, ["print", "-m", "d110", "-i", "tall.png"])
+        assert result.exit_code == 1
+        assert "height" in result.output.lower() or "exceeds" in result.output.lower()
+
+
+def test_info_command_success(runner):
+    """Info command with mocked printer returns version strings."""
+    mock_device = MagicMock()
+    mock_device.name = "D110"
+    mock_printer = AsyncMock()
+    mock_printer.connect.return_value = True
+    mock_printer.disconnect.return_value = None
+    mock_printer.get_info.side_effect = lambda key: {
+        1: "SN-TEST-1234",  # DEVICESERIAL (11) mapped by call order
+        2: "V2.11",
+        3: "HW1.5",
+    }.get(mock_printer.get_info.call_count, "unknown")
+    # Simpler: return different values per InfoEnum
+    from NiimPrintX.nimmy.printer import InfoEnum
+
+    async def fake_get_info(info_enum):
+        return {
+            InfoEnum.DEVICESERIAL: "SN-TEST-1234",
+            InfoEnum.SOFTVERSION: "V2.11",
+            InfoEnum.HARDVERSION: "HW1.5",
+        }[info_enum]
+
+    mock_printer.get_info = AsyncMock(side_effect=fake_get_info)
+
+    with (
+        patch("NiimPrintX.cli.command.find_device", new_callable=AsyncMock, return_value=mock_device),
+        patch("NiimPrintX.cli.command.PrinterClient", return_value=mock_printer),
+    ):
+        result = runner.invoke(niimbot_cli, ["info", "-m", "d110"])
+        assert result.exit_code == 0
+        assert "V2.11" in result.output
+        assert "HW1.5" in result.output
+        assert "SN-TEST-1234" in result.output
+
+
+def test_print_rotation_applied(runner):
+    """Rotation flag -r 90 should swap image dimensions before printing."""
+    mock_device = MagicMock()
+    mock_device.name = "D110"
+    mock_printer = AsyncMock()
+    mock_printer.connect.return_value = True
+    mock_printer.disconnect.return_value = None
+    mock_printer.print_image.return_value = None
+
+    captured_image = {}
+
+    async def capture_print_image(image, **kwargs):
+        captured_image["width"] = image.width
+        captured_image["height"] = image.height
+
+    mock_printer.print_image = AsyncMock(side_effect=capture_print_image)
+
+    with runner.isolated_filesystem():
+        # 200 wide x 100 tall; after 90-degree rotation expect 100 wide x 200 tall
+        Image.new("RGB", (200, 100)).save("test.png")
+        with (
+            patch("NiimPrintX.cli.command.find_device", new_callable=AsyncMock, return_value=mock_device),
+            patch("NiimPrintX.cli.command.PrinterClient", return_value=mock_printer),
+        ):
+            result = runner.invoke(niimbot_cli, ["print", "-m", "d110", "-r", "90", "-i", "test.png"])
+            assert result.exit_code == 0
+            assert captured_image["width"] == 100
+            assert captured_image["height"] == 200

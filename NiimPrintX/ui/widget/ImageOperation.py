@@ -108,8 +108,6 @@ class ImageOperation:
             new_width = max(int(new_height * aspect), 20)
 
         # Resize the image to the new size
-        if new_width <= 0 or new_height <= 0:
-            return
         resized_image = original_image.resize((new_width, new_height), Image.Resampling.BILINEAR)
         img_tk = ImageTk.PhotoImage(resized_image)
         resized_image.close()

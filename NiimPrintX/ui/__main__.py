@@ -43,6 +43,7 @@ def main():
         app = LabelPrinterApp()
         image_path = resource_path("NiimPrintX/ui/assets/Niimprintx.png")
         splash = SplashScreen(image_path, app)  # Create the splash screen
+        splash.update()  # Force Tk to paint before blocking on load_resources
 
         app.load_resources()  # Start loading resources, then show the main window
         splash.destroy()

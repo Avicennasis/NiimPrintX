@@ -29,6 +29,13 @@ jobs:
         id: get_architecture
         run: echo "ARCH=$(uname -m)" >> $GITHUB_OUTPUT
 
+      - name: Validate tag
+        run: |
+          if [[ -z "${{ steps.get_tag_name.outputs.VERSION }}" ]]; then
+            echo "ERROR: VERSION is empty — this workflow must be triggered from a v* tag."
+            exit 1
+          fi
+
       - name: Checkout source code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4
 

@@ -1,6 +1,6 @@
 def packet_to_int(x):
     if not x.data:
-        raise ValueError("packet_to_int called on empty-data packet")
+        raise ValueError("Cannot convert empty packet data to integer")
     return int.from_bytes(x.data, "big")
 
 
@@ -13,10 +13,9 @@ class NiimbotPacket:
     def from_bytes(cls, pkt):
         if not isinstance(pkt, (bytes, bytearray, memoryview)):
             raise TypeError(f"from_bytes requires bytes-like object, got {type(pkt).__name__}")
-        if pkt is None or len(pkt) < 7:
+        if len(pkt) < 7:
             raise ValueError(
-                f"Packet too short: {len(pkt) if pkt else 0} bytes "
-                f"(minimum 7: header=2 + type=1 + len=1 + checksum=1 + footer=2)"
+                f"Packet too short: {len(pkt)} bytes (minimum 7: header=2 + type=1 + len=1 + checksum=1 + footer=2)"
             )
         if pkt[:2] != b"\x55\x55":
             raise ValueError(f"Invalid packet header: {pkt[:2].hex()}")

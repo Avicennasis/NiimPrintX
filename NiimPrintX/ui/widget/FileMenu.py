@@ -168,10 +168,12 @@ class FileMenu:
             PIL.Image.MAX_IMAGE_PIXELS = _MAX_LABEL_PIXELS
             font_image = Image.open(io.BytesIO(font_img_data))
             if font_image.width * font_image.height > _MAX_LABEL_PIXELS:
+                w, h = font_image.width, font_image.height
                 font_image.close()
-                raise ValueError(f"Image too large: {font_image.width}x{font_image.height}")
+                raise ValueError(f"Image too large: {w}x{h}")
             font_image.load()
             font_img_tk = ImageTk.PhotoImage(font_image)
+            font_image.close()
             text_id = self.config.canvas.create_image(coords[0], coords[1], image=font_img_tk, anchor="nw")
             self.config.canvas.tag_bind(
                 text_id, "<Button-1>", lambda event, tid=text_id: self.root.text_tab.text_op.select_text(event, tid)
@@ -202,16 +204,18 @@ class FileMenu:
             PIL.Image.MAX_IMAGE_PIXELS = _MAX_LABEL_PIXELS
             original_image = Image.open(io.BytesIO(original_image_data))
             if original_image.width * original_image.height > _MAX_LABEL_PIXELS:
+                w, h = original_image.width, original_image.height
                 original_image.close()
-                raise ValueError(f"Image too large: {original_image.width}x{original_image.height}")
+                raise ValueError(f"Image too large: {w}x{h}")
             original_image.load()
 
             image_data = base64.b64decode(data["image"])
             PIL.Image.MAX_IMAGE_PIXELS = _MAX_LABEL_PIXELS
             image = Image.open(io.BytesIO(image_data))
             if image.width * image.height > _MAX_LABEL_PIXELS:
+                w, h = image.width, image.height
                 image.close()
-                raise ValueError(f"Resized image too large: {image.width}x{image.height}")
+                raise ValueError(f"Resized image too large: {w}x{h}")
             image.load()  # force decode before BytesIO is GC'd
             img_tk = ImageTk.PhotoImage(image)
             image.close()

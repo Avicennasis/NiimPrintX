@@ -1,5 +1,5 @@
 import struct
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from PIL import Image
@@ -248,6 +248,65 @@ async def test_get_rfid_malformed_returns_none(make_client):
     client = make_client()
     # Valid start but truncated — will cause IndexError in parsing
     response_pkt = NiimbotPacket(RequestCodeEnum.GET_RFID, b"\x01\x02\x03")
+
+    async def fake_write(data, char_uuid):
+        client.notification_data = response_pkt.to_bytes()
+        client.notification_event.set()
+
+    client.transport.write = AsyncMock(side_effect=fake_write)
+    result = await client.get_rfid()
+    assert result is None
+
+
+async def test_get_rfid_empty_barcode_and_serial(make_client):
+    """RFID with barcode_len=0 and serial_len=0 should return empty strings
+    and correctly parse the 5-byte tail (total_len, used_len, type)."""
+    client = make_client()
+    uuid = b"\x10\x20\x30\x40\x50\x60\x70\x80"
+    barcode_len = bytes([0])  # 0-length barcode
+    serial_len = bytes([0])  # 0-length serial
+    tail = struct.pack(">HHB", 200, 75, 3)  # total, used, type
+    rfid_data = uuid + barcode_len + serial_len + tail
+    response_pkt = NiimbotPacket(RequestCodeEnum.GET_RFID, rfid_data)
+
+    async def fake_write(data, char_uuid):
+        client.notification_data = response_pkt.to_bytes()
+        client.notification_event.set()
+
+    client.transport.write = AsyncMock(side_effect=fake_write)
+    result = await client.get_rfid()
+    assert result is not None
+    assert result["uuid"] == uuid.hex()
+    assert result["barcode"] == ""
+    assert result["serial"] == ""
+    assert result["total_len"] == 200
+    assert result["used_len"] == 75
+    assert result["type"] == 3
+
+
+async def test_get_rfid_truncated_data(make_client):
+    """RFID data where barcode_len claims more bytes than available should
+    return None (IndexError or struct.error caught internally)."""
+    client = make_client()
+    uuid = b"\x01\x02\x03\x04\x05\x06\x07\x08"
+    # barcode_len=50 but only 2 bytes follow — will overflow when parsing
+    rfid_data = uuid + bytes([50]) + b"\xab\xcd"
+    response_pkt = NiimbotPacket(RequestCodeEnum.GET_RFID, rfid_data)
+
+    async def fake_write(data, char_uuid):
+        client.notification_data = response_pkt.to_bytes()
+        client.notification_event.set()
+
+    client.transport.write = AsyncMock(side_effect=fake_write)
+    result = await client.get_rfid()
+    assert result is None
+
+
+async def test_get_rfid_no_data(make_client):
+    """When send_command returns a packet with empty data, get_rfid should
+    return None (the `not data` guard)."""
+    client = make_client()
+    response_pkt = NiimbotPacket(RequestCodeEnum.GET_RFID, b"")
 
     async def fake_write(data, char_uuid):
         client.notification_data = response_pkt.to_bytes()
@@ -530,7 +589,7 @@ async def test_get_info_empty_response_raises(make_client):
 
     client.transport.write = AsyncMock(side_effect=fake_write)
 
-    with pytest.raises(PrinterException, match="Empty response for GET_INFO"):
+    with pytest.raises(PrinterException, match="Empty response from printer for GET_INFO"):
         await client.get_info(InfoEnum.SOFTVERSION)
 
 
@@ -591,3 +650,124 @@ async def test_print_job_status_poll_greater_than(make_client):
 
     # The poll should have exited after a single status check (page 2 >= 1)
     assert call_count == 1
+
+
+# ---------------------------------------------------------------------------
+# Coverage gap: end_page_print timeout after 200 retries
+# ---------------------------------------------------------------------------
+
+
+@patch("asyncio.sleep", new_callable=AsyncMock)
+async def test_end_page_print_timeout(mock_sleep, make_client):
+    """When end_page_print always returns False (data[0]==0), the 200-iteration
+    retry loop must exhaust and raise PrinterException('end_page_print timed out')."""
+    client = make_client()
+
+    async def fake_write(data, char_uuid):
+        pkt = NiimbotPacket.from_bytes(data)
+
+        if pkt.type == RequestCodeEnum.END_PAGE_PRINT:
+            # Return False (data[0] == 0) every time
+            resp = NiimbotPacket(RequestCodeEnum.END_PAGE_PRINT, b"\x00")
+        elif pkt.type == 0x85:
+            # Image data — write_raw doesn't use notifications
+            return
+        else:
+            # Generic success for setup commands
+            resp = NiimbotPacket(pkt.type, b"\x01")
+
+        client.notification_data = resp.to_bytes()
+        client.notification_event.set()
+
+    client.transport.write = AsyncMock(side_effect=fake_write)
+
+    img = Image.new("1", (100, 50), color=0)
+    with pytest.raises(PrinterException, match="end_page_print timed out"):
+        await client.print_image(img, quantity=1)
+
+
+# ---------------------------------------------------------------------------
+# Coverage gap: status poll timeout after max_status_checks retries
+# ---------------------------------------------------------------------------
+
+
+@patch("asyncio.sleep", new_callable=AsyncMock)
+async def test_status_poll_timeout(mock_sleep, make_client):
+    """When get_print_status always returns page=0 while quantity=1, the 600-
+    iteration poll loop must exhaust and raise PrinterException about status
+    timeout."""
+    client = make_client()
+
+    async def fake_write(data, char_uuid):
+        pkt = NiimbotPacket.from_bytes(data)
+
+        if pkt.type == RequestCodeEnum.END_PAGE_PRINT:
+            # Return True so the end_page_print loop succeeds
+            resp = NiimbotPacket(RequestCodeEnum.END_PAGE_PRINT, b"\x01")
+        elif pkt.type == RequestCodeEnum.GET_PRINT_STATUS:
+            # Always return page=0 — never reaches quantity
+            status_data = struct.pack(">HBB", 0, 0, 0)
+            resp = NiimbotPacket(RequestCodeEnum.GET_PRINT_STATUS, status_data)
+        elif pkt.type == 0x85:
+            return
+        else:
+            resp = NiimbotPacket(pkt.type, b"\x01")
+
+        client.notification_data = resp.to_bytes()
+        client.notification_event.set()
+
+    client.transport.write = AsyncMock(side_effect=fake_write)
+
+    img = Image.new("1", (100, 50), color=0)
+    with pytest.raises(PrinterException, match="Print status timeout: page 0/1"):
+        await client.print_image(img, quantity=1)
+
+
+# ---------------------------------------------------------------------------
+# Coverage gap: cleanup skips end_print when transport is disconnected
+# ---------------------------------------------------------------------------
+
+
+@patch("asyncio.sleep", new_callable=AsyncMock)
+async def test_print_job_cleanup_skips_reconnect_when_disconnected(mock_sleep, make_client):
+    """When the transport is disconnected during cleanup (after a print failure),
+    the except handler must skip the end_print call instead of attempting
+    reconnection."""
+    client = make_client()
+
+    end_print_called = False
+    end_page_count = 0
+
+    async def fake_write(data, char_uuid):
+        nonlocal end_print_called, end_page_count
+        pkt = NiimbotPacket.from_bytes(data)
+
+        if pkt.type == RequestCodeEnum.END_PAGE_PRINT:
+            end_page_count += 1
+            # Return False (data[0]==0) every time to exhaust the retry loop.
+            # On the last iteration, mark transport as disconnected so the
+            # cleanup guard (except BaseException) sees is_connected=False.
+            if end_page_count >= 200:
+                client.transport.client.is_connected = False
+            resp = NiimbotPacket(RequestCodeEnum.END_PAGE_PRINT, b"\x00")
+        elif pkt.type == RequestCodeEnum.END_PRINT:
+            end_print_called = True
+            resp = NiimbotPacket(RequestCodeEnum.END_PRINT, b"\x01")
+        elif pkt.type == 0x85:
+            # Image data — write_raw doesn't use notifications
+            return
+        else:
+            # Generic success for setup commands
+            resp = NiimbotPacket(pkt.type, b"\x01")
+
+        client.notification_data = resp.to_bytes()
+        client.notification_event.set()
+
+    client.transport.write = AsyncMock(side_effect=fake_write)
+
+    img = Image.new("1", (100, 50), color=0)
+    with pytest.raises(PrinterException, match="end_page_print timed out"):
+        await client.print_image(img, quantity=1)
+
+    # end_print should NOT have been called because is_connected was False
+    assert not end_print_called

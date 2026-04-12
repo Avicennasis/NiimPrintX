@@ -164,3 +164,61 @@ async def test_write_timeout():
 
     with pytest.raises(BLEException, match="BLE write timed out"):
         await transport.write(b"\x01\x02", "some-uuid", timeout=0.05)
+
+
+@patch("NiimPrintX.nimmy.bluetooth.BleakClient")
+async def test_transport_stale_client_replaced(MockBleakClient):
+    """Reconnecting with a stale (disconnected) client should replace it."""
+    transport = BLETransport()
+
+    # Simulate a stale client that is no longer connected
+    stale_client = MagicMock()
+    stale_client.is_connected = False
+    transport.client = stale_client
+    transport.address = "AA:BB:CC:DD:EE:FF"
+    transport._notifying_uuids.add("some-uuid")
+
+    # Set up the replacement client
+    new_client = MockBleakClient.return_value
+    new_client.connect = AsyncMock()
+
+    await transport.connect("AA:BB:CC:DD:EE:FF")
+
+    # Old client should be discarded, new one created
+    assert transport.client is new_client
+    assert "some-uuid" not in transport._notifying_uuids
+    new_client.connect.assert_awaited_once()
+
+
+async def test_stop_notification_client_none_noop():
+    """stop_notification when client is None should not raise."""
+    transport = BLETransport()
+    assert transport.client is None
+
+    uuid = "00001234-0000-1000-8000-00805f9b34fb"
+    transport._notifying_uuids.add(uuid)
+
+    await transport.stop_notification(uuid)
+
+    # UUID should be removed, no error raised
+    assert uuid not in transport._notifying_uuids
+
+
+@patch("NiimPrintX.nimmy.bluetooth.BleakClient")
+async def test_disconnect_clears_state(MockBleakClient):
+    """disconnect() should set client to None and clear _notifying_uuids."""
+    transport = BLETransport()
+
+    mock_client = MockBleakClient.return_value
+    mock_client.connect = AsyncMock()
+    mock_client.is_connected = True
+    mock_client.disconnect = AsyncMock()
+
+    await transport.connect("AA:BB:CC:DD:EE:FF")
+    transport._notifying_uuids.add("uuid-1")
+    transport._notifying_uuids.add("uuid-2")
+
+    await transport.disconnect()
+
+    assert transport.client is None
+    assert len(transport._notifying_uuids) == 0

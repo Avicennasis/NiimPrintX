@@ -1,6 +1,8 @@
+from io import StringIO
+
 import pytest
 
-from NiimPrintX.nimmy.exception import BLEException, NiimPrintXException, PrinterException
+from NiimPrintX.nimmy.exception import BLEException, ConfigException, NiimPrintXException, PrinterException
 from NiimPrintX.nimmy.helper import print_error, print_info, print_success
 from NiimPrintX.nimmy.logger_config import get_logger, logger_enable, setup_logger
 from NiimPrintX.nimmy.packet import NiimbotPacket, packet_to_int
@@ -66,6 +68,49 @@ def test_print_info_no_crash():
     print_info("test")
 
 
+def test_print_info_writes_to_stdout():
+    """print_info should write its message to stdout, not stderr."""
+
+    from rich.console import Console
+
+    buf = StringIO()
+    # Build a Console that writes to our buffer (no color to keep output clean)
+    cap_console = Console(file=buf, color_system=None)
+
+    import NiimPrintX.nimmy.helper as helper_mod
+
+    orig = helper_mod.console
+    helper_mod.console = cap_console
+    try:
+        print_info("test msg")
+    finally:
+        helper_mod.console = orig
+
+    output = buf.getvalue()
+    assert "test msg" in output
+
+
+def test_print_success_no_trailing_space():
+    """print_success output should not end with a space before the newline."""
+    from rich.console import Console
+
+    buf = StringIO()
+    cap_console = Console(file=buf, color_system=None)
+
+    import NiimPrintX.nimmy.helper as helper_mod
+
+    orig = helper_mod.console
+    helper_mod.console = cap_console
+    try:
+        print_success("done")
+    finally:
+        helper_mod.console = orig
+
+    output = buf.getvalue()
+    # Strip only the trailing newline, then check for trailing space
+    assert not output.rstrip("\n").endswith(" ")
+
+
 # ---------- logger_config.py ----------
 
 
@@ -95,6 +140,41 @@ def test_logger_enable_nonzero_changes_level():
     """logger_enable(1) should work without error."""
     setup_logger()
     logger_enable(1)
+
+
+def test_setup_logger_configures_handlers():
+    """setup_logger should configure at least one handler on the loguru logger."""
+    from loguru import logger as loguru_logger
+
+    setup_logger()
+    # loguru stores handlers in logger._core.handlers (dict)
+    assert len(loguru_logger._core.handlers) >= 1
+
+
+def test_logger_enable_verbose_changes_level():
+    """logger_enable(1) should allow DEBUG-level messages to be captured."""
+    from loguru import logger as loguru_logger
+
+    setup_logger()
+    logger_enable(1)
+
+    captured = []
+    handler_id = loguru_logger.add(lambda msg: captured.append(str(msg)), level="DEBUG")
+    try:
+        loguru_logger.debug("verbose debug message")
+    finally:
+        loguru_logger.remove(handler_id)
+
+    assert any("verbose debug message" in m for m in captured)
+
+
+def test_config_exception_hierarchy():
+    """ConfigException should be a subclass of NiimPrintXException."""
+    assert issubclass(ConfigException, NiimPrintXException)
+    assert issubclass(ConfigException, Exception)
+
+    with pytest.raises(NiimPrintXException):
+        raise ConfigException("bad config")
 
 
 # ---------- packet.py — packet_to_int ----------

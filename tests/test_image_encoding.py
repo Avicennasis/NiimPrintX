@@ -1,4 +1,9 @@
+import math
+
+import pytest
 from PIL import Image
+
+from NiimPrintX.nimmy.exception import PrinterException
 
 
 def test_encode_image_produces_packets(make_client, small_image):
@@ -82,3 +87,45 @@ def test_encode_image_negative_offset_crops(make_client):
     packets_normal = list(client._encode_image(img))
     packets_cropped = list(client._encode_image(img, vertical_offset=-3))
     assert len(packets_cropped) == len(packets_normal) - 3
+
+
+def test_encode_image_horizontal_offset(make_client):
+    """Horizontal offset should widen each row's data by the padding bytes."""
+    client = make_client()
+    img = Image.new("L", (8, 2), color=0)  # 8px = 1 byte per row
+    packets_no_offset = list(client._encode_image(img, horizontal_offset=0))
+    packets_with_offset = list(client._encode_image(img, horizontal_offset=5))
+    # Original: 8px -> 1 byte.  With +5px: 13px -> ceil(13/8) = 2 bytes.
+    for pkt in packets_no_offset:
+        line_data = pkt.data[6:]
+        assert len(line_data) == 1
+    for pkt in packets_with_offset:
+        line_data = pkt.data[6:]
+        assert len(line_data) == math.ceil((8 + 5) / 8)
+
+
+def test_encode_image_1px_wide(make_client):
+    """A 1px wide image should produce valid packets with 1 byte per row."""
+    client = make_client()
+    img = Image.new("L", (1, 3), color=0)
+    packets = list(client._encode_image(img))
+    assert len(packets) == 3
+    for pkt in packets:
+        line_data = pkt.data[6:]
+        assert len(line_data) == 1  # ceil(1/8) = 1
+
+
+def test_encode_image_exactly_at_width_limit(make_client):
+    """Image at exactly 1992px wide (protocol limit) should encode without error."""
+    client = make_client()
+    img = Image.new("L", (1992, 1), color=255)
+    packets = list(client._encode_image(img))
+    assert len(packets) == 1
+
+
+def test_encode_image_one_over_width_limit(make_client):
+    """Image at 1993px wide should raise PrinterException about protocol limit."""
+    client = make_client()
+    img = Image.new("L", (1993, 1), color=255)
+    with pytest.raises(PrinterException, match="protocol limit"):
+        list(client._encode_image(img))

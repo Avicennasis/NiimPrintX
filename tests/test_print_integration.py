@@ -158,3 +158,101 @@ async def test_print_image_with_offsets(make_client):
 
     # 8 image rows + 5 blank rows from vertical_offset = 13 total 0x85 packets
     assert commands.count(0x85) == 13
+
+
+def _auto_respond_with_data(client, *, status_page=1):
+    """Like _auto_respond but also tracks (type, data) tuples for payload inspection."""
+    commands_sent = []  # list of (type, data) tuples
+
+    async def fake_write(data, char_uuid):
+        pkt = NiimbotPacket.from_bytes(data)
+        commands_sent.append((pkt.type, pkt.data))
+
+        if pkt.type == 0x85:
+            return
+
+        response_type = pkt.type
+        response_data = (
+            struct.pack(">HBB", status_page, 100, 100) if pkt.type == RequestCodeEnum.GET_PRINT_STATUS else b"\x01"
+        )
+
+        response_pkt = NiimbotPacket(response_type, response_data)
+        client.notification_data = response_pkt.to_bytes()
+        client.notification_event.set()
+
+    client.transport.write = AsyncMock(side_effect=fake_write)
+    return commands_sent
+
+
+async def test_print_imageV2_uses_v2_commands(make_client):
+    """print_imageV2 should use V2 start/dimension format with quantity embedded in the payload."""
+    client = make_client()
+    commands = _auto_respond_with_data(client, status_page=2)
+
+    img = Image.new("L", (16, 4), color=128)
+    with patch("asyncio.sleep", new_callable=AsyncMock):
+        await client.print_imageV2(img, density=3, quantity=2)
+
+    types = [t for t, _ in commands]
+
+    # V2 uses START_PRINT but with a different payload format
+    assert RequestCodeEnum.START_PRINT in types
+
+    # Find the START_PRINT payload -- V2 sends 7 bytes (0x00 + uint16 quantity + 4 zero bytes)
+    start_cmds = [(t, d) for t, d in commands if t == RequestCodeEnum.START_PRINT]
+    assert len(start_cmds) == 1
+    start_data = start_cmds[0][1]
+    assert len(start_data) == 7, f"V2 START_PRINT should send 7-byte payload, got {len(start_data)}"
+    assert start_data[0] == 0x00, "V2 START_PRINT first byte should be 0x00"
+    quantity_in_start = struct.unpack(">H", start_data[1:3])[0]
+    assert quantity_in_start == 2
+
+    # V2 uses SET_DIMENSION with 6-byte payload (height + width + copies)
+    dim_cmds = [(t, d) for t, d in commands if t == RequestCodeEnum.SET_DIMENSION]
+    assert len(dim_cmds) == 1
+    dim_data = dim_cmds[0][1]
+    assert len(dim_data) == 6, f"V2 SET_DIMENSION should send 6-byte payload, got {len(dim_data)}"
+    height, width, copies = struct.unpack(">HHH", dim_data)
+    assert height == 4
+    assert width == 16
+    assert copies == 2
+
+    # V2 should NOT call SET_QUANTITY (quantity is embedded in V2 commands)
+    assert RequestCodeEnum.SET_QUANTITY not in types
+
+
+async def test_print_image_with_density(make_client):
+    """print_image with density=5 should send SET_LABEL_DENSITY with value 5."""
+    client = make_client()
+    commands = _auto_respond_with_data(client)
+
+    img = Image.new("L", (16, 4), color=128)
+    with patch("asyncio.sleep", new_callable=AsyncMock):
+        await client.print_image(img, density=5, quantity=1)
+
+    types = [t for t, _ in commands]
+    assert RequestCodeEnum.SET_LABEL_DENSITY in types
+
+    density_cmds = [(t, d) for t, d in commands if t == RequestCodeEnum.SET_LABEL_DENSITY]
+    assert len(density_cmds) == 1
+    density_data = density_cmds[0][1]
+    assert density_data == bytes((5,)), f"Expected density payload b'\\x05', got {density_data!r}"
+
+
+async def test_print_image_with_quantity(make_client):
+    """print_image with quantity=3 should send SET_QUANTITY with value 3."""
+    client = make_client()
+    commands = _auto_respond_with_data(client, status_page=3)
+
+    img = Image.new("L", (16, 4), color=128)
+    with patch("asyncio.sleep", new_callable=AsyncMock):
+        await client.print_image(img, density=3, quantity=3)
+
+    types = [t for t, _ in commands]
+    assert RequestCodeEnum.SET_QUANTITY in types
+
+    qty_cmds = [(t, d) for t, d in commands if t == RequestCodeEnum.SET_QUANTITY]
+    assert len(qty_cmds) == 1
+    qty_data = qty_cmds[0][1]
+    quantity_sent = struct.unpack(">H", qty_data)[0]
+    assert quantity_sent == 3, f"Expected quantity 3, got {quantity_sent}"

@@ -70,3 +70,58 @@ def test_packet_to_bytes_too_long():
     """Data longer than 255 bytes must raise ValueError."""
     with pytest.raises(ValueError, match="too long"):
         NiimbotPacket(0x01, bytes(256)).to_bytes()
+
+
+def test_packet_type_out_of_range():
+    """Packet type outside 0-255 must raise ValueError."""
+    with pytest.raises(ValueError, match="type"):
+        NiimbotPacket(256, b"").to_bytes()
+
+
+def test_packet_repr():
+    """repr() should produce a useful string containing type and data."""
+    pkt = NiimbotPacket(0x40, b"\x01\x02")
+    r = repr(pkt)
+    assert "NiimbotPacket" in r
+    assert "64" in r or "0x40" in r or "40" in r  # type value present
+    assert "data" in r.lower() or "\\x01\\x02" in r  # data shown
+
+
+def test_packet_from_bytes_non_bytes_type():
+    """Passing a non-bytes type to from_bytes must raise TypeError."""
+    with pytest.raises(TypeError, match="bytes-like"):
+        NiimbotPacket.from_bytes("not bytes")
+
+
+def test_packet_from_bytes_bad_footer():
+    """Valid header but wrong footer bytes must raise ValueError."""
+    pkt = NiimbotPacket(0x01, b"\x02")
+    raw = bytearray(pkt.to_bytes())
+    raw[-2:] = b"\xbb\xbb"  # corrupt footer
+    with pytest.raises(ValueError, match="footer"):
+        NiimbotPacket.from_bytes(bytes(raw))
+
+
+def test_packet_trailing_bytes_accepted():
+    """Extra trailing bytes after a valid packet should not prevent parsing (BLE hardware compat)."""
+    pkt = NiimbotPacket(0x40, b"\x01")
+    raw = pkt.to_bytes() + b"\xff\xff\xff"
+    parsed = NiimbotPacket.from_bytes(raw)
+    assert parsed.type == 0x40
+    assert parsed.data == b"\x01"
+
+
+def test_packet_to_int_single_byte():
+    """packet_to_int on single-byte data should return that byte value."""
+    from NiimPrintX.nimmy.packet import packet_to_int
+
+    pkt = NiimbotPacket(0x01, b"\x42")
+    assert packet_to_int(pkt) == 0x42
+
+
+def test_packet_to_int_multi_byte():
+    """packet_to_int on multi-byte data should return big-endian integer (0x0100 = 256)."""
+    from NiimPrintX.nimmy.packet import packet_to_int
+
+    pkt = NiimbotPacket(0x01, b"\x01\x00")
+    assert packet_to_int(pkt) == 256

@@ -20,7 +20,7 @@ class StatusBar:
         self.circle_canvas.pack(side=tk.RIGHT, padx=10, pady=5)
 
         # Create a label for the status message
-        self.status_label = tk.Label(self.status_frame, text="Not connected", fg="red", font=("Arial", 10))
+        self.status_label = tk.Label(self.status_frame, text="Not Connected", fg="red", font=("Arial", 10))
         self.status_label.pack(side=tk.RIGHT, padx=5)
 
     def update_status(self, connection=True):
