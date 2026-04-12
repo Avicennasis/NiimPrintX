@@ -26,9 +26,8 @@
 - [ ] **#35** — Xubuntu printer setup — Documentation/FAQ (Bluetooth pairing guide)
 - [ ] **#25** — D101 Windows pairing — D101 now supported; ask user to retry with latest
 
-## Outstanding (Blocking before v0.6.0)
+## Outstanding (Blocking before v0.8.0)
 
-- [x] **Bleak migration** — bleak 0.22.x → 3.0+ (minimal breaking changes: connect() returns None instead of bool, new exception types; `is_connected` property unchanged); pyproject.toml updated to `^3.0`
 - [ ] **ImageMagick Windows URL** — Download URL hardcoded to 7.1.1-33; needs auto-latest or pinned artifact
 
 ## Outstanding (Important)
@@ -37,15 +36,63 @@
 - [ ] **Architecture: Move helper.py** — From nimmy/ to cli/ (it's a Rich presentation layer)
 - [ ] **Architecture: Move UserConfig.py** — From ui/ to nimmy/ (no UI dependency)
 - [ ] **Architecture: FileMenu callbacks** — Use callbacks instead of reaching into root.text_tab
-- [ ] **Thread safety: printer_connected** — Written from async thread (PrinterOperation) and main thread (heartbeat callback); works via GIL but architecturally fragile
 - [ ] **Dependabot pip ecosystem** — `dependabot.yml` uses `pip` ecosystem which doesn't parse `[tool.poetry.dependencies]`; Python deps get no automated update PRs; comment added documenting this
-- [ ] **CI: Move pyinstaller to build group** — pyinstaller installs needlessly in test/lint/audit CI jobs; should be in `[tool.poetry.group.build]`
-- [ ] **Add _ALL_MODELS parity test** — CLI `_ALL_MODELS` list should have a test asserting it matches `AppConfig.label_sizes.keys()`
 - [ ] **BLE unsolicited notification handling** — Notification handler silently drops unsolicited BLE notifications that could be consumed as command responses; needs hardware testing to verify impact
+- [ ] **UI type annotations** — UI layer (19 files) has no type annotations; nimmy and cli layers are fully typed
+- [ ] **macOS code signing** — entitlements.plist needed for Bluetooth TCC approval; TODO in mac spec
 
 ---
 
 ## Completed
+
+### Rounds 17–21 Deep Code Review (2026-04-12, ninth session)
+
+- [x] **25-agent Round 17 burn** — 6 CRITICAL, 22 HIGH, 30 MEDIUM findings across full codebase
+- [x] **C1: Cairo stride corruption** — `export_to_png` now uses `get_stride()` + copies bytes before `finish()`
+- [x] **C2: Alpha compositing** — RGBA/LA/PA images composited onto white before grayscale conversion
+- [x] **C3: Thread safety** — `config.printer_connected` writes removed from `PrinterOperation`; only `PrintOption._update_device_status` writes it (Tk thread)
+- [x] **C4: CI script injection** — All 3 build workflows use `env:` context instead of `${{ }}` in `run:` steps
+- [x] **C5: setuptools CVE-2025-47273** — Updated 69.5.1 → 82.0.1
+- [x] **C6: macOS runtime hook** — Deleted redundant hook that copied entire bundle on every launch
+- [x] **Protocol: page_started flag** — Cleared after clean `end_page_print` to prevent duplicate cleanup
+- [x] **Protocol: stop_notification** — UUID cleanup via `try/finally` even when `stop_notify` raises
+- [x] **Protocol: char_uuid race** — Captured into local var before any await in `send_command`
+- [x] **Protocol: dithering** — Floyd-Steinberg replaced with threshold (`dither=NONE`) for crisp thermal output
+- [x] **Protocol: ValueError → PrinterException** — All validation guards now raise consistent exception type
+- [x] **CLI: d11_h/d110_m width** — 300 DPI models correctly use 354px limit instead of 203 DPI 240px
+- [x] **CLI: loguru exc_info** — `exc_info=True` (no-op in loguru) replaced with `logger.opt(exception=True)`
+- [x] **CLI: dead ctx.obj** — Removed unused `ctx.obj["VERBOSE"]` and `@click.pass_context`
+- [x] **UI: splash cleanup** — `splash.close()` instead of `destroy()`; proper cleanup chain on failure
+- [x] **UI: on_close guard** — Changed `and` to `or` for partial-init scenarios
+- [x] **UI: fonts() threading** — Loaded in background thread; no more 10s UI freeze on startup
+- [x] **UI: fonts() caching** — `@lru_cache(maxsize=1)` prevents re-enumeration
+- [x] **UI: image_id guard** — `start_image_resize` now checks membership before access
+- [x] **UI: TabbedIconGrid guard** — `canvas.after_idle()` wrapped in `contextlib.suppress(tk.TclError)`
+- [x] **UI: Windows mkstemp** — fd closed immediately after creation before Cairo writes
+- [x] **UI: _connecting TclError** — Flag cleared if `root.after()` raises during connect callback
+- [x] **Security: BLE device name** — Sanitized with `!r` in all log/print sites (prevents log injection)
+- [x] **Security: font size** — Clamped to [4, 500] in TextTab (prevents OOM via Wand)
+- [x] **Security: process_png.py** — `--` before filenames + `check=True` on mogrify calls
+- [x] **Architecture: UI TypedDicts** — Moved FontProps/TextItem/ImageItem from nimmy/types.py to ui/types.py
+- [x] **Architecture: ConfigException** — Removed dead exception class (never raised in production)
+- [x] **Architecture: logger consistency** — UserConfig.py uses `get_logger()`, log retention=5
+- [x] **Build: TODO(H27)** — pyinstaller moved to optional `[build]` dependency group
+- [x] **Build: Linux spec** — Dynamic TCL/TK discovery (no more Debian-only paths)
+- [x] **Build: Windows spec** — ImageMagick existence validation + strip=False
+- [x] **Build: macOS spec** — NSHighResolutionCapable, corrected onefile comment, removed commented-out XProtect
+- [x] **Config: Python 3.14** — Version constraint widened to `>=3.12,<3.16`
+- [x] **Config: rotation normalized** — Built-in devices changed from `-90` to `270`
+- [x] **Config: branch coverage** — Enabled in pyproject.toml with explicit widget omit list
+- [x] **Config: ruff rules** — Added TC + PLR rule sets, TYPE_CHECKING imports
+- [x] **Modernization: pathlib** — logger_config.py and UserConfig.py converted from os.path
+- [x] **Modernization: match/case** — Platform dispatch in `__main__.py`
+- [x] **Modernization: Iterator** — `Generator[T, None, None]` → `Iterator[T]` in printer.py
+- [x] **Tests** — 28 new tests added (315 → 331), 7 duplicates removed, `_make_builtin` consolidated
+- [x] **Tests: _ALL_MODELS parity** — Test asserts CLI models match AppConfig.label_sizes keys
+- [x] **Thread safety: printer_connected** — Resolved (R17 C3)
+- [x] **CI: Move pyinstaller to build group** — Resolved (R21 TODO H27)
+- [x] **Add _ALL_MODELS parity test** — Resolved (R19)
+- [x] **Version** — 0.6.2 → 0.7.0
 
 ### Rounds 14–16 Deep Code Review (2026-04-12, eighth session)
 
