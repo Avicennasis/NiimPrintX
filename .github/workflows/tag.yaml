@@ -42,7 +42,7 @@ jobs:
     needs: [validate]
     strategy:
       matrix:
-        os: [ macos-13, macos-latest ]
+        os: [ macos-latest ]  # macos-13 (Intel) removed — nearing GitHub deprecation; Apple Silicon is primary target
     uses: ./.github/workflows/_build-macos.yaml
     with:
       os: ${{ matrix.os }}
