@@ -142,14 +142,18 @@ class PrintOption:
                 fd, tmp_file_path = tempfile.mkstemp(suffix=".png")
                 os.close(fd)
                 try:
-                    self.export_to_png(tmp_file_path)  # Save to file
-                    self.display_image_in_popup(tmp_file_path)  # Display in pop-up window
+                    if self.export_to_png(tmp_file_path) is None:
+                        self.toolbar_print_button.config(state=tk.NORMAL)
+                        return
+                    self.display_image_in_popup(tmp_file_path)
                 finally:
                     with contextlib.suppress(OSError):
                         os.remove(tmp_file_path)
             else:
                 with tempfile.NamedTemporaryFile(suffix=".png") as tmp_file:
-                    self.export_to_png(tmp_file.name)  # Save to file
+                    if self.export_to_png(tmp_file.name) is None:
+                        self.toolbar_print_button.config(state=tk.NORMAL)
+                        return
                     self.display_image_in_popup(tmp_file.name)
         except Exception as e:  # noqa: BLE001 — GUI must re-enable button on any export failure
             self.toolbar_print_button.config(state=tk.NORMAL)

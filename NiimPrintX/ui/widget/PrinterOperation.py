@@ -52,6 +52,7 @@ class PrinterOperation:
                 if not connected:
                     logger.error("Print failed: could not connect to printer")
                     return False
+                self.printer.printer_connected = True
 
             if self.printer.device in V2_MODELS:
                 await self._client.print_image_v2(image, density, quantity)

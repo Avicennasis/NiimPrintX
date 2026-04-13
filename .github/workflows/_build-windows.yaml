@@ -9,6 +9,7 @@ permissions:
 jobs:
   windows:
     name: "Windows"
+    timeout-minutes: 30
     runs-on: windows-2022
     # To update: download new portable 7z from https://imagemagick.org/archive/binaries/, update version + SHA-256
     env:

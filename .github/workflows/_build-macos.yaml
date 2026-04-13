@@ -11,6 +11,7 @@ permissions:
 
 jobs:
   macos:
+    timeout-minutes: 30
     name: ${{ inputs.os }}
     runs-on: ${{ inputs.os }}
 
