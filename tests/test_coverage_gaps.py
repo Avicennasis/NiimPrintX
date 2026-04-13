@@ -87,14 +87,13 @@ async def test_transport_connect_address_change_disconnects_old():
         new_mock_client.connect = AsyncMock()
         MockBleakClient.return_value = new_mock_client
 
-        result = await transport.connect(new_address)
+        await transport.connect(new_address)  # should not raise
 
     # Old client should have been disconnected
     old_client.disconnect.assert_awaited_once()
     # Transport should now point at the new address and the new client
     assert transport.address == new_address
     assert transport.client is new_mock_client
-    assert result is True
 
 
 # ---------------------------------------------------------------------------

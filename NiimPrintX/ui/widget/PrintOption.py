@@ -21,7 +21,6 @@ from NiimPrintX.ui.config import CanvasState, ImmutableConfig, PrinterState, mm_
 from .PrinterOperation import PrinterOperation
 
 if TYPE_CHECKING:
-    from NiimPrintX.nimmy.types import HeartbeatResponse
     from NiimPrintX.ui.main import LabelPrinterApp
 
 
@@ -65,26 +64,22 @@ class PrintOption:
 
     async def _heartbeat_loop(self) -> None:
         while self._heartbeat_active:
-            try:
-                if self.print_op.is_connected and not self.printer.print_job:
-                    state, hb = await self.print_op.heartbeat()
-                    try:
-                        self.root.after(0, lambda s=state, h=hb: self.update_status(s, h))
-                    except tk.TclError:
-                        self._heartbeat_active = False
-                        break
-                elif not self.printer.print_job:
-                    try:
-                        self.root.after(0, lambda: self.update_status(False))
-                    except tk.TclError:
-                        self._heartbeat_active = False
-                        break
-            except tk.TclError:
-                self._heartbeat_active = False
-                break  # Root destroyed, exit heartbeat loop cleanly
+            if self.print_op.is_connected and not self.printer.print_job:
+                state, _ = await self.print_op.heartbeat()
+                try:
+                    self.root.after(0, lambda s=state: self.update_status(s))
+                except tk.TclError:
+                    self._heartbeat_active = False
+                    break
+            elif not self.printer.print_job:
+                try:
+                    self.root.after(0, lambda: self.update_status(False))
+                except tk.TclError:
+                    self._heartbeat_active = False
+                    break
             await asyncio.sleep(5)
 
-    def update_status(self, connected: bool = False, hb_data: HeartbeatResponse | None = None) -> None:
+    def update_status(self, connected: bool = False) -> None:
         if self._connecting:
             return
         self.printer.printer_connected = connected
@@ -205,58 +200,62 @@ class PrintOption:
         bbox_height = y2 - y1
 
         surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
-        ctx = cairo.Context(surface)
-        ctx.set_source_rgb(1, 1, 1)  # White background
-        ctx.paint()
-
-        # Drawing images (if any)
-        if self.canvas_state.image_items:
-            for img_id, img_props in self.canvas_state.image_items.items():
-                coords = self.canvas_state.canvas.coords(img_id)
-                resized_image = ImageTk.getimage(img_props["image"])
-                with io.BytesIO() as buffer:
-                    resized_image.save(buffer, format="PNG")
-                    buffer.seek(0)
-                    img_surface = cairo.ImageSurface.create_from_png(buffer)
-                ctx.set_source_surface(img_surface, coords[0], coords[1])
-                ctx.paint()
-                img_surface.finish()  # release native Cairo memory
-
-        # Drawing text items
-        if self.canvas_state.text_items:
-            for text_id, text_props in self.canvas_state.text_items.items():
-                coords = self.canvas_state.canvas.coords(text_id)
-                font_img_widget = text_props["font_image"]
-                if isinstance(font_img_widget, ImageTk.PhotoImage):
-                    resized_image = ImageTk.getimage(font_img_widget)
-                else:
-                    # tk.PhotoImage (from Wand text) — extract via Tcl
-                    import base64 as b64  # noqa: PLC0415 — lazy import; only needed for tk.PhotoImage path
-
-                    png_b64 = font_img_widget.tk.call(str(font_img_widget), "data", "-format", "png")
-                    resized_image = Image.open(io.BytesIO(b64.b64decode(png_b64)))
-                with io.BytesIO() as buffer:
-                    resized_image.save(buffer, format="PNG")
-                    buffer.seek(0)
-                    img_surface = cairo.ImageSurface.create_from_png(buffer)
-                ctx.set_source_surface(img_surface, coords[0], coords[1])
-                ctx.paint()
-                img_surface.finish()  # release native Cairo memory
-
-        # Create a cropped surface to save
-        cropped_surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, int(bbox_width), int(bbox_height))
-        cropped_ctx = cairo.Context(cropped_surface)
-        cropped_ctx.set_source_surface(surface, -x1, -y1)
-        cropped_ctx.paint()
         try:
-            if output_filename:
-                cropped_surface.write_to_png(output_filename)
-                return None
-            stride = cropped_surface.get_stride()
-            image_bytes = bytes(cropped_surface.get_data())  # copy before finish()
-            return Image.frombuffer("RGBA", (int(bbox_width), int(bbox_height)), image_bytes, "raw", "BGRA", stride, 1)
+            ctx = cairo.Context(surface)
+            ctx.set_source_rgb(1, 1, 1)  # White background
+            ctx.paint()
+
+            # Drawing images (if any)
+            if self.canvas_state.image_items:
+                for img_id, img_props in self.canvas_state.image_items.items():
+                    coords = self.canvas_state.canvas.coords(img_id)
+                    resized_image = ImageTk.getimage(img_props["image"])
+                    with io.BytesIO() as buffer:
+                        resized_image.save(buffer, format="PNG")
+                        buffer.seek(0)
+                        img_surface = cairo.ImageSurface.create_from_png(buffer)
+                    ctx.set_source_surface(img_surface, coords[0], coords[1])
+                    ctx.paint()
+                    img_surface.finish()  # release native Cairo memory
+
+            # Drawing text items
+            if self.canvas_state.text_items:
+                for text_id, text_props in self.canvas_state.text_items.items():
+                    coords = self.canvas_state.canvas.coords(text_id)
+                    font_img_widget = text_props["font_image"]
+                    if isinstance(font_img_widget, ImageTk.PhotoImage):
+                        resized_image = ImageTk.getimage(font_img_widget)
+                    else:
+                        # tk.PhotoImage (from Wand text) — extract via Tcl
+                        import base64 as b64  # noqa: PLC0415 — lazy import; only needed for tk.PhotoImage path
+
+                        png_b64 = font_img_widget.tk.call(str(font_img_widget), "data", "-format", "png")
+                        resized_image = Image.open(io.BytesIO(b64.b64decode(png_b64)))
+                    with io.BytesIO() as buffer:
+                        resized_image.save(buffer, format="PNG")
+                        buffer.seek(0)
+                        img_surface = cairo.ImageSurface.create_from_png(buffer)
+                    ctx.set_source_surface(img_surface, coords[0], coords[1])
+                    ctx.paint()
+                    img_surface.finish()  # release native Cairo memory
+
+            # Create a cropped surface to save
+            cropped_surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, int(bbox_width), int(bbox_height))
+            try:
+                cropped_ctx = cairo.Context(cropped_surface)
+                cropped_ctx.set_source_surface(surface, -x1, -y1)
+                cropped_ctx.paint()
+                if output_filename:
+                    cropped_surface.write_to_png(output_filename)
+                    return None
+                stride = cropped_surface.get_stride()
+                image_bytes = bytes(cropped_surface.get_data())  # copy before finish()
+                return Image.frombuffer(
+                    "RGBA", (int(bbox_width), int(bbox_height)), image_bytes, "raw", "BGRA", stride, 1
+                )
+            finally:
+                cropped_surface.finish()
         finally:
-            cropped_surface.finish()
             surface.finish()
 
     def display_image_in_popup(self, filename: str) -> None:

@@ -17,7 +17,7 @@ hidden_imports = collect_submodules('PIL')
 hidden_imports += collect_submodules('tkinter')
 hidden_imports += collect_submodules('bleak')
 hidden_imports += collect_submodules('wand')
-hidden_imports += ['platformdirs', 'sv_ttk', 'cairo']
+hidden_imports += ['tkinter'] + ['platformdirs', 'sv_ttk', 'cairo']  # collect_submodules omits the top-level package; add explicitly
 
 # NOTE: Manual Tcl/Tk path resolution — PyInstaller's built-in tkinter hook
 # handles this for one-dir builds. If converting to one-dir, remove this block

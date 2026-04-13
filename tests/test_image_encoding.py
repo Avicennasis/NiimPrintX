@@ -80,15 +80,6 @@ def test_encode_image_non_byte_aligned_width(make_client):
     assert line_data == bytes([0xFF, 0xC0])
 
 
-def test_encode_image_negative_offset_crops(make_client):
-    """Negative vertical offset should crop from top."""
-    client = make_client()
-    img = Image.new("1", (8, 10), color=0)
-    packets_normal = list(client._encode_image(img))
-    packets_cropped = list(client._encode_image(img, vertical_offset=-3))
-    assert len(packets_cropped) == len(packets_normal) - 3
-
-
 def test_encode_image_horizontal_offset(make_client):
     """Horizontal offset should widen each row's data by the padding bytes."""
     client = make_client()

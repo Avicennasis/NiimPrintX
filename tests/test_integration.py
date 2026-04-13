@@ -202,21 +202,16 @@ async def test_print_failure_recovery_calls_end_print(make_client):
     """
     client = make_client()
 
-    call_count = 0
-    end_print_called = False
+    call_log = []
 
     async def fake_write(data, char_uuid):
-        nonlocal call_count, end_print_called
         pkt = NiimbotPacket.from_bytes(data)
 
         if pkt.type == 0x85:
             # Fail on the first image data write to simulate BLE error
             raise PrinterException("BLE write failed: simulated transport error")
 
-        if pkt.type == RequestCodeEnum.END_PRINT:
-            end_print_called = True
-
-        call_count += 1
+        call_log.append(pkt.type)
 
         # Normal response for command packets
         response_type = pkt.type
@@ -232,5 +227,7 @@ async def test_print_failure_recovery_calls_end_print(make_client):
     with pytest.raises(PrinterException, match="BLE write failed"), patch("asyncio.sleep", new_callable=AsyncMock):
         await client.print_image(img, density=2, quantity=1)
 
-    # The except handler in _print_job should have called end_print for cleanup
-    assert end_print_called, "end_print must be called for cleanup after a print failure"
+    # The except handler in _print_job should have called both end_page_print
+    # and end_print for cleanup
+    assert RequestCodeEnum.END_PAGE_PRINT in call_log, "end_page_print must be called for cleanup after a print failure"
+    assert RequestCodeEnum.END_PRINT in call_log, "end_print must be called for cleanup after a print failure"

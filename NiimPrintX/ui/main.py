@@ -156,6 +156,7 @@ class LabelPrinterApp(tk.Tk):
     def on_close(self) -> None:
         if self._shutting_down:
             return
+        self._shutting_down = True
         # H21: If load_resources failed before sub-objects were created, skip the
         # quit dialog entirely — there is nothing to clean up.
         printer = getattr(self, "printer", None)
@@ -164,10 +165,11 @@ class LabelPrinterApp(tk.Tk):
             return
         if printer.print_job:
             if not messagebox.askokcancel("Quit", "A print job is in progress. Quit anyway?"):
+                self._shutting_down = False
                 return
         elif not messagebox.askokcancel("Quit", "Do you want to quit?"):
+            self._shutting_down = False
             return
-        self._shutting_down = True
 
         async def _shutdown():
             # Close PIL images to prevent leaks
@@ -182,9 +184,6 @@ class LabelPrinterApp(tk.Tk):
             if hasattr(self, "print_option") and self.print_option.print_op.is_connected:
                 with contextlib.suppress(Exception):
                     await self.print_option.print_op.printer_disconnect()
-            # Stop heartbeat
-            if hasattr(self, "print_option"):
-                self.print_option._heartbeat_active = False
             # Cancel remaining tasks
             tasks = [t for t in asyncio.all_tasks() if not t.done() and t is not asyncio.current_task()]
             for t in tasks:

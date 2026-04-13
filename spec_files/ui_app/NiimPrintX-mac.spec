@@ -118,11 +118,13 @@ coll = COLLECT(
 app = BUNDLE(
     coll,
     name='NiimPrintX.app',
+    version=os.environ.get('VERSION', '0.0.0').lstrip('v'),
     icon=os.path.join(src_path, 'assets', 'icon.icns'),
     bundle_identifier="com.niimprintx.app",
     info_plist={
         'NSBluetoothAlwaysUsageDescription': 'NiimPrintX requires Bluetooth to communicate with Niimbot printers.',
         'NSBluetoothPeripheralUsageDescription': 'NiimPrintX requires Bluetooth to communicate with Niimbot printers.',
         'NSHighResolutionCapable': True,
+        'CFBundleShortVersionString': os.environ.get('VERSION', '0.0.0').lstrip('v'),
     },
 )

@@ -36,7 +36,7 @@ hiddenimports = collect_submodules('PIL')
 hiddenimports += collect_submodules('tkinter')
 hiddenimports += collect_submodules('bleak')
 hiddenimports += collect_submodules('wand')
-hiddenimports += ['platformdirs', 'sv_ttk', 'cairo']
+hiddenimports += ['tkinter'] + ['platformdirs', 'sv_ttk', 'cairo']  # collect_submodules omits the top-level package; add explicitly
 
 # Add custom assets
 datas += [

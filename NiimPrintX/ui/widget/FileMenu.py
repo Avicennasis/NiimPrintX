@@ -140,7 +140,7 @@ class FileMenu:
             try:
                 with open(file_path) as f:
                     data = json.load(f)
-            except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as e:
+            except (OSError, json.JSONDecodeError, UnicodeDecodeError, ValueError) as e:
                 messagebox.showerror(
                     "Error",
                     f"Failed to open file: {e}\n\n"
@@ -191,9 +191,13 @@ class FileMenu:
             self._on_load_canvas_config(device, label_size)
 
             for item_data in text_data.values():
+                if not isinstance(item_data, dict):
+                    continue
                 self.load_text(item_data)
 
             for item_data in image_data.values():
+                if not isinstance(item_data, dict):
+                    continue
                 self.load_image(item_data)
 
     def load_text(self, data: dict[str, object]) -> None:
@@ -224,6 +228,12 @@ class FileMenu:
                 raise ValueError("font_props['kerning'] must be a number")
             if not math.isfinite(fp["kerning"]) or not (-100 <= fp["kerning"] <= 100):
                 raise ValueError("font_props['kerning'] must be finite and between -100 and 100")
+            if fp["slant"] not in ("roman", "italic"):
+                raise ValueError("font_props slant must be 'roman' or 'italic'")
+            if fp["weight"] not in ("normal", "bold"):
+                raise ValueError("font_props weight must be 'normal' or 'bold'")
+            if not isinstance(fp["underline"], bool):
+                raise ValueError("font_props underline must be a bool")
 
             # Validate content
             if not isinstance(data.get("content"), str):
@@ -234,16 +244,18 @@ class FileMenu:
             raw_b64 = data.get("font_image", "")
             if not isinstance(raw_b64, str) or len(raw_b64) > 10 * 1024 * 1024:
                 raise ValueError("Image data too large or wrong type")
-            font_img_data = base64.b64decode(raw_b64)
+            font_img_data = base64.b64decode(raw_b64, validate=True)
             font_image = Image.open(io.BytesIO(font_img_data))
-            if font_image.format != "PNG":
-                raise ValueError(f"Expected PNG image, got {font_image.format}")
-            if font_image.width * font_image.height > _MAX_LABEL_PIXELS:
-                w, h = font_image.width, font_image.height
+            try:
+                if font_image.format != "PNG":
+                    raise ValueError(f"Expected PNG image, got {font_image.format}")
+                if font_image.width * font_image.height > _MAX_LABEL_PIXELS:
+                    raise ValueError(f"Image too large: {font_image.width}x{font_image.height}")
+                font_image.load()
+                font_img_tk = ImageTk.PhotoImage(font_image)
+            except Exception:
                 font_image.close()
-                raise ValueError(f"Image too large: {w}x{h}")
-            font_image.load()
-            font_img_tk = ImageTk.PhotoImage(font_image)
+                raise
             font_image.close()
             text_id = self.canvas_state.canvas.create_image(coords[0], coords[1], image=font_img_tk, anchor="nw")
             self._on_bind_text_select(text_id)
@@ -274,7 +286,7 @@ class FileMenu:
             raw_orig_b64 = data.get("original_image", "")
             if not isinstance(raw_orig_b64, str) or len(raw_orig_b64) > 10 * 1024 * 1024:
                 raise ValueError("Original image data too large or wrong type")
-            original_image_data = base64.b64decode(raw_orig_b64)
+            original_image_data = base64.b64decode(raw_orig_b64, validate=True)
             original_image = Image.open(io.BytesIO(original_image_data))
             try:
                 if original_image.format != "PNG":
@@ -286,7 +298,7 @@ class FileMenu:
                 raw_img_b64 = data.get("image", "")
                 if not isinstance(raw_img_b64, str) or len(raw_img_b64) > 10 * 1024 * 1024:
                     raise ValueError("Resized image data too large or wrong type")
-                image_data = base64.b64decode(raw_img_b64)
+                image_data = base64.b64decode(raw_img_b64, validate=True)
                 image = Image.open(io.BytesIO(image_data))
                 if image.format != "PNG":
                     raise ValueError(f"Expected PNG image, got {image.format}")

@@ -5,7 +5,6 @@ import pytest
 from NiimPrintX.cli.helper import print_error, print_info, print_success
 from NiimPrintX.nimmy.exception import BLEException, NiimPrintXException, PrinterException
 from NiimPrintX.nimmy.logger_config import get_logger, logger_enable, setup_logger
-from NiimPrintX.nimmy.packet import NiimbotPacket, packet_to_int
 
 # ---------- exception.py ----------
 
@@ -111,28 +110,6 @@ def test_print_info_writes_message():
 
     output = buf.getvalue()
     assert "status update" in output
-
-
-def test_print_info_writes_to_stdout():
-    """print_info should write its message to stdout, not stderr."""
-
-    from rich.console import Console
-
-    buf = StringIO()
-    # Build a Console that writes to our buffer (no color to keep output clean)
-    cap_console = Console(file=buf, color_system=None)
-
-    import NiimPrintX.cli.helper as helper_mod
-
-    orig = helper_mod.console
-    helper_mod.console = cap_console
-    try:
-        print_info("test msg")
-    finally:
-        helper_mod.console = orig
-
-    output = buf.getvalue()
-    assert "test msg" in output
 
 
 def test_print_info_escapes_rich_markup():
@@ -256,15 +233,6 @@ def test_logger_enable_nonzero_changes_level():
     assert all(lv == debug_level for lv in levels_after)
 
 
-def test_setup_logger_configures_handlers():
-    """setup_logger should configure at least one handler on the loguru logger."""
-    from loguru import logger as loguru_logger
-
-    setup_logger()
-    # loguru stores handlers in logger._core.handlers (dict)
-    assert len(loguru_logger._core.handlers) >= 1
-
-
 def test_logger_enable_verbose_changes_level():
     """logger_enable(1) should allow DEBUG-level messages to be captured."""
     from loguru import logger as loguru_logger
@@ -280,18 +248,3 @@ def test_logger_enable_verbose_changes_level():
         loguru_logger.remove(handler_id)
 
     assert any("verbose debug message" in m for m in captured)
-
-
-# ---------- packet.py — packet_to_int ----------
-
-
-def test_packet_to_int():
-    """packet_to_int with two-byte data 0x0001 should return 1."""
-    pkt = NiimbotPacket(0x00, b"\x00\x01")
-    assert packet_to_int(pkt) == 1
-
-
-def test_packet_to_int_single_byte():
-    """packet_to_int with single byte 0xFF should return 255."""
-    pkt = NiimbotPacket(0x00, b"\xff")
-    assert packet_to_int(pkt) == 255

@@ -53,13 +53,18 @@ async def test_send_command_reconnect_success(make_client):
 
 
 async def test_send_command_reconnect_failure(make_client):
-    """When the BLE client is disconnected and reconnection fails,
-    send_command must raise PrinterException('Failed to reconnect')."""
+    """When the BLE client is disconnected and reconnection leaves char_uuid unset,
+    send_command must raise PrinterException about missing characteristic UUID."""
     client = make_client()
     client.transport.client.is_connected = False
-    client.connect = AsyncMock(return_value=False)
+    client.char_uuid = None  # connect() won't restore it
 
-    with pytest.raises(PrinterException, match="Failed to reconnect"):
+    async def fake_connect():
+        client.transport.client.is_connected = True
+
+    client.connect = AsyncMock(side_effect=fake_connect)
+
+    with pytest.raises(PrinterException, match="No characteristic UUID available"):
         await client.send_command(RequestCodeEnum.GET_INFO, b"\x01")
 
 
@@ -136,9 +141,9 @@ async def test_start_notification_idempotent():
 # ---------------------------------------------------------------------------
 
 
-async def test_transport_already_connected_returns_true():
+async def test_transport_already_connected_skips_new_client():
     """When the transport already has a connected client at the same address,
-    connect() should return True without instantiating a new BleakClient."""
+    connect() should complete without instantiating a new BleakClient."""
     transport = BLETransport()
 
     mock_client = MagicMock()
@@ -147,9 +152,8 @@ async def test_transport_already_connected_returns_true():
     transport.address = "AA:BB:CC:DD:EE:FF"
 
     with patch("NiimPrintX.nimmy.bluetooth.BleakClient") as MockBleakClient:
-        result = await transport.connect("AA:BB:CC:DD:EE:FF")
+        await transport.connect("AA:BB:CC:DD:EE:FF")  # should not raise
 
-    assert result is True
     # BleakClient constructor should never have been called
     MockBleakClient.assert_not_called()
     # Original client should still be in place

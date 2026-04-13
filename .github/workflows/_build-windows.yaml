@@ -95,7 +95,7 @@ jobs:
 
       - name: Create release directory and move GUI files
         run: |
-          New-Item -Path $env:GITHUB_WORKSPACE\release\NiimPrintX-App -ItemType Directory
+          New-Item -Path $env:GITHUB_WORKSPACE\release\NiimPrintX-App -ItemType Directory -Force
           Move-Item -Path $env:GITHUB_WORKSPACE\dist\NiimPrintX\* -Destination $env:GITHUB_WORKSPACE\release\NiimPrintX-App
 
       - name: Remove dist folder content
@@ -108,7 +108,7 @@ jobs:
 
       - name: Move CLI files to release directory
         run: |
-          New-Item -Path $env:GITHUB_WORKSPACE\release\NiimPrintX-Cli -ItemType Directory
+          New-Item -Path $env:GITHUB_WORKSPACE\release\NiimPrintX-Cli -ItemType Directory -Force
           # CLI spec produces a one-file EXE at dist\niimprintx.exe (no COLLECT directory)
           if (Test-Path "$env:GITHUB_WORKSPACE\dist\niimprintx") {
             Move-Item -Path $env:GITHUB_WORKSPACE\dist\niimprintx\* -Destination $env:GITHUB_WORKSPACE\release\NiimPrintX-Cli

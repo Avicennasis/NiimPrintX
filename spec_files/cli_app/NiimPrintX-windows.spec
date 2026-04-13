@@ -9,7 +9,7 @@ src_path = os.path.join(repo_root, 'NiimPrintX', 'cli')
 # Analysis step
 a = Analysis(
     [os.path.join(src_path, '__main__.py')],
-    pathex=['.'],
+    pathex=[],
     binaries=[],
     datas=[],
     hiddenimports=['click', 'loguru', 'rich', 'platformdirs'] + collect_submodules('PIL') + collect_submodules('bleak'),

@@ -285,12 +285,12 @@ async def test_get_print_status(make_client):
 
 
 async def test_connect_success(make_client):
-    """When BLETransport.connect() returns True and find_characteristics sets
-    char_uuid, connect() should return True and _loop should be set."""
+    """When BLETransport.connect() succeeds and find_characteristics sets
+    char_uuid, connect() should complete without error and _loop should be set."""
     client = make_client()
     client.char_uuid = None  # Force the find_characteristics path
 
-    client.transport.connect = AsyncMock(return_value=True)
+    client.transport.connect = AsyncMock(return_value=None)
 
     # Build a mock service with a single characteristic that has the right props
     char = MagicMock()
@@ -304,9 +304,8 @@ async def test_connect_success(make_client):
 
     client.transport.client.services = [service]
 
-    result = await client.connect()
+    await client.connect()  # should not raise
 
-    assert result is True
     assert client.char_uuid == char.uuid
     assert client._loop is not None
 

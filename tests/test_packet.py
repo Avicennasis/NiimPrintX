@@ -112,16 +112,12 @@ def test_packet_trailing_bytes_accepted():
 
 
 def test_packet_to_int_single_byte():
-    """packet_to_int on single-byte data should return that byte value."""
-    from NiimPrintX.nimmy.packet import packet_to_int
-
+    """NiimbotPacket.to_int() on single-byte data should return that byte value."""
     pkt = NiimbotPacket(0x01, b"\x42")
-    assert packet_to_int(pkt) == 0x42
+    assert pkt.to_int() == 0x42
 
 
 def test_packet_to_int_multi_byte():
-    """packet_to_int on multi-byte data should return big-endian integer (0x0100 = 256)."""
-    from NiimPrintX.nimmy.packet import packet_to_int
-
+    """NiimbotPacket.to_int() on multi-byte data should return big-endian integer (0x0100 = 256)."""
     pkt = NiimbotPacket(0x01, b"\x01\x00")
-    assert packet_to_int(pkt) == 256
+    assert pkt.to_int() == 256

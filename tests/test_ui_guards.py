@@ -2,15 +2,15 @@
 
 import pytest
 
-from NiimPrintX.nimmy.packet import NiimbotPacket, packet_to_int
+from NiimPrintX.nimmy.packet import NiimbotPacket
 
 # ---------------------------------------------------------------------------
-# 1. packet_to_int — empty data raises ValueError
+# 1. NiimbotPacket.to_int — empty data raises ValueError
 # ---------------------------------------------------------------------------
 
 
 def test_packet_to_int_empty_raises():
-    """packet_to_int must raise ValueError when packet data is empty."""
+    """NiimbotPacket.to_int() must raise ValueError when packet data is empty."""
     pkt = NiimbotPacket(0x00, b"")
     with pytest.raises(ValueError, match="empty"):
-        packet_to_int(pkt)
+        pkt.to_int()

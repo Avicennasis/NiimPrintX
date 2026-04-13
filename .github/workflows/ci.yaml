@@ -23,12 +23,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.12', '3.13', '3.14']
-        experimental: [false]
+        python-version: ['3.12', '3.13']
         include:
           - python-version: '3.14'
             experimental: true
-    continue-on-error: ${{ matrix.experimental == true }}
+    continue-on-error: ${{ matrix.experimental || false }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4
 
@@ -59,7 +58,7 @@ jobs:
           retention-days: 30
 
       - name: Upload coverage report
-        if: matrix.python-version == '3.13'
+        if: always() && matrix.python-version == '3.13'
         uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08  # v4
         with:
           name: coverage-report

@@ -24,7 +24,7 @@ class StatusBar:
         self.status_label = tk.Label(self.status_frame, text="Not Connected", fg="red", font=("Arial", 10))
         self.status_label.pack(side=tk.RIGHT, padx=5)
 
-    def update_status(self, connection: bool = True) -> None:
+    def update_status(self, connection: bool = False) -> None:
         """Update the status message and circle color to indicate connection."""
 
         if connection:

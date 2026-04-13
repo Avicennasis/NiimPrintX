@@ -50,7 +50,7 @@ class BLETransport:
         self.client: BleakClient | None = None
         self._notifying_uuids: set[str] = set()
 
-    async def connect(self, address: str) -> bool:
+    async def connect(self, address: str, *, timeout: float = 10.0) -> None:  # noqa: ASYNC109 — timeout is passed to bleak's BleakClient.connect()
         if self.client is not None and self.address != address:
             # Address changed — disconnect old client first
             await self.disconnect()
@@ -63,15 +63,13 @@ class BLETransport:
             self.client = BleakClient(address)
             self._notifying_uuids.clear()
             try:
-                await self.client.connect()
+                await self.client.connect(timeout=timeout)
             except BleakError as e:
                 self.client = None
                 raise BLEException(f"BLE connect failed: {e}") from e
             except Exception:
                 self.client = None
                 raise
-            return True
-        return True  # already connected
 
     async def disconnect(self) -> None:
         if self.client:
@@ -114,8 +112,6 @@ class BLETransport:
         try:
             if char_uuid in self._notifying_uuids and self.client and self.client.is_connected:
                 await self.client.stop_notify(char_uuid)
-        except BleakError as e:
-            raise BLEException(f"BLE stop_notify failed: {e}") from e
         except Exception as e:
             raise BLEException(f"BLE stop_notify failed: {e}") from e
         finally:

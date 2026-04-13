@@ -27,29 +27,7 @@ from NiimPrintX.nimmy.packet import NiimbotPacket
 from NiimPrintX.nimmy.printer import RequestCodeEnum
 from NiimPrintX.nimmy.userconfig import _validate_dims, merge_label_sizes
 from NiimPrintX.ui.widget.PrinterOperation import PrinterOperation
-
-# ---------------------------------------------------------------------------
-# Helper
-# ---------------------------------------------------------------------------
-
-
-def _make_fake_write(client, response_pkt):
-    """Return an async side_effect that sets notification_data from response_pkt."""
-
-    async def fake_write(data, char_uuid):
-        client.notification_data = response_pkt.to_bytes()
-        client.notification_event.set()
-
-    return fake_write
-
-
-def _make_config(**overrides):
-    """Build a minimal mock config for PrinterOperation."""
-    cfg = MagicMock()
-    cfg.printer_connected = overrides.get("printer_connected", False)
-    cfg.device = overrides.get("device", "d110")
-    return cfg
-
+from tests.helpers import make_fake_write as _make_fake_write
 
 # ---------------------------------------------------------------------------
 # 1. _encode_image PA mode (palette + alpha composited onto white)

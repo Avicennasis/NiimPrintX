@@ -39,6 +39,9 @@ kill_xprotect() {
       sleep 5
       ((waited += 5))
   done
+  if pgrep -q XProtect 2>/dev/null; then
+      echo "WARNING: XProtect still running after ${max_wait}s wait"
+  fi
   echo "XProtect processes terminated."
   sudo mdutil -a -i off || true
 }

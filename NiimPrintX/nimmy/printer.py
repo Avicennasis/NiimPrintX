@@ -68,7 +68,7 @@ class PrinterClient:
         self._print_lock: asyncio.Lock = asyncio.Lock()
         self._expecting_response: bool = False
 
-    async def connect(self) -> bool:
+    async def connect(self) -> None:
         await self.transport.connect(self.device.address)
         if not self.char_uuid:
             try:
@@ -78,7 +78,6 @@ class PrinterClient:
                 raise
         self._loop = asyncio.get_running_loop()
         logger.info(f"Successfully connected to {self.device.name!r}")
-        return True
 
     async def disconnect(self) -> None:
         if self.char_uuid is not None:
@@ -118,8 +117,7 @@ class PrinterClient:
             try:
                 if not self.transport.client or not self.transport.client.is_connected:
                     self.char_uuid = None  # force re-discovery after unilateral disconnect
-                    if not await self.connect():
-                        raise PrinterException("Failed to reconnect to printer")
+                    await self.connect()
                 if self.char_uuid is None:
                     raise PrinterException("No characteristic UUID available")
                 # Clear stale state BEFORE arming notifications
@@ -161,8 +159,8 @@ class PrinterClient:
     async def write_raw(self, data: NiimbotPacket) -> None:
         async with self._command_lock:
             try:
-                if (not self.transport.client or not self.transport.client.is_connected) and not await self.connect():
-                    raise PrinterException("Failed to reconnect to printer")
+                if not self.transport.client or not self.transport.client.is_connected:
+                    await self.connect()
                 if self.char_uuid is None:
                     raise PrinterException("No characteristic UUID available")
                 await self.transport.write(data.to_bytes(), self.char_uuid)
@@ -176,12 +174,14 @@ class PrinterClient:
             logger.warning("Notification received but event loop is None; dropping")
             return
 
+        snapshot = bytes(data)
+
         def _set() -> None:
             if self._expecting_response and not self.notification_event.is_set():
-                self.notification_data = bytes(data)
+                self.notification_data = snapshot
                 self.notification_event.set()
-            elif not self._expecting_response:
-                logger.debug(f"Unsolicited notification dropped ({len(data)} bytes)")
+            else:
+                logger.debug("Dropped unsolicited notification (%d bytes)", len(snapshot))
 
         self._loop.call_soon_threadsafe(_set)
 
@@ -255,10 +255,13 @@ class PrinterClient:
                 page_started = True
 
                 if v2:
-                    await self.set_dimension_v2(effective_height, effective_width, quantity)
+                    if not await self.set_dimension_v2(effective_height, effective_width, quantity):
+                        raise PrinterException("Printer rejected set_dimension_v2")
                 else:
-                    await self.set_dimension(effective_height, effective_width)
-                    await self.set_quantity(quantity)
+                    if not await self.set_dimension(effective_height, effective_width):
+                        raise PrinterException("Printer rejected set_dimension")
+                    if not await self.set_quantity(quantity):
+                        raise PrinterException("Printer rejected set_quantity")
 
                 for pkt in self._encode_image(image, vertical_offset, horizontal_offset):
                     await self.write_raw(pkt)
@@ -324,13 +327,15 @@ class PrinterClient:
             image = image.convert("RGBA")
         if image.mode in ("RGBA", "LA"):
             background = Image.new("RGB", image.size, (255, 255, 255))
-            alpha = image.split()[-1]
             try:
-                background.paste(image, mask=alpha)
+                alpha = image.split()[-1]
+                try:
+                    background.paste(image, mask=alpha)
+                finally:
+                    alpha.close()
+                gray = background.convert("L")
             finally:
-                alpha.close()
-            gray = background.convert("L")
-            background.close()
+                background.close()
         else:
             gray = image.convert("L")
         try:
@@ -397,12 +402,15 @@ class PrinterClient:
             case _:
                 return response.to_int()
 
-    async def get_rfid(self) -> RFIDResponse | None:
+    async def get_rfid(self) -> RFIDResponse | None:  # noqa: PLR0911 — early returns for malformed RFID data are clearer than nesting
         packet = await self.send_command(RequestCodeEnum.GET_RFID, b"\x01")
         data = packet.data
 
         try:
             if not data or data[0] == 0:
+                return None
+            if len(data) < 9:
+                logger.error("Malformed RFID response: data too short (%d bytes)", len(data))
                 return None
             uuid = data[0:8].hex()
             idx = 8

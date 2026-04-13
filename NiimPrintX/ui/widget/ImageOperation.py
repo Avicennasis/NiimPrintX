@@ -4,8 +4,8 @@ import contextlib
 from tkinter import messagebox
 from typing import TYPE_CHECKING
 
-import PIL.Image
 from PIL import Image, ImageTk
+from PIL.Image import UnidentifiedImageError
 
 if TYPE_CHECKING:
     import tkinter as tk
@@ -19,11 +19,11 @@ class ImageOperation:
 
     def load_image(self, file_path: str) -> None:
         try:
-            PIL.Image.MAX_IMAGE_PIXELS = 5_000_000
+            Image.MAX_IMAGE_PIXELS = 5_000_000
             raw_image = Image.open(file_path)
             source_image = raw_image.convert("RGBA")
             raw_image.close()
-        except (OSError, ValueError, PIL.UnidentifiedImageError) as e:
+        except (OSError, ValueError, UnidentifiedImageError) as e:
             messagebox.showerror("Error", f"Failed to load image: {e}")
             return
 

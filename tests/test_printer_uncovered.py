@@ -24,21 +24,7 @@ from PIL import Image
 from NiimPrintX.nimmy.exception import BLEException, PrinterException
 from NiimPrintX.nimmy.packet import NiimbotPacket
 from NiimPrintX.nimmy.printer import InfoEnum, PrinterClient, RequestCodeEnum
-
-# ---------------------------------------------------------------------------
-# Helper: build a fake_write that auto-responds to send_command
-# ---------------------------------------------------------------------------
-
-
-def _make_fake_write(client, response_pkt):
-    """Return an async side_effect that sets notification_data from response_pkt."""
-
-    async def fake_write(data, char_uuid):
-        client.notification_data = response_pkt.to_bytes()
-        client.notification_event.set()
-
-    return fake_write
-
+from tests.helpers import make_fake_write as _make_fake_write
 
 # ---------------------------------------------------------------------------
 # PrinterClient.__init__ via normal constructor
@@ -74,7 +60,7 @@ async def test_connect_find_chars_raises_disconnects_and_reraises():
 
     client = PrinterClient(device)
     client.transport = MagicMock()
-    client.transport.connect = AsyncMock(return_value=True)
+    client.transport.connect = AsyncMock(return_value=None)
     client.transport.disconnect = AsyncMock()
 
     # Mock client.services so find_characteristics finds nothing
@@ -166,12 +152,19 @@ async def test_send_command_reconnect_when_client_is_none(make_client):
 
 
 async def test_send_command_reconnect_fails_when_client_is_none(make_client):
-    """When transport.client is None and reconnect fails, raise PrinterException."""
+    """When transport.client is None and reconnect leaves char_uuid unset,
+    send_command should raise PrinterException."""
     client = make_client()
     client.transport.client = None
-    client.connect = AsyncMock(return_value=False)
+    client.char_uuid = None  # connect() won't set it in mock
 
-    with pytest.raises(PrinterException, match="Failed to reconnect"):
+    async def fake_connect():
+        # Simulate a connect that completes but fails to find characteristics
+        client.transport.client = MagicMock()
+
+    client.connect = AsyncMock(side_effect=fake_connect)
+
+    with pytest.raises(PrinterException, match="No characteristic UUID available"):
         await client.send_command(RequestCodeEnum.GET_INFO, b"\x01")
 
 
@@ -266,13 +259,18 @@ async def test_write_raw_reconnect_when_disconnected(make_client):
 
 
 async def test_write_raw_reconnect_failure(make_client):
-    """write_raw() should raise PrinterException when reconnect fails."""
+    """write_raw() should raise PrinterException when reconnect leaves char_uuid unset."""
     client = make_client()
     client.transport.client.is_connected = False
-    client.connect = AsyncMock(return_value=False)
+    client.char_uuid = None  # connect() won't set it in mock
+
+    async def fake_connect():
+        client.transport.client.is_connected = True
+
+    client.connect = AsyncMock(side_effect=fake_connect)
 
     packet = NiimbotPacket(0x85, b"\x00")
-    with pytest.raises(PrinterException, match="Failed to reconnect"):
+    with pytest.raises(PrinterException, match="No characteristic UUID available"):
         await client.write_raw(packet)
 
 

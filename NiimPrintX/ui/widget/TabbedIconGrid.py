@@ -138,8 +138,7 @@ class TabbedIconGrid(tk.Frame):
                     pil_images.append((filename, img, subfolder_name))
                 except (OSError, ValueError, PIL.UnidentifiedImageError):
                     pass  # skip corrupt/unrecognized image files
-        with contextlib.suppress(tk.TclError):
-            self.after(0, lambda: self._create_icon_widgets(frame, pil_images, subfolder_name, canvas))
+        self.after(0, lambda: self._create_icon_widgets(frame, pil_images, subfolder_name, canvas))
 
     def _create_icon_widgets(
         self,

@@ -79,8 +79,8 @@ jobs:
         run: |
           COUNT=$(find release -maxdepth 1 -type f | wc -l)
           echo "Found $COUNT release artifacts"
-          if [[ "$COUNT" -lt 5 ]]; then
-            echo "ERROR: Expected at least 5 artifacts, found $COUNT"
+          if [[ "$COUNT" -lt 6 ]]; then
+            echo "ERROR: Expected at least 6 artifacts, found $COUNT"
             exit 1
           fi
 

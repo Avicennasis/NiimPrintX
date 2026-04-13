@@ -5,12 +5,6 @@ from .logger_config import get_logger
 logger = get_logger()
 
 
-def packet_to_int(x: NiimbotPacket) -> int:
-    if not x.data:
-        raise ValueError("Cannot convert empty packet data to integer")
-    return int.from_bytes(x.data, "big")
-
-
 class NiimbotPacket:
     def __init__(self, type_: int, data: bytes) -> None:
         self.type = type_

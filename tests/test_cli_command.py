@@ -464,7 +464,7 @@ class TestPrintOffsets:
                 assert captured_kwargs["horizontal_offset"] == 0
 
     def test_negative_offsets_accepted(self, runner):
-        """Negative offsets should be accepted (unbounded int type)."""
+        """Negative offsets within the valid range (-10000 to 10000) should be accepted."""
         device = _mock_device()
         printer = _mock_printer()
         captured_kwargs = {}

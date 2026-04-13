@@ -46,6 +46,9 @@ def _resolve_magick_path() -> tuple[str | None, bool]:
                     return None, False
                 path_fallback = True
                 logger.warning("Using PATH fallback for 'magick': %s", magick_path)
+        if not os.path.isfile(magick_path):
+            path_fallback = True
+            logger.warning("Bundled magick not found at %s; will try PATH", magick_path)
     else:
         magick_path = shutil.which("magick")
         if magick_path is None:
@@ -109,6 +112,7 @@ def _run_font_list(cmd: list[str]) -> dict[str, Any] | None:
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf8", timeout=10, check=False)
         if result.returncode != 0:
+            logger.warning("Font list command failed (rc=%d): %s", result.returncode, result.stderr.strip()[:500])
             return None
         output = result.stdout
         if not output.strip():
