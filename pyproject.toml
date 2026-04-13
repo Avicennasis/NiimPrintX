@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "NiimPrintX"
-version = "0.8.0"
+version = "0.9.0"
 description = "App to print labels using NiimBot printer"
 authors = ["Labbots <labbots@gmail.com>"]
 license = "GPL-3.0-only"

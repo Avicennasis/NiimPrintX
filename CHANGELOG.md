@@ -5,6 +5,65 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-04-13
+
+4-round convergence audit (Rounds 23-26). 143 findings fixed across 75+ files. 80 → 45 → 14 → 4 findings.
+
+### Added
+- BLE connect timeout parameter (10s default, configurable)
+- `.niim` file validation: font_props allowlisting, content length cap, kerning range, coords finiteness
+- CI: Python 3.14 experimental matrix with `allow-prereleases`
+- CI: coverage XML artifact upload, `--all-extras` in pip-audit
+- CI: `timeout-minutes` on all jobs (test, lint, audit, build, validate, release)
+- Build: macOS `CFBundleVersion` from CI env var (notarization ready)
+- Build: `tkinter` top-level hiddenimport on Linux+Windows specs (matching macOS)
+- `tests/helpers.py` for shared test utilities
+
+### Changed
+- `BLETransport.connect()` returns `None` instead of `bool` (raises on failure)
+- `notification_handler` captures `bytes(data)` snapshot before `call_soon_threadsafe` (prevents bleak buffer reuse)
+- `_print_job` cleanup uses `asyncio.wait_for(..., timeout=2.0)` (was 10s default)
+- `_print_job` dimension check moved before BLE commands (was after `start_print`)
+- `_heartbeat_active` set synchronously before async dispatch (closes TOCTOU window)
+- `printer_connected` synced after auto-reconnect in `print()`
+- `_shutting_down` set before modal dialogs (prevents double-entry race)
+- `stop_notification` exception handlers collapsed (was redundant duplicate)
+- `packet_to_int` standalone function removed; `NiimbotPacket.to_int()` is canonical
+- `_ALL_MODELS` derived from `printer.py` constants (was hardcoded duplicate)
+- `process_png.py` mogrify calls batched for ARG_MAX safety
+- 354 tests (down from 380 — 20+ duplicates removed, 0 coverage loss)
+
+### Fixed
+- Shutdown never disconnected BLE printer (was calling `PrinterState` instead of `PrinterClient`)
+- `CancelledError` during cleanup could skip `end_print` (printer stuck state)
+- `set_dimension`/`set_quantity` return values now checked (were silently discarded)
+- `char_uuid` reset before reconnect (prevents stale UUID after unilateral disconnect)
+- Phantom UUID in `_notifying_uuids` after cancelled `start_notification`
+- Background image leaked during alpha compositing error path
+- Alpha channel Image from `split()` leaked (never closed)
+- `call_soon_threadsafe` on closed event loop (late BLE notification)
+- 6 UI None-guard crash fixes (TextOperation, ImageOperation, TabbedIconGrid)
+- Debounce fired on stale/deselected text item (silent data corruption)
+- `toolbar_print_button` permanently stuck disabled if `export_to_png` returns None
+- Orphaned modal popup on `Image.open` failure (grab_set with no escape)
+- `_popup_ref` never reset after popup close
+- `FileMenu` OSError not caught on file open
+- `font_image` not closed on format-mismatch in `load_text`
+
+### Security
+- `.niim` deserialization: font family type+length, content length cap, kerning finite+range, font_props required keys, slant/weight/underline allowlist, coords finiteness, b64decode `validate=True`, non-dict item guards
+- Live UI kerning clamped to [-100, 100] with `isfinite()` check
+- `resize_image` capped at `MAX_CANVAS_DIM = 32767`
+- Windows CI: `${{ }}` interpolation replaced with `$env:` references
+- `NO_COLOR` spec compliance (presence check, not value check)
+
+### Removed
+- Dead code: `AppConfig.label_sizes` setter, `PrinterOperation.immutable`, `CanvasSelector` close(), redundant `hasattr` guards, `process_png.py` double-resize, `cli/__main__` unconditional import, dead `connect()` return-False branches
+- Dead macos-13 workflow steps
+- Orphaned `runtime_hooks/` directory
+- `tests/test_review_fixes.py` (subsumed by canonical tests)
+- 20+ duplicate tests across 10 test files
+
 ## [0.8.0] - 2026-04-12
 
 25-agent deep-dive code review (Round 22). 60+ fixes, 15 new tests, architecture refactors.
@@ -397,6 +456,7 @@ Original upstream release by [labbots](https://github.com/labbots).
 - PyInstaller specs for Windows, macOS, and Linux builds
 - GitHub Actions CI/CD for builds
 
+[0.9.0]: https://github.com/avicennasis/NiimPrintX/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/avicennasis/NiimPrintX/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/avicennasis/NiimPrintX/compare/v0.6.2...v0.7.0
 [0.6.2]: https://github.com/avicennasis/NiimPrintX/compare/v0.6.1...v0.6.2

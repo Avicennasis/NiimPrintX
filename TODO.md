@@ -26,9 +26,12 @@
 - [ ] **#35** — Xubuntu printer setup — Documentation/FAQ (Bluetooth pairing guide)
 - [ ] **#25** — D101 Windows pairing — D101 now supported; ask user to retry with latest
 
-## Outstanding (Blocking before v0.8.0)
+## Outstanding (Blocking before next release)
 
-- [x] **ImageMagick Windows URL** — Version + SHA extracted into env vars in `_build-windows.yaml`
+- [ ] **Linux frozen build: ImageMagick bundling** — Linux UI PyInstaller spec has no ImageMagick binaries/libs bundled. Wand/font rendering broken in frozen Linux builds. Needs architectural decision (AppImage, portable IM, or system dependency).
+- [ ] **Linux frozen build: one-file → one-dir** — Linux UI spec uses one-file layout while Windows/macOS use one-dir. Should be converted for consistency.
+- [ ] **BLE model name mapping** — `d11_h` and `d110_m` CLI model names contain underscores that may not match BLE advertisement names (`D11H`, `D110M`). Needs hardware verification.
+- [ ] **D101 width constant** — `DEFAULT_MAX_WIDTH_V1 = 240` may be too permissive for D101 (15mm = ~96px at 203 DPI). Needs hardware verification.
 
 ## Outstanding (Important)
 
@@ -44,6 +47,69 @@
 ---
 
 ## Completed
+
+### Rounds 23–26 Deep Code Review (2026-04-13, eleventh session)
+
+- [x] **4-round convergence audit** — 80 → 45 → 14 → 4 findings. 143 total findings fixed across 75+ files.
+- [x] **C: Shutdown BLE disconnect** — Was calling PrinterState instead of PrinterClient; BLE never disconnected on app close
+- [x] **C: CancelledError cleanup** — contextlib.suppress(Exception) → BaseException; prevents printer stuck state
+- [x] **C: Windows CI script injection** — ${{ }} interpolation replaced with $env: references
+- [x] **C: CI matrix regression** — experimental:[false] creating 4 jobs fixed to 3
+- [x] **BLE: notification bytearray capture** — bytes(data) snapshot before call_soon_threadsafe (bleak buffer reuse)
+- [x] **BLE: connect() return type** — Changed to None, removed all dead False-return branches
+- [x] **BLE: connect timeout** — Added 10s default parameter (was bleak's 30s)
+- [x] **BLE: stale char_uuid** — Reset before reconnect to force re-discovery
+- [x] **BLE: phantom UUID race** — Moved _notifying_uuids.add() after start_notify succeeds
+- [x] **BLE: exception wrapping** — BleakError and stop_notification handlers consolidated
+- [x] **Protocol: cleanup timeout** — Reduced from 20s to 4s via asyncio.wait_for
+- [x] **Protocol: dimension check** — Moved before BLE commands (was after start_print)
+- [x] **Protocol: setup command returns** — All checked (set_density, set_type, start_print, set_dimension, set_quantity)
+- [x] **Protocol: alpha channel leak** — image.split()[-1] now closed in finally
+- [x] **Protocol: background image leak** — Closed in finally during alpha compositing
+- [x] **Protocol: RFID truncated UUID guard** — Minimum-length check before UUID extraction
+- [x] **Protocol: call_soon_threadsafe** — Guarded against closed event loop
+- [x] **Security: .niim font family** — Type check, length cap (256), existence validation
+- [x] **Security: .niim content length** — 10,000 character cap
+- [x] **Security: .niim kerning** — isfinite() + range [-100, 100]
+- [x] **Security: .niim font_props** — Required keys validated, slant/weight/underline allowlisted
+- [x] **Security: .niim coords** — isfinite() check on all coordinates
+- [x] **Security: .niim b64decode** — validate=True on all 3 decode sites
+- [x] **Security: .niim non-dict items** — Guard against non-dict text/image values
+- [x] **Security: resize upper bound** — MAX_CANVAS_DIM = 32767 cap
+- [x] **Security: live UI kerning** — isfinite() + range clamp matching .niim path
+- [x] **UI: 6 None-guard crash fixes** — TextOperation bbox/handle, ImageOperation resize, TabbedIconGrid tab_names
+- [x] **UI: debounce stale-item fix** — Guard against deselected text in TextTab
+- [x] **UI: heartbeat double-start** — _heartbeat_active set before async dispatch
+- [x] **UI: heartbeat TclError** — Dead outer handler removed
+- [x] **UI: update_status guard** — Early return during _connecting
+- [x] **UI: _shutting_down race** — Set before dialogs, reset on cancel
+- [x] **UI: toolbar_print_button stuck** — Re-enable when export_to_png returns None
+- [x] **UI: popup cleanup** — Destroy on Image.open failure, reset _popup_ref
+- [x] **UI: printer_connected sync** — Updated after auto-reconnect in print()
+- [x] **UI: dead code** — AppConfig setter, PrinterOperation.immutable, CanvasSelector close(), hasattr guards
+- [x] **CI: Python 3.14 matrix** — With allow-prereleases and continue-on-error
+- [x] **CI: job timeouts** — All jobs (test, lint, audit, build, validate, release)
+- [x] **CI: coverage XML** — Artifact uploaded for diagnostics
+- [x] **CI: mypy full-package** — Covers all of NiimPrintX/
+- [x] **CI: pip-audit --all-extras** — GUI dependencies included in audit
+- [x] **CI: artifact validation** — Count threshold 6 in release job
+- [x] **Build: macOS entitlements** — Hardened Runtime keys for PyInstaller
+- [x] **Build: macOS CLI strip=False** — Prevents code-sign corruption
+- [x] **Build: macOS CFBundleVersion** — From CI env var, notarization ready
+- [x] **Build: macOS create-dmg** — Removed unnecessary sudo
+- [x] **Build: macOS python-tk@3.12** — Correct Homebrew formula
+- [x] **Build: tkinter hiddenimport** — Added to Linux+Windows specs (matching macOS)
+- [x] **Build: dead macos-13 steps** — Removed
+- [x] **Build: Windows interpolation** — $env: context for ImageMagick vars
+- [x] **Build: Windows pathex** — Changed to [] matching other platforms
+- [x] **Build: orphaned runtime_hooks** — Deleted
+- [x] **CLI: _ALL_MODELS** — Derived from printer.py constants
+- [x] **CLI: NO_COLOR** — Spec-compliant presence check
+- [x] **CLI: dead code** — __main__ guard, success init, connect return branches
+- [x] **Tests: 20+ duplicates removed** — Consolidated across 10 test files
+- [x] **Tests: helpers centralized** — make_fake_write in tests/helpers.py
+- [x] **Tests: packet_to_int** — Standalone function removed, to_int() method canonical
+- [x] **Version** — 0.8.0 → 0.9.0
 
 ### Round 22 Deep Code Review (2026-04-12, tenth session)
 

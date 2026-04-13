@@ -19,12 +19,12 @@ This is a community-maintained fork of the original [labbots/NiimPrintX](https:/
 Since forking, we have:
 
 - Merged outstanding upstream pull requests from the community
-- Conducted 22 rounds of deep code review, hardening the codebase throughout
-- Added a comprehensive test suite (380 pytest tests, 90%+ coverage) and CI/CD pipeline
+- Conducted 26 rounds of deep code review (143 findings fixed), hardening the codebase throughout
+- Added a comprehensive test suite (354 pytest tests, 90%+ coverage) and CI/CD pipeline
 - Replaced the pickle-based `.niim` file format with a secure JSON-based format
 - Introduced user-configurable custom label sizes, per-device rotation, and BLE resilience improvements
 
-**Current version: v0.8.0**
+**Current version: v0.9.0**
 
 A huge thank you to [labbots](https://github.com/labbots) for creating NiimPrintX and building the foundation this project stands on.
 
