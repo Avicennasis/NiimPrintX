@@ -2,7 +2,7 @@
 import os
 from PyInstaller.utils.hooks import collect_submodules
 
-spec_dir = os.path.dirname(os.path.abspath(__file__))
+spec_dir = SPECPATH  # PyInstaller built-in: directory containing this .spec file
 repo_root = os.path.normpath(os.path.join(spec_dir, '..', '..'))
 src_path = os.path.join(repo_root, 'NiimPrintX', 'cli')
 

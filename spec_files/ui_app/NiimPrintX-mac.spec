@@ -59,7 +59,7 @@ for subdir in ('etc', 'share'):
     if os.path.isdir(subpath):
         imagemagick_datas.extend(collect_and_adjust_files(subpath, os.path.join('imagemagick', subdir)))
 
-spec_dir = os.path.dirname(os.path.abspath(__file__))
+spec_dir = SPECPATH  # PyInstaller built-in: directory containing this .spec file
 repo_root = os.path.normpath(os.path.join(spec_dir, '..', '..'))
 src_path = os.path.join(repo_root, 'NiimPrintX', 'ui')
 

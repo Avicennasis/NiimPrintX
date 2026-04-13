@@ -48,7 +48,7 @@ jobs:
           cache: 'poetry'
 
       - name: Install Linux dependencies
-        run: sudo apt-get update && sudo apt-get install -y imagemagick python3-tk
+        run: sudo apt-get update && sudo apt-get install -y imagemagick python3-tk libcairo2-dev pkg-config
 
 
       - name: Install python dependencies

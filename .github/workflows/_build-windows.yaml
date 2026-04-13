@@ -10,10 +10,10 @@ jobs:
   windows:
     name: "Windows"
     runs-on: windows-2022
-    # To update: download new portable ZIP from https://imagemagick.org/archive/binaries/, update version + SHA-256
+    # To update: download new portable 7z from https://imagemagick.org/archive/binaries/, update version + SHA-256
     env:
-      IMAGEMAGICK_VERSION: "7.1.1-33"
-      IMAGEMAGICK_SHA256: "9448F8A1159C9B14E3E1B9D8EAB1A6DDF88D26E1F888A34CEF430C756E4E6E1E"
+      IMAGEMAGICK_VERSION: "7.1.2-19"
+      IMAGEMAGICK_SHA256: "F1DD48811611068AF58E1E4911C85BC7AB015F0FA7EDFC96797E468AD6F99930"
 
     steps:
       - name: Extract Tag
@@ -56,12 +56,12 @@ jobs:
 
       - name: Download ImageMagick
         run: |
-          Invoke-WebRequest -Uri https://imagemagick.org/archive/binaries/ImageMagick-${{ env.IMAGEMAGICK_VERSION }}-portable-Q16-HDRI-x64.zip -OutFile ImageMagick.zip
+          Invoke-WebRequest -Uri https://imagemagick.org/archive/binaries/ImageMagick-${{ env.IMAGEMAGICK_VERSION }}-portable-Q16-HDRI-x64.7z -OutFile ImageMagick.7z
 
       - name: Verify ImageMagick checksum
         run: |
           $expected = "${{ env.IMAGEMAGICK_SHA256 }}"
-          $actual = (Get-FileHash -Path ImageMagick.zip -Algorithm SHA256).Hash
+          $actual = (Get-FileHash -Path ImageMagick.7z -Algorithm SHA256).Hash
           if ($actual -ne $expected) {
             Write-Error "SHA-256 mismatch! Expected: $expected Got: $actual"
             exit 1
@@ -70,12 +70,15 @@ jobs:
 
       - name: Extract ImageMagick
         run: |
-          Expand-Archive -Path ImageMagick.zip -DestinationPath $env:GITHUB_WORKSPACE\resources\ImageMagick
+          New-Item -Path "$env:GITHUB_WORKSPACE\resources\ImageMagick" -ItemType Directory -Force
+          7z x ImageMagick.7z -o"$env:GITHUB_WORKSPACE\resources\ImageMagick" -y
           $extractedFolder = Get-ChildItem "$env:GITHUB_WORKSPACE\resources\ImageMagick" -Directory | Select-Object -First 1 -ExpandProperty FullName
-          Move-Item -Path "$extractedFolder\*" -Destination "$env:GITHUB_WORKSPACE\resources\ImageMagick" -Force
-          Remove-Item -Path $extractedFolder -Recurse -Force
-          if (-not (Test-Path "$env:GITHUB_WORKSPACE\resources\ImageMagick")) {
-              Write-Error "ImageMagick extraction failed"
+          if ($extractedFolder) {
+            Move-Item -Path "$extractedFolder\*" -Destination "$env:GITHUB_WORKSPACE\resources\ImageMagick" -Force
+            Remove-Item -Path $extractedFolder -Recurse -Force
+          }
+          if (-not (Test-Path "$env:GITHUB_WORKSPACE\resources\ImageMagick\magick.exe")) {
+              Write-Error "ImageMagick extraction failed — magick.exe not found"
               exit 1
           }
 
