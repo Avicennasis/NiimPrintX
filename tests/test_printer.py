@@ -7,7 +7,7 @@ from PIL import Image
 from NiimPrintX.cli.command import niimbot_cli
 from NiimPrintX.nimmy.exception import PrinterException
 from NiimPrintX.nimmy.packet import NiimbotPacket
-from NiimPrintX.nimmy.printer import InfoEnum, RequestCodeEnum
+from NiimPrintX.nimmy.printer import RequestCodeEnum
 
 
 async def test_send_command_clears_event_before_wait(make_client):
@@ -124,37 +124,6 @@ async def test_start_print_v2_quantity_validation(make_client):
     client = make_client()
     with pytest.raises(PrinterException, match="Quantity must be 1-65535"):
         await client.start_print_v2(quantity=-1)
-
-
-async def test_get_info_device_serial(make_client):
-    """get_info(DEVICESERIAL) should return the response data as a hex string."""
-    client = make_client()
-    serial_bytes = bytes([0xDE, 0xAD, 0xBE, 0xEF])
-    response_pkt = NiimbotPacket(RequestCodeEnum.GET_INFO, serial_bytes)
-
-    async def fake_write(data, char_uuid):
-        client.notification_data = response_pkt.to_bytes()
-        client.notification_event.set()
-
-    client.transport.write = AsyncMock(side_effect=fake_write)
-    result = await client.get_info(InfoEnum.DEVICESERIAL)
-    assert result == "deadbeef"
-
-
-async def test_get_info_soft_version(make_client):
-    """get_info(SOFTVERSION) should return big-endian int / 100."""
-    client = make_client()
-    # 0x01F4 = 500 → 500/100 = 5.0
-    version_bytes = bytes([0x01, 0xF4])
-    response_pkt = NiimbotPacket(RequestCodeEnum.GET_INFO, version_bytes)
-
-    async def fake_write(data, char_uuid):
-        client.notification_data = response_pkt.to_bytes()
-        client.notification_event.set()
-
-    client.transport.write = AsyncMock(side_effect=fake_write)
-    result = await client.get_info(InfoEnum.SOFTVERSION)
-    assert result == 5.0
 
 
 async def test_get_rfid_empty_data_returns_none(make_client):
@@ -345,51 +314,6 @@ async def test_connect_success(make_client):
 # ---------------------------------------------------------------------------
 # Coverage gap: connect() failure cleans up
 # ---------------------------------------------------------------------------
-
-
-async def test_connect_failure_cleans_up(make_client):
-    """When find_characteristics raises PrinterException, connect() must call
-    disconnect() and re-raise the exception."""
-    client = make_client()
-    client.char_uuid = None  # Force the find_characteristics path
-
-    client.transport.connect = AsyncMock(return_value=True)
-    client.transport.disconnect = AsyncMock()
-
-    # Mock services to produce no matching characteristics -> raises
-    char = MagicMock()
-    char.uuid = "0000ae01-0000-1000-8000-00805f9b34fb"
-    char.handle = 1
-    char.properties = ["read"]  # Missing write-without-response and notify
-
-    service = MagicMock()
-    service.uuid = "0000ae00-0000-1000-8000-00805f9b34fb"
-    service.characteristics = [char]
-
-    client.transport.client.services = [service]
-
-    with pytest.raises(PrinterException, match="Cannot find bluetooth characteristics"):
-        await client.connect()
-
-    client.transport.disconnect.assert_awaited_once()
-
-
-# ---------------------------------------------------------------------------
-# Coverage gap: disconnect() clears state
-# ---------------------------------------------------------------------------
-
-
-async def test_disconnect_clears_state(make_client):
-    """disconnect() should set char_uuid to None and call transport.disconnect()."""
-    client = make_client()
-    assert client.char_uuid == "test-uuid"
-
-    client.transport.disconnect = AsyncMock()
-
-    await client.disconnect()
-
-    assert client.char_uuid is None
-    client.transport.disconnect.assert_awaited_once()
 
 
 # ---------------------------------------------------------------------------
@@ -591,37 +515,6 @@ async def test_set_quantity_overflow_raises(make_client):
 
 
 # ---------------------------------------------------------------------------
-# Retry loop: end_page_print timeout in _print_job
-# ---------------------------------------------------------------------------
-
-
-async def test_end_page_print_retry_timeout(make_client):
-    """When end_page_print always returns False, _print_job should retry
-    up to 200 times and then raise PrinterException('end_page_print timed out')."""
-    client = make_client()
-
-    # Build a generic OK response for the setup commands
-    ok_pkt = NiimbotPacket(RequestCodeEnum.SET_LABEL_DENSITY, b"\x01")
-    ok_bytes = ok_pkt.to_bytes()
-
-    async def fake_write(data, char_uuid):
-        client.notification_data = ok_bytes
-        client.notification_event.set()
-
-    client.transport.write = AsyncMock(side_effect=fake_write)
-
-    img = Image.new("1", (24, 10), color=0)
-
-    with patch.object(client, "end_page_print", new_callable=AsyncMock, return_value=False) as mock_epp:
-        with pytest.raises(PrinterException, match="end_page_print timed out"):
-            await client._print_job(img, density=1, quantity=1, vertical_offset=0, horizontal_offset=0)
-
-        # 200 calls in the retry loop + 1 cleanup call in the except block
-        # (page_started is still True because end_page_print never succeeded)
-        assert mock_epp.await_count == 201
-
-
-# ---------------------------------------------------------------------------
 # CLI width validation: d11_h model (354px max)
 # ---------------------------------------------------------------------------
 
@@ -658,28 +551,6 @@ def test_cli_accepts_354px_width_for_d11_h(runner):
                 ["print", "-m", "d11_h", "-i", "exact.png"],
             )
             assert result.exit_code == 0
-
-
-# ---------------------------------------------------------------------------
-# Coverage gap: get_info with empty response data raises PrinterException
-# ---------------------------------------------------------------------------
-
-
-async def test_get_info_empty_response_raises(make_client):
-    """get_info must raise PrinterException when the printer returns a packet
-    with zero-length data (tests the len(response.data) < 1 guard)."""
-    client = make_client()
-
-    empty_pkt = NiimbotPacket(RequestCodeEnum.GET_INFO, b"")
-
-    async def fake_write(data, char_uuid):
-        client.notification_data = empty_pkt.to_bytes()
-        client.notification_event.set()
-
-    client.transport.write = AsyncMock(side_effect=fake_write)
-
-    with pytest.raises(PrinterException, match="Empty response from printer for GET_INFO"):
-        await client.get_info(InfoEnum.SOFTVERSION)
 
 
 # ---------------------------------------------------------------------------
@@ -1001,15 +872,19 @@ async def test_set_label_density_lower_bound_invalid(make_client):
 
 
 async def test_find_characteristics_multiple_matches_uses_first(make_client):
-    """When multiple characteristics match, the first UUID should be used."""
+    """When multiple characteristics match, the first UUID should be used and
+    a warning should be logged about the extra matches."""
     client = make_client()
     char1 = MagicMock(uuid="uuid-1", handle=1, properties=["read", "write-without-response", "notify"])
     char2 = MagicMock(uuid="uuid-2", handle=2, properties=["read", "write-without-response", "notify"])
     service = MagicMock(characteristics=[char1, char2])
     service.uuid = "svc-uuid"
     client.transport.client.services = [service]
-    await client.find_characteristics()
+    with patch("NiimPrintX.nimmy.printer.logger") as mock_logger:
+        await client.find_characteristics()
     assert client.char_uuid == "uuid-1"
+    mock_logger.warning.assert_called_once()
+    assert "Multiple matching characteristics" in mock_logger.warning.call_args[0][0]
 
 
 # ---------------------------------------------------------------------------

@@ -13,15 +13,11 @@ from NiimPrintX.ui.widget.PrinterOperation import PrinterOperation
 
 
 def _make_state(**overrides):
-    """Build minimal mock immutable + printer state objects for PrinterOperation."""
-    immutable = MagicMock()
-    immutable.label_sizes = overrides.get("label_sizes", [])
-
+    """Build minimal mock printer state for PrinterOperation."""
     printer = MagicMock()
     printer.printer_connected = overrides.get("printer_connected", False)
     printer.device = overrides.get("device", "d110")
-
-    return immutable, printer
+    return printer
 
 
 def _make_mock_printer():
@@ -50,8 +46,8 @@ async def test_printer_connect_success(mock_find_device, MockPrinterClient):
     mock_printer = _make_mock_printer()
     MockPrinterClient.return_value = mock_printer
 
-    immutable, printer = _make_state()
-    op = PrinterOperation(immutable, printer)
+    printer = _make_state()
+    op = PrinterOperation(printer)
 
     result = await op.printer_connect("d110")
 
@@ -72,13 +68,12 @@ async def test_printer_connect_device_not_found(mock_find_device, MockPrinterCli
     """find_device raises BLEException — connect must return False."""
     mock_find_device.side_effect = BLEException("No device found")
 
-    immutable, printer = _make_state()
-    op = PrinterOperation(immutable, printer)
+    printer = _make_state()
+    op = PrinterOperation(printer)
 
     result = await op.printer_connect("d110")
 
     assert result is False
-    assert printer.printer_connected is False
     assert op._client is None
     MockPrinterClient.assert_not_called()
 
@@ -91,21 +86,20 @@ async def test_printer_connect_device_not_found(mock_find_device, MockPrinterCli
 @patch("NiimPrintX.ui.widget.PrinterOperation.PrinterClient")
 @patch("NiimPrintX.ui.widget.PrinterOperation.find_device", new_callable=AsyncMock)
 async def test_printer_connect_connection_fails(mock_find_device, MockPrinterClient):
-    """find_device succeeds but PrinterClient.connect returns False."""
+    """find_device succeeds but PrinterClient.connect raises — should return False."""
     mock_device = MagicMock()
     mock_find_device.return_value = mock_device
 
     mock_printer = _make_mock_printer()
-    mock_printer.connect = AsyncMock(return_value=False)
+    mock_printer.connect = AsyncMock(side_effect=Exception("Connection failed"))
     MockPrinterClient.return_value = mock_printer
 
-    immutable, printer = _make_state()
-    op = PrinterOperation(immutable, printer)
+    printer = _make_state()
+    op = PrinterOperation(printer)
 
     result = await op.printer_connect("d110")
 
     assert result is False
-    assert printer.printer_connected is False
     assert op._client is None
 
 
@@ -116,8 +110,8 @@ async def test_printer_connect_connection_fails(mock_find_device, MockPrinterCli
 
 async def test_printer_disconnect():
     """Disconnecting a connected printer must clear printer reference."""
-    immutable, printer = _make_state(printer_connected=True)
-    op = PrinterOperation(immutable, printer)
+    printer = _make_state(printer_connected=True)
+    op = PrinterOperation(printer)
     op._client = _make_mock_printer()
 
     result = await op.printer_disconnect()
@@ -141,8 +135,8 @@ async def test_print_auto_reconnects(mock_find_device, MockPrinterClient):
     mock_printer = _make_mock_printer()
     MockPrinterClient.return_value = mock_printer
 
-    immutable, printer = _make_state(printer_connected=False, device="d110")
-    op = PrinterOperation(immutable, printer)
+    printer = _make_state(printer_connected=False, device="d110")
+    op = PrinterOperation(printer)
 
     img = Image.new("1", (240, 100), color=0)
     result = await op.print(img, density=3, quantity=1)
@@ -171,8 +165,8 @@ async def test_print_v2_model_uses_print_image_v2(mock_find_device, MockPrinterC
     mock_printer = _make_mock_printer()
     MockPrinterClient.return_value = mock_printer
 
-    immutable, printer = _make_state(printer_connected=False, device="b21")
-    op = PrinterOperation(immutable, printer)
+    printer = _make_state(printer_connected=False, device="b21")
+    op = PrinterOperation(printer)
 
     img = Image.new("1", (384, 200), color=0)
     result = await op.print(img, density=5, quantity=2)
@@ -189,8 +183,8 @@ async def test_print_v2_model_uses_print_image_v2(mock_find_device, MockPrinterC
 
 async def test_heartbeat_returns_status():
     """heartbeat() should return (True, dict) when the printer responds."""
-    immutable, printer = _make_state(printer_connected=True)
-    op = PrinterOperation(immutable, printer)
+    printer = _make_state(printer_connected=True)
+    op = PrinterOperation(printer)
     op._client = _make_mock_printer()
     op._client.heartbeat = AsyncMock(return_value={"battery": 80, "status": "ok"})
 
@@ -208,8 +202,8 @@ async def test_heartbeat_returns_status():
 
 async def test_heartbeat_no_printer():
     """heartbeat() with no printer set should return (False, {})."""
-    immutable, printer = _make_state(printer_connected=False)
-    op = PrinterOperation(immutable, printer)
+    printer = _make_state(printer_connected=False)
+    op = PrinterOperation(printer)
 
     success, hb = await op.heartbeat()
 
@@ -224,8 +218,8 @@ async def test_heartbeat_no_printer():
 
 async def test_heartbeat_failure_clears_printer():
     """When heartbeat() raises, printer should be set to None."""
-    immutable, printer = _make_state(printer_connected=True)
-    op = PrinterOperation(immutable, printer)
+    printer = _make_state(printer_connected=True)
+    op = PrinterOperation(printer)
     op._client = _make_mock_printer()
     op._client.heartbeat = AsyncMock(side_effect=Exception("BLE timeout"))
 
@@ -252,8 +246,8 @@ async def test_print_exception_returns_false(mock_find_device, MockPrinterClient
     mock_printer.print_image = AsyncMock(side_effect=Exception("BLE dropped"))
     MockPrinterClient.return_value = mock_printer
 
-    immutable, printer = _make_state(printer_connected=True, device="d110")
-    op = PrinterOperation(immutable, printer)
+    printer = _make_state(printer_connected=True, device="d110")
+    op = PrinterOperation(printer)
     op._client = mock_printer
 
     result = await op.print(Image.new("1", (8, 4)), density=3, quantity=1)

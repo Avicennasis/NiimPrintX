@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import threading
 import tkinter as tk
 from tkinter import font as tk_font
@@ -28,8 +29,6 @@ class TextTab:
 
     def _load_fonts(self) -> None:
         """Load system fonts in a background thread to avoid blocking the UI."""
-        import contextlib  # noqa: PLC0415
-
         result: dict[str, Any] = fonts()
 
         def _apply() -> None:
@@ -148,11 +147,16 @@ class TextTab:
         if self.canvas_state.current_selected:
             # Debounce Wand re-render: cancel any pending update and schedule
             # a new one 150ms out. Prevents UI freezes during fast spinbox changes.
-            if hasattr(self, "_render_after_id") and self._render_after_id is not None:
+            if self._render_after_id is not None:
                 self.frame.after_cancel(self._render_after_id)
-            self._render_after_id = self.frame.after(
-                150, lambda tid=self.canvas_state.current_selected: self.text_op.update_canvas_text(tid)
-            )
+            text_id = self.canvas_state.current_selected
+            self._render_after_id = self.frame.after(150, lambda tid=text_id: self._guarded_update_canvas_text(tid))
+
+    def _guarded_update_canvas_text(self, text_id: int) -> None:
+        """Update canvas text only if the text item is still the current selection."""
+        if text_id != self.canvas_state.current_selected:
+            return
+        self.text_op.update_canvas_text(text_id)
 
     def get_font_properties(self) -> FontProps:
         family: str = self.font_family_dropdown.get().strip()

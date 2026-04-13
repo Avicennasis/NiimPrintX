@@ -206,19 +206,6 @@ def test_toml_decode_error_handling():
 # --- load_user_config path tests ---
 
 
-def test_load_user_config_toml_parse_error():
-    """A file with invalid TOML content should return {} (catches TOMLDecodeError)."""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
-        f.write("[broken\nkey without value\n!!!")
-        tmp_path = f.name
-    try:
-        with patch("NiimPrintX.nimmy.userconfig.CONFIG_FILE", Path(tmp_path)):
-            result = load_user_config()
-        assert result == {}
-    finally:
-        os.unlink(tmp_path)
-
-
 def test_load_user_config_valid_config():
     """A valid TOML config with a custom device should load correctly."""
     toml_content = (

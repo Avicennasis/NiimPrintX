@@ -17,9 +17,13 @@ from NiimPrintX.nimmy.printer import DEFAULT_MAX_DENSITY, MODEL_MAX_DENSITY, V2_
 MODEL_MAX_WIDTH = {"d11_h": 354, "d110_m": 354}
 DEFAULT_MAX_WIDTH_V1 = 240  # 30mm @ 203 DPI
 
+Image.MAX_IMAGE_PIXELS = 5_000_000
+
+_MAX_HEIGHT_PX = 65535  # 16-bit row index protocol limit
+
 logger = get_logger()
 
-_ALL_MODELS = ["b1", "b18", "b21", "d11", "d11_h", "d101", "d110", "d110_m"]
+_ALL_MODELS = sorted(V2_MODELS | MODEL_MAX_WIDTH.keys() | {"d11", "d101", "d110"})
 
 
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
@@ -103,7 +107,6 @@ def print_command(
     if density > max_density:
         print_info(f"Model {model.upper()} supports max density {max_density}; capping {density} to {max_density}")
         density = max_density
-    Image.MAX_IMAGE_PIXELS = 5_000_000
     try:
         with Image.open(image) as raw_img:
             # PIL library rotates counterclockwise, so we need to multiply by -1
@@ -113,7 +116,6 @@ def print_command(
                 if prepared.width > max_width_px:
                     print_error(f"Image width {prepared.width}px exceeds max {max_width_px}px for {model.upper()}")
                     sys.exit(1)
-                _MAX_HEIGHT_PX = 65535  # 16-bit row index protocol limit
                 if prepared.height > _MAX_HEIGHT_PX:
                     print_error(f"Image height {prepared.height}px exceeds protocol limit")
                     sys.exit(1)
@@ -141,9 +143,7 @@ async def _print(
         print_info("Starting print job")
         device = await find_device(model)
         printer = PrinterClient(device)
-        if not await printer.connect():
-            print_error("Failed to connect to printer")
-            return False
+        await printer.connect()
         print_info(f"Connected to {device.name!r}")
         if model in V2_MODELS:
             print_info("Printing with V2 protocol")
@@ -187,16 +187,14 @@ async def _print(
 def info_command(model: str) -> None:
     logger.info("Niimbot Information")
     print_info("Niimbot Information")
-    success = False
     try:
-        success = asyncio.run(_info(model))
+        if not asyncio.run(_info(model)):
+            sys.exit(1)
     except KeyboardInterrupt:
         print_error("Interrupted")
         sys.exit(1)
     except Exception as e:
         print_error(f"{e}")
-        sys.exit(1)
-    if not success:
         sys.exit(1)
 
 
@@ -205,9 +203,7 @@ async def _info(model: str) -> bool:
     try:
         device = await find_device(model)
         printer = PrinterClient(device)
-        if not await printer.connect():
-            print_error("Failed to connect to printer")
-            return False
+        await printer.connect()
         device_serial = await printer.get_info(InfoEnum.DEVICESERIAL)
         software_version = await printer.get_info(InfoEnum.SOFTVERSION)
         hardware_version = await printer.get_info(InfoEnum.HARDVERSION)
@@ -223,7 +219,3 @@ async def _info(model: str) -> bool:
         if printer:
             with contextlib.suppress(Exception):
                 await printer.disconnect()
-
-
-if __name__ == "__main__":
-    niimbot_cli()

@@ -35,7 +35,7 @@ kill_xprotect() {
   echo "Waiting for XProtect processes to terminate..."
   local max_wait=60
   local waited=0
-  while pgrep XProtect && [[ $waited -lt $max_wait ]]; do
+  while pgrep -q XProtect 2>/dev/null && [[ $waited -lt $max_wait ]]; do
       sleep 5
       ((waited += 5))
   done

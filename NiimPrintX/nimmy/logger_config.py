@@ -46,7 +46,7 @@ def logger_enable(verbose: int) -> None:
     if verbose <= 0:
         return
 
-    new_level = "TRACE" if verbose >= 3 else "DEBUG"
+    new_level = "TRACE" if verbose >= 2 else "DEBUG"
 
     # Remove existing handlers and re-add with new level
     logger.remove()  # public API — removes all handlers atomically

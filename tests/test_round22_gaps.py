@@ -224,11 +224,10 @@ def test_merge_label_sizes_non_dict_devices():
 
 async def test_printer_disconnect_exception_returns_false():
     """When disconnect() raises, printer_disconnect should return False and clear printer."""
-    immutable = MagicMock()
     printer_state = MagicMock()
     printer_state.printer_connected = True
     printer_state.device = "d110"
-    op = PrinterOperation(immutable, printer_state)
+    op = PrinterOperation(printer_state)
 
     mock_printer = MagicMock()
     mock_printer.disconnect = AsyncMock(side_effect=RuntimeError("BLE transport error"))
@@ -269,42 +268,6 @@ async def test_find_characteristics_empty_services(make_client):
 
 
 # ---------------------------------------------------------------------------
-# 12. find_characteristics multiple matches → uses first, logs warning
-# ---------------------------------------------------------------------------
-
-
-async def test_find_characteristics_multiple_matches_uses_first(make_client):
-    """Two matching chars should pick first and log a warning."""
-    client = make_client()
-
-    # Build two characteristics that both match (read + write-without-response + notify)
-    char1 = MagicMock()
-    char1.uuid = "uuid-first"
-    char1.handle = 1
-    char1.properties = ["read", "write-without-response", "notify"]
-
-    char2 = MagicMock()
-    char2.uuid = "uuid-second"
-    char2.handle = 2
-    char2.properties = ["read", "write-without-response", "notify"]
-
-    service = MagicMock()
-    service.uuid = "service-uuid"
-    service.characteristics = [char1, char2]
-
-    mock_ble_client = MagicMock()
-    mock_ble_client.services = [service]
-    client.transport.client = mock_ble_client
-
-    with patch("NiimPrintX.nimmy.printer.logger") as mock_logger:
-        await client.find_characteristics()
-
-    assert client.char_uuid == "uuid-first"
-    mock_logger.warning.assert_called_once()
-    assert "Multiple matching characteristics" in mock_logger.warning.call_args[0][0]
-
-
-# ---------------------------------------------------------------------------
 # 13. notification_data None guard (event set but data is None)
 # ---------------------------------------------------------------------------
 
@@ -329,14 +292,10 @@ async def test_notification_data_none_guard(make_client):
 # ---------------------------------------------------------------------------
 
 
-def test_info_command_success_initialized_before_try(runner):
-    """Verify success=False is initialized before the try block so a failed
-    asyncio.run still triggers sys.exit(1) via 'if not success'."""
-    # Simulate asyncio.run raising an unexpected exception that is NOT
-    # KeyboardInterrupt (caught separately) and NOT generic Exception
-    # (caught by the second except). We test that even if the try body
-    # never sets success=True, the 'if not success' guard exits non-zero.
-    with patch("NiimPrintX.cli.command.asyncio.run", side_effect=Exception("boom")):
+def test_info_command_returns_false_exits_nonzero(runner):
+    """When _info() returns False, info_command must call sys.exit(1)
+    producing a non-zero exit code."""
+    with patch("NiimPrintX.cli.command.asyncio.run", return_value=False):
         from NiimPrintX.cli.command import niimbot_cli
 
         result = runner.invoke(niimbot_cli, ["info", "-m", "d110"])

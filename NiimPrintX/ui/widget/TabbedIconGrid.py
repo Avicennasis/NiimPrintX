@@ -14,6 +14,8 @@ from PIL import Image, ImageTk
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+PIL.Image.MAX_IMAGE_PIXELS = 5_000_000
+
 
 class TabbedIconGrid(tk.Frame):
     def __init__(
@@ -65,7 +67,9 @@ class TabbedIconGrid(tk.Frame):
         if not selected_tab:
             return
         selected_tab_index = notebook.index(selected_tab)
-        subfolder_name = self.tab_names[selected_tab_index]
+        subfolder_name = self.tab_names.get(selected_tab_index)
+        if subfolder_name is None:
+            return
         self._load_tab_by_index(selected_tab_index, subfolder_name)
 
     def _load_tab_by_index(self, tab_index: int, subfolder_name: str) -> None:
@@ -125,7 +129,6 @@ class TabbedIconGrid(tk.Frame):
             if filename.lower().endswith((".png", ".jpg", ".jpeg")):
                 image_path = os.path.join(icon_folder, filename)
                 try:
-                    PIL.Image.MAX_IMAGE_PIXELS = 5_000_000
                     img = Image.open(image_path)
                     # I16: img.load() forces full pixel decode into memory in this thread.
                     # After this call the PIL Image holds a fully-decoded raster buffer

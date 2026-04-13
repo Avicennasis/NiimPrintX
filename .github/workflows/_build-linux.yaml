@@ -20,11 +20,11 @@ jobs:
           else
             VERSION=""
           fi
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Extract Architecture
         id: get_architecture
-        run: echo "ARCH=$(uname -m)" >> $GITHUB_OUTPUT
+        run: echo "ARCH=$(uname -m)" >> "$GITHUB_OUTPUT"
 
       - name: Validate tag
         env:

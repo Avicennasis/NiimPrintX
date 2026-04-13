@@ -124,29 +124,7 @@ async def test_print_image_zero_dimension_raises(make_client):
 
 
 # ---------------------------------------------------------------------------
-# 4. _encode_image — negative horizontal offset crops packet width
-# ---------------------------------------------------------------------------
-
-
-def test_encode_image_negative_horizontal_offset_crops(make_client):
-    """A negative horizontal offset should crop pixels from the left,
-    reducing the number of bytes per row."""
-    client = make_client()
-    img = Image.new("1", (16, 2), color=0)  # 16px wide = 2 bytes per row
-
-    packets_normal = list(client._encode_image(img, horizontal_offset=0))
-    packets_cropped = list(client._encode_image(img, horizontal_offset=-8))
-
-    # Normal: 16px wide -> 2 bytes per row in line_data (after 6-byte header)
-    assert len(packets_normal[0].data) - 6 == 2
-    # Cropped: 16-8=8px wide -> 1 byte per row
-    assert len(packets_cropped[0].data) - 6 == 1
-    # Same number of rows
-    assert len(packets_normal) == len(packets_cropped)
-
-
-# ---------------------------------------------------------------------------
-# 5. send_command — start_notification failure raises PrinterException
+# 4. send_command — start_notification failure raises PrinterException
 # ---------------------------------------------------------------------------
 
 

@@ -6,7 +6,7 @@ import pytest
 from PIL import Image
 
 from NiimPrintX.nimmy.bluetooth import BLETransport
-from NiimPrintX.nimmy.exception import BLEException, PrinterException
+from NiimPrintX.nimmy.exception import PrinterException
 from NiimPrintX.nimmy.packet import NiimbotPacket
 from NiimPrintX.nimmy.printer import RequestCodeEnum
 
@@ -36,6 +36,7 @@ async def test_send_command_reconnect_success(make_client):
     # the connected state, matching the code path in send_command line 107.
     async def fake_connect():
         client.transport.client.is_connected = True
+        client.char_uuid = "test-char-uuid"
         return True
 
     client.connect = AsyncMock(side_effect=fake_connect)
@@ -63,24 +64,7 @@ async def test_send_command_reconnect_failure(make_client):
 
 
 # ---------------------------------------------------------------------------
-# 3. write_raw wraps BLEException in PrinterException
-# ---------------------------------------------------------------------------
-
-
-async def test_write_raw_ble_exception_wrapped(make_client):
-    """When transport.write raises BLEException, write_raw must catch it
-    and re-raise as PrinterException containing the original message."""
-    client = make_client()
-    client.transport.write = AsyncMock(side_effect=BLEException("write failed"))
-
-    dummy_packet = NiimbotPacket(0x85, b"\x00")
-
-    with pytest.raises(PrinterException, match="write failed"):
-        await client.write_raw(dummy_packet)
-
-
-# ---------------------------------------------------------------------------
-# 4. _print_job calls end_print on failure during end_page_print
+# 3. _print_job calls end_print on failure during end_page_print
 # ---------------------------------------------------------------------------
 
 

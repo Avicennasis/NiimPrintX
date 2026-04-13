@@ -7,14 +7,13 @@ from NiimPrintX.nimmy.logger_config import get_logger
 from NiimPrintX.nimmy.printer import V2_MODELS, PrinterClient
 
 if TYPE_CHECKING:
-    from NiimPrintX.ui.config import ImmutableConfig, PrinterState
+    from NiimPrintX.ui.config import PrinterState
 
 logger = get_logger()
 
 
 class PrinterOperation:
-    def __init__(self, immutable: ImmutableConfig, printer: PrinterState) -> None:
-        self.immutable: ImmutableConfig = immutable
+    def __init__(self, printer: PrinterState) -> None:
         self.printer: PrinterState = printer
         self._client: PrinterClient | None = None
 
@@ -27,11 +26,9 @@ class PrinterOperation:
         try:
             device = await find_device(model)
             client = PrinterClient(device)
-            if await client.connect():
-                self._client = client
-                return True
-            self._client = None
-            return False
+            await client.connect()
+            self._client = client
+            return True
         except Exception as e:
             logger.error(f"Cannot connect to printer {model}: {e}")
             self._client = None
@@ -50,12 +47,11 @@ class PrinterOperation:
 
     async def print(self, image, density, quantity):
         try:
-            if not self.printer.printer_connected or not self._client:
+            if not self.is_connected:
                 connected = await self.printer_connect(self.printer.device)
                 if not connected:
                     logger.error("Print failed: could not connect to printer")
                     return False
-                self.printer.printer_connected = True  # reflect successful reconnect
 
             if self.printer.device in V2_MODELS:
                 await self._client.print_image_v2(image, density, quantity)

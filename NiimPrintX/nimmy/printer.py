@@ -12,7 +12,7 @@ from PIL import Image, ImageOps
 from .bluetooth import BLETransport
 from .exception import BLEException, PrinterException
 from .logger_config import get_logger
-from .packet import NiimbotPacket, packet_to_int
+from .packet import NiimbotPacket
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -116,8 +116,10 @@ class PrinterClient:
         async with self._command_lock:
             code_label = hex(request_code)  # default before try; overridden with enum name inside
             try:
-                if (not self.transport.client or not self.transport.client.is_connected) and not await self.connect():
-                    raise PrinterException("Failed to reconnect to printer")
+                if not self.transport.client or not self.transport.client.is_connected:
+                    self.char_uuid = None  # force re-discovery after unilateral disconnect
+                    if not await self.connect():
+                        raise PrinterException("Failed to reconnect to printer")
                 if self.char_uuid is None:
                     raise PrinterException("No characteristic UUID available")
                 # Clear stale state BEFORE arming notifications
@@ -135,11 +137,12 @@ class PrinterClient:
                 logger.debug(f"Printer command sent - {code_label}:{request_code} - {list(data)}")
                 await asyncio.wait_for(self.notification_event.wait(), timeout)
                 # notification_data is set by notification_handler callback via call_soon_threadsafe;
-                # mypy can't see the cross-thread assignment, so we guard and assert.
+                # mypy can't see the cross-thread assignment, so we guard explicitly.
                 response_data = self.notification_data
-                if response_data is None:
-                    raise PrinterException("Notification arrived but contained no data")
-                response = NiimbotPacket.from_bytes(response_data)  # type: ignore[unreachable]
+                if response_data is None:  # set by notification_handler via call_soon_threadsafe
+                    msg = "Notification arrived but contained no data"
+                    raise PrinterException(msg)
+                response = NiimbotPacket.from_bytes(response_data)
                 logger.debug(f"Printer response received - {list(response.data)} - {len(response.data)} bytes")
                 return response
             except TimeoutError:
@@ -215,20 +218,9 @@ class PrinterClient:
         async with self._print_lock:
             print_started = False
             page_started = False
+            epp_timed_out = False
             try:
-                await self.set_label_density(density)
-                await self.set_label_type(1)
-
-                if v2:
-                    await self.start_print_v2(quantity=quantity)
-                else:
-                    await self.start_print()
-                print_started = True
-
-                await self.start_page_print()
-                page_started = True
-
-                # Calculate post-offset dimensions
+                # Calculate post-offset dimensions before any BLE traffic
                 effective_height = image.height
                 effective_width = image.width
                 if horizontal_offset > 0:
@@ -246,6 +238,22 @@ class PrinterClient:
                         f"(effective size: {effective_width}x{effective_height})"
                     )
 
+                if not await self.set_label_density(density):
+                    raise PrinterException("Printer rejected set_label_density")
+                if not await self.set_label_type(1):
+                    raise PrinterException("Printer rejected set_label_type")
+
+                if v2:
+                    if not await self.start_print_v2(quantity=quantity):
+                        raise PrinterException("Printer rejected start_print_v2")
+                elif not await self.start_print():
+                    raise PrinterException("Printer rejected start_print")
+                print_started = True
+
+                if not await self.start_page_print():
+                    raise PrinterException("Printer rejected start_page_print")
+                page_started = True
+
                 if v2:
                     await self.set_dimension_v2(effective_height, effective_width, quantity)
                 else:
@@ -262,6 +270,7 @@ class PrinterClient:
                         break
                     await asyncio.sleep(0.05)
                 else:
+                    epp_timed_out = True
                     raise PrinterException("end_page_print timed out")
 
                 max_status_checks = 600  # ~60 seconds at 0.1s interval
@@ -280,11 +289,11 @@ class PrinterClient:
                 # to avoid leaving hardware in mid-print state (requires power cycle)
                 logger.error(f"Print job failed: {e}")
                 if print_started and self.transport.client and self.transport.client.is_connected:
-                    if page_started:
-                        with contextlib.suppress(Exception):
-                            await self.end_page_print()
-                    with contextlib.suppress(Exception):
-                        await self.end_print()
+                    if page_started and not epp_timed_out:
+                        with contextlib.suppress(BaseException):
+                            await asyncio.wait_for(self.end_page_print(), timeout=2.0)
+                    with contextlib.suppress(BaseException):
+                        await asyncio.wait_for(self.end_print(), timeout=2.0)
                 raise
 
     def _encode_image(
@@ -315,7 +324,11 @@ class PrinterClient:
             image = image.convert("RGBA")
         if image.mode in ("RGBA", "LA"):
             background = Image.new("RGB", image.size, (255, 255, 255))
-            background.paste(image, mask=image.split()[-1])
+            alpha = image.split()[-1]
+            try:
+                background.paste(image, mask=alpha)
+            finally:
+                alpha.close()
             gray = background.convert("L")
             background.close()
         else:
@@ -378,11 +391,11 @@ class PrinterClient:
             case InfoEnum.DEVICESERIAL:
                 return response.data.hex()
             case InfoEnum.SOFTVERSION:
-                return packet_to_int(response) / 100
+                return response.to_int() / 100
             case InfoEnum.HARDVERSION:
-                return packet_to_int(response) / 100
+                return response.to_int() / 100
             case _:
-                return packet_to_int(response)
+                return response.to_int()
 
     async def get_rfid(self) -> RFIDResponse | None:
         packet = await self.send_command(RequestCodeEnum.GET_RFID, b"\x01")

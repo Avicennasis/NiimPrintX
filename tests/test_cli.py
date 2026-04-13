@@ -99,11 +99,11 @@ def test_density_cap_message(runner):
 
 
 def test_print_connect_failure(runner):
-    """Printer found but connect() returns False."""
+    """Printer found but connect() raises — should exit non-zero."""
     mock_device = MagicMock()
     mock_device.name = "D110"
     mock_printer = AsyncMock()
-    mock_printer.connect.return_value = False
+    mock_printer.connect.side_effect = Exception("Connection failed")
     mock_printer.disconnect.return_value = None
 
     with runner.isolated_filesystem():

@@ -19,9 +19,8 @@ class SplashScreen(tk.Toplevel):
             return
         label = tk.Label(self, image=self.image)
         label.pack()
-        self.update_idletasks()  # compute geometry before withdraw
-        width = label.winfo_reqwidth()
-        height = label.winfo_reqheight()
+        width = self.image.width()
+        height = self.image.height()
         x = (self.winfo_screenwidth() // 2) - (width // 2)
         y = (self.winfo_screenheight() // 2) - (height // 2)
         self.geometry(f"{width}x{height}+{x}+{y}")

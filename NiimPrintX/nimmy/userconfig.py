@@ -8,7 +8,7 @@ from typing import Any
 
 from platformdirs import user_config_dir
 
-from NiimPrintX.nimmy.logger_config import get_logger
+from .logger_config import get_logger
 
 logger = get_logger()
 
@@ -72,6 +72,9 @@ def merge_label_sizes(builtin_sizes: dict[str, Any], user_config: dict[str, Any]
         return builtin_sizes
     for device_name, device_conf in user_devices.items():
         if not isinstance(device_conf, dict):
+            logger.warning(
+                f"Device entry {device_name!r} must be a TOML table, got {type(device_conf).__name__}; skipping"
+            )
             continue
         if device_name in builtin_sizes:
             # Warn about ignored keys for built-in devices
@@ -106,7 +109,7 @@ def merge_label_sizes(builtin_sizes: dict[str, Any], user_config: dict[str, Any]
                         logger.warning(f"Skipping invalid dims for {device_name!r} label {k!r}: {v!r}")
             if not sizes:
                 continue
-            raw_rot = _safe_int(device_conf.get("rotation", -90), -90) % 360
+            raw_rot = _safe_int(device_conf.get("rotation", 270), 270) % 360
             if raw_rot not in (0, 90, 180, 270):
                 logger.warning(f"Invalid rotation {raw_rot} for '{device_name}'; defaulting to 270")
                 raw_rot = 270

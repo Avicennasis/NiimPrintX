@@ -64,7 +64,7 @@ jobs:
       - macos
       - windows
       - linux
-    if: ${{ needs.macos.result == 'success' && needs.windows.result == 'success' && needs.linux.result == 'success' }}
+    # No explicit if: needed — needs: already enforces all dependencies must succeed
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
@@ -74,6 +74,15 @@ jobs:
 
       - name: Display structure of downloaded files
         run: ls -R release
+
+      - name: Validate artifact count
+        run: |
+          COUNT=$(find release -maxdepth 1 -type f | wc -l)
+          echo "Found $COUNT release artifacts"
+          if [[ "$COUNT" -lt 5 ]]; then
+            echo "ERROR: Expected at least 5 artifacts, found $COUNT"
+            exit 1
+          fi
 
       - name: Generate SHA256SUMS
         run: |

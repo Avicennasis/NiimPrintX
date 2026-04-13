@@ -41,12 +41,17 @@ class PrintOption:
         self.printer: PrinterState = printer
         self.frame = ttk.Frame(parent)
         self.create_widgets()
-        self.print_op = PrinterOperation(self.immutable, self.printer)
+        self.print_op = PrinterOperation(self.printer)
         self._connecting = False
         self._heartbeat_active = False
+        self.print_image: Image.Image | None = None
+        self._popup_ref: tk.Toplevel | None = None
+        self.image_label: tk.Label | None = None
         self.check_heartbeat()
 
     def check_heartbeat(self) -> None:
+        if self._heartbeat_active:
+            return
         asyncio.run_coroutine_threadsafe(self.schedule_heartbeat(), self.root.async_loop)
 
     async def schedule_heartbeat(self) -> None:
@@ -63,16 +68,12 @@ class PrintOption:
             try:
                 if self.print_op.is_connected and not self.printer.print_job:
                     state, hb = await self.print_op.heartbeat()
-                    if not self._heartbeat_active:
-                        break
                     try:
                         self.root.after(0, lambda s=state, h=hb: self.update_status(s, h))
                     except tk.TclError:
                         self._heartbeat_active = False
                         break
                 elif not self.printer.print_job:
-                    if not self._heartbeat_active:
-                        break
                     try:
                         self.root.after(0, lambda: self.update_status(False))
                     except tk.TclError:
@@ -84,8 +85,9 @@ class PrintOption:
             await asyncio.sleep(5)
 
     def update_status(self, connected: bool = False, hb_data: HeartbeatResponse | None = None) -> None:
-        if not self._connecting:
-            self.printer.printer_connected = connected
+        if self._connecting:
+            return
+        self.printer.printer_connected = connected
         if not connected and self.connect_button["state"] != tk.DISABLED:
             self.connect_button.config(text="Connect")
             self.connect_button.config(state=tk.NORMAL)
@@ -264,7 +266,7 @@ class PrintOption:
         popup.grab_set()  # Make modal — prevents opening multiple popups
 
         # Load the PNG image with PIL and convert to ImageTk
-        if hasattr(self, "print_image") and self.print_image is not None:
+        if self.print_image is not None:
             with contextlib.suppress(Exception):
                 self.print_image.close()
         Image.MAX_IMAGE_PIXELS = 5_000_000
@@ -358,7 +360,7 @@ class PrintOption:
         def _on_popup_close():
             with contextlib.suppress(tk.TclError):
                 self.toolbar_print_button.config(state=tk.NORMAL)
-            if hasattr(self, "print_image") and self.print_image is not None:
+            if self.print_image is not None:
                 with contextlib.suppress(Exception):
                     self.print_image.close()
                 self.print_image = None
@@ -390,7 +392,7 @@ class PrintOption:
         )
         if result is None:
             return
-        if hasattr(self, "print_image") and self.print_image is not None:
+        if self.print_image is not None:
             with contextlib.suppress(Exception):
                 self.print_image.close()
         self.print_image = result
@@ -453,7 +455,7 @@ class PrintOption:
                 with contextlib.suppress(tk.TclError):
                     self.root.status_bar.update_status(self.printer.printer_connected)
             else:
-                popup_alive = hasattr(self, "_popup_ref") and self._popup_ref is not None
+                popup_alive = self._popup_ref is not None
                 if popup_alive:
                     with contextlib.suppress(tk.TclError):
                         popup_alive = self._popup_ref.winfo_exists()

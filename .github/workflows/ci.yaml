@@ -17,10 +17,18 @@ jobs:
   test:
     name: "Tests"
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.12', '3.13']
+        python-version: ['3.12', '3.13', '3.14']
+        experimental: [false]
+        include:
+          - python-version: '3.14'
+            experimental: true
+    continue-on-error: ${{ matrix.experimental == true }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4
 
@@ -40,7 +48,7 @@ jobs:
         run: poetry run niimprintx --help
 
       - name: Run tests
-        run: poetry run pytest -v --cov=NiimPrintX --cov-report=term-missing --junitxml=test-results.xml
+        run: poetry run pytest -v --cov=NiimPrintX --cov-report=term-missing --cov-report=xml --junitxml=test-results.xml
 
       - name: Upload test results
         if: always()
@@ -50,9 +58,19 @@ jobs:
           path: test-results.xml
           retention-days: 30
 
+      - name: Upload coverage report
+        if: matrix.python-version == '3.13'
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08  # v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+          retention-days: 30
+
   lint:
     name: "Lint"
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions: {}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4
 
@@ -74,12 +92,14 @@ jobs:
       - name: Format check with ruff
         run: poetry run ruff format --check NiimPrintX/ tests/
 
-      - name: Type check core modules with mypy
-        run: poetry run mypy --ignore-missing-imports NiimPrintX/nimmy/ NiimPrintX/cli/
+      - name: Type check with mypy
+        run: poetry run mypy NiimPrintX/
 
   audit:
     name: "Dependency Audit"
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions: {}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4
 

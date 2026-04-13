@@ -52,7 +52,7 @@ def _resolve_magick_path() -> tuple[str | None, bool]:
             logger.warning("ImageMagick 'magick' not found in PATH")
         else:
             path_fallback = True
-            logger.warning("Using PATH fallback for 'magick': %s", magick_path)
+            logger.debug("Using PATH fallback for 'magick': %s", magick_path)
 
     return magick_path, path_fallback
 

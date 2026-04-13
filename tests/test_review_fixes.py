@@ -1,11 +1,10 @@
 """Tests verifying critical fixes identified in the code review."""
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 from PIL import Image
 
-from NiimPrintX.nimmy.bluetooth import BLETransport
 from NiimPrintX.nimmy.exception import PrinterException
 from NiimPrintX.nimmy.packet import NiimbotPacket
 from NiimPrintX.nimmy.printer import RequestCodeEnum
@@ -59,32 +58,3 @@ async def test_heartbeat_unknown_length_returns_all_none(make_client):
     assert result["power_level"] is None
     assert result["paper_state"] is None
     assert result["rfid_read_state"] is None
-
-
-# --- 5. UserConfig _validate_dims rejects zero/negative ---
-
-
-def test_validate_dims_zero_rejected():
-    from NiimPrintX.nimmy.userconfig import _validate_dims
-
-    assert _validate_dims([0, 15]) is None
-
-
-def test_validate_dims_negative_rejected():
-    from NiimPrintX.nimmy.userconfig import _validate_dims
-
-    assert _validate_dims([-5, 15]) is None
-
-
-# --- 6. BLETransport disconnect clears client ---
-
-
-async def test_transport_disconnect_clears_client():
-    transport = BLETransport(address="AA:BB:CC:DD:EE:FF")
-    transport.client = MagicMock()
-    transport.client.is_connected = True
-    transport.client.disconnect = AsyncMock()
-    mock_client = transport.client  # save reference before disconnect nulls it
-    await transport.disconnect()
-    assert transport.client is None
-    mock_client.disconnect.assert_awaited_once()

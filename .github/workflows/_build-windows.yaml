@@ -56,11 +56,11 @@ jobs:
 
       - name: Download ImageMagick
         run: |
-          Invoke-WebRequest -Uri https://imagemagick.org/archive/binaries/ImageMagick-${{ env.IMAGEMAGICK_VERSION }}-portable-Q16-HDRI-x64.7z -OutFile ImageMagick.7z
+          Invoke-WebRequest -Uri "https://imagemagick.org/archive/binaries/ImageMagick-$env:IMAGEMAGICK_VERSION-portable-Q16-HDRI-x64.7z" -OutFile ImageMagick.7z
 
       - name: Verify ImageMagick checksum
         run: |
-          $expected = "${{ env.IMAGEMAGICK_SHA256 }}"
+          $expected = $env:IMAGEMAGICK_SHA256
           $actual = (Get-FileHash -Path ImageMagick.7z -Algorithm SHA256).Hash
           if ($actual -ne $expected) {
             Write-Error "SHA-256 mismatch! Expected: $expected Got: $actual"

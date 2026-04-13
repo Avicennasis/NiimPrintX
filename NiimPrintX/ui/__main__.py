@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import contextlib
 import os
 import platform
 import sys
+import tkinter
 
 from NiimPrintX.nimmy.logger_config import setup_logger
 from NiimPrintX.ui.main import LabelPrinterApp
@@ -54,10 +56,7 @@ def main() -> None:
         app = LabelPrinterApp()
         image_path = resource_path("NiimPrintX/ui/assets/Niimprintx.png")
         splash = SplashScreen(image_path, app)  # Create the splash screen
-        import contextlib as _ctx  # noqa: PLC0415 — lazy import for splash guard
-        import tkinter  # noqa: PLC0415
-
-        with _ctx.suppress(tkinter.TclError):
+        with contextlib.suppress(tkinter.TclError):
             splash.update()  # Force Tk to paint before blocking on load_resources
 
         app.load_resources()  # Start loading resources, then show the main window
@@ -72,8 +71,7 @@ def main() -> None:
 
         app.mainloop()
     except Exception as e:
-        import contextlib  # noqa: PLC0415 — lazy import for error handling
-        import tkinter.messagebox as mb  # noqa: PLC0415 — lazy import for error handling
+        import tkinter.messagebox as mb  # noqa: PLC0415 — lazy import for error dialog
 
         with contextlib.suppress(Exception):
             if splash is not None:

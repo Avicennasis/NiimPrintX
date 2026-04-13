@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from NiimPrintX.nimmy.logger_config import get_logger
+from .logger_config import get_logger
 
 logger = get_logger()
 
@@ -15,6 +15,11 @@ class NiimbotPacket:
     def __init__(self, type_: int, data: bytes) -> None:
         self.type = type_
         self.data = data
+
+    def to_int(self) -> int:
+        if not self.data:
+            raise ValueError("Cannot convert empty packet data to integer")
+        return int.from_bytes(self.data, "big")
 
     @classmethod
     def from_bytes(cls, pkt: bytes | bytearray | memoryview) -> NiimbotPacket:

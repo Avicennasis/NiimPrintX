@@ -17,6 +17,7 @@ class FontProps(TypedDict):
     kerning: float
 
 
+# TODO: rename bbox→selection_rect_id, handle→resize_handle_id for clarity
 class TextItem(TypedDict):
     font_props: FontProps
     font_image: Any

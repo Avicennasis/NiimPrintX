@@ -148,6 +148,7 @@ async def test_send_command_reconnect_when_client_is_none(make_client):
         # Restore a mock client so the command can proceed
         client.transport.client = MagicMock()
         client.transport.client.is_connected = True
+        client.char_uuid = "test-char-uuid"
         client.transport.write = AsyncMock(side_effect=_make_fake_write(client, response_pkt))
         return True
 

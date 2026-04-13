@@ -19,6 +19,9 @@ hidden_imports += collect_submodules('bleak')
 hidden_imports += collect_submodules('wand')
 hidden_imports += ['platformdirs', 'sv_ttk', 'cairo']
 
+# NOTE: Manual Tcl/Tk path resolution — PyInstaller's built-in tkinter hook
+# handles this for one-dir builds. If converting to one-dir, remove this block
+# and rely on collect_data_files('tkinter') instead.
 import tkinter
 _tcl = tkinter.Tcl()
 tcl_library = os.environ.get('TCL_LIBRARY') or _tcl.eval('info library')
@@ -65,5 +68,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=os.path.join(src_path, 'assets', 'nimx-512.png'),
+    icon=os.path.join(src_path, 'assets', 'nimx-512.png'),  # NOTE: icon= is ignored by PyInstaller on Linux; set icon via .desktop file
 )

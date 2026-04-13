@@ -62,4 +62,4 @@ def make_client():
 @pytest.fixture
 def runner():
     """Shared Click CLI test runner."""
-    return CliRunner()
+    return CliRunner()  # Click 8+ mixes stderr by default

@@ -22,7 +22,10 @@ from NiimPrintX.nimmy.printer import DEFAULT_MAX_DENSITY, V2_MODELS, InfoEnum
 def _mock_printer(*, connect_ok=True):
     """Build a mock PrinterClient with async methods pre-wired."""
     mock = AsyncMock()
-    mock.connect.return_value = connect_ok
+    if connect_ok:
+        mock.connect.return_value = True
+    else:
+        mock.connect.side_effect = Exception("Connection failed")
     mock.disconnect.return_value = None
     mock.print_image.return_value = None
     mock.print_image_v2.return_value = None

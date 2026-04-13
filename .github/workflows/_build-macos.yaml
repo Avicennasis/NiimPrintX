@@ -64,18 +64,10 @@ jobs:
         run: poetry run pyinstaller spec_files/ui_app/NiimPrintX-mac.spec --noconfirm --clean
 
       - name: Create DMG package
-        if: ${{ inputs.os == 'macos-latest' }}
         env:
           VERSION: ${{ steps.get_tag_name.outputs.VERSION }}
           ARCH: ${{ steps.get_architecture.outputs.ARCH }}
         run: ./.github/workflows/mac-dmg-builder.sh "$VERSION" "$ARCH"
-
-      - name: Create GUI compressed file
-        if: ${{ inputs.os == 'macos-13' }}
-        env:
-          VERSION: ${{ steps.get_tag_name.outputs.VERSION }}
-          ARCH: ${{ steps.get_architecture.outputs.ARCH }}
-        run: cd dist && tar -czf "NiimPrintX-App-${VERSION}-MacOSX-${ARCH}.tar.gz" NiimPrintX.app
 
       - name: Package CLI with PyInstaller
         run: poetry run pyinstaller spec_files/cli_app/NiimPrintX-mac.spec --noconfirm --clean
@@ -87,19 +79,10 @@ jobs:
         run: cd dist && tar -czf "NiimPrintX-CLI-${VERSION}-MacOSX-${ARCH}.tar.gz" niimprintx
 
       - name: Upload DMG package
-        if: ${{ inputs.os == 'macos-latest' }}
         uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08  # v4
         with:
           name: NiimPrintX-Installer-${{ steps.get_tag_name.outputs.VERSION }}-MacOSX-${{ steps.get_architecture.outputs.ARCH }}.dmg
           path: dist/NiimPrintX-Installer-${{ steps.get_tag_name.outputs.VERSION }}-MacOSX-${{ steps.get_architecture.outputs.ARCH }}.dmg
-          retention-days: 1
-
-      - name: Upload GUI package
-        if: ${{ inputs.os == 'macos-13' }}
-        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08  # v4
-        with:
-          name: NiimPrintX-App-${{ steps.get_tag_name.outputs.VERSION }}-MacOSX-${{ steps.get_architecture.outputs.ARCH }}.tar.gz
-          path: dist/NiimPrintX-App-${{ steps.get_tag_name.outputs.VERSION }}-MacOSX-${{ steps.get_architecture.outputs.ARCH }}.tar.gz
           retention-days: 1
 
       - name: Upload CLI package

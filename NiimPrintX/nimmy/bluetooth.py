@@ -87,6 +87,9 @@ class BLETransport:
             try:
                 await asyncio.wait_for(self.client.write_gatt_char(char_uuid, data, response=False), timeout=timeout)
             except TimeoutError:
+                # NOTE: After a write timeout, the BLE transport may be desynchronised —
+                # the write could still complete on the peripheral side while we've
+                # already raised.  Callers should treat the connection as suspect.
                 raise BLEException(f"BLE write timed out after {timeout}s") from None
             except BleakError as e:
                 raise BLEException(f"BLE GATT write error: {e}") from e
@@ -97,9 +100,12 @@ class BLETransport:
         if not (self.client and self.client.is_connected):
             raise BLEException("BLE client is not connected.")
         if char_uuid not in self._notifying_uuids:
-            self._notifying_uuids.add(char_uuid)
             try:
                 await self.client.start_notify(char_uuid, handler)
+                self._notifying_uuids.add(char_uuid)
+            except BleakError as e:
+                self._notifying_uuids.discard(char_uuid)
+                raise BLEException(f"BLE start_notify failed: {e}") from e
             except BaseException:
                 self._notifying_uuids.discard(char_uuid)
                 raise
@@ -109,6 +115,8 @@ class BLETransport:
             if char_uuid in self._notifying_uuids and self.client and self.client.is_connected:
                 await self.client.stop_notify(char_uuid)
         except BleakError as e:
+            raise BLEException(f"BLE stop_notify failed: {e}") from e
+        except Exception as e:
             raise BLEException(f"BLE stop_notify failed: {e}") from e
         finally:
             self._notifying_uuids.discard(char_uuid)

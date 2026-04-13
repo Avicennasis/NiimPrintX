@@ -179,9 +179,9 @@ class LabelPrinterApp(tk.Tk):
             self.canvas_state.image_items.clear()
             self.canvas_state.text_items.clear()
             # Disconnect printer if connected
-            if hasattr(self, "print_option") and self.print_option.print_op.printer:
+            if hasattr(self, "print_option") and self.print_option.print_op.is_connected:
                 with contextlib.suppress(Exception):
-                    await self.print_option.print_op.printer.disconnect()
+                    await self.print_option.print_op.printer_disconnect()
             # Stop heartbeat
             if hasattr(self, "print_option"):
                 self.print_option._heartbeat_active = False

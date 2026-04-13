@@ -97,13 +97,9 @@ class CanvasSelector:
         self.canvas_height = self.bounding_box_height + padding
 
         # If a canvas exists, destroy it and clear stale items
-        if hasattr(self.canvas_state, "canvas") and self.canvas_state.canvas is not None:
+        if self.canvas_state.canvas is not None:
             self.canvas_state.canvas.unbind("<Button-1>")
             self.canvas_state.canvas.destroy()
-        for item in self.canvas_state.text_items.values():
-            if "font_image" in item and hasattr(item["font_image"], "close"):
-                with contextlib.suppress(Exception):
-                    item["font_image"].close()
         self.canvas_state.text_items = {}
         for item in self.canvas_state.image_items.values():
             orig = item.get("original_image")

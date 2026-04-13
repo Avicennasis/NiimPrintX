@@ -165,6 +165,8 @@ class TextOperation:
     def move_text(self, event: tk.Event, text_id: int) -> None:
         if text_id not in self.canvas_state.text_items:
             return
+        if self.canvas_state.text_items[text_id].get("bbox") is None:
+            return
         dx: int = event.x - self.canvas_state.text_items[text_id]["initial_x"]
         dy: int = event.y - self.canvas_state.text_items[text_id]["initial_y"]
         self.canvas_state.canvas.move(text_id, dx, dy)
@@ -202,6 +204,8 @@ class TextOperation:
         self.parent.size_var.set(new_size)
 
     def update_bbox_and_handle(self, text_id: int) -> None:
+        if self.canvas_state.text_items[text_id].get("bbox") is None:
+            return
         bbox_coords: tuple[int, int, int, int] | None = self.canvas_state.canvas.bbox(text_id)
         if bbox_coords is None:
             return

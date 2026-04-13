@@ -114,6 +114,8 @@ class ImageOperation:
         """Resize the selected image based on the mouse event."""
         # Get the initial bounding box
         current_bbox = self.canvas_state.canvas.bbox(image_id)
+        if current_bbox is None:
+            return
         initial_width = current_bbox[2] - current_bbox[0]
 
         # Calculate the movement since the last event
@@ -123,13 +125,16 @@ class ImageOperation:
         original_image = self.canvas_state.image_items[image_id]["original_image"]
 
         # Calculate the new size based on the mouse movement, preserving aspect ratio
+        MAX_CANVAS_DIM = 32767
         orig_w, orig_h = original_image.size
         aspect = orig_w / orig_h
         new_width = max(initial_width + dx, 20)  # Ensure a minimum width
+        new_width = min(new_width, MAX_CANVAS_DIM)
         new_height = int(new_width / aspect)
         if new_height < 20:
             new_height = 20
             new_width = max(int(new_height * aspect), 20)
+        new_height = min(new_height, MAX_CANVAS_DIM)
 
         # Resize the image to the new size
         resized_image = original_image.resize((new_width, new_height), Image.Resampling.BILINEAR)

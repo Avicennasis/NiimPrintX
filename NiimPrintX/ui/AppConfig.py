@@ -21,7 +21,7 @@ class AppConfig:
         self._canvas = CanvasState()
         self._printer = PrinterState(default_device=next(iter(self._immutable.label_sizes)))
 
-    # --- Accessors for sub-objects (for Phase 2 migration) ---
+    # TODO: AppConfig is unused in production — either complete migration or remove this facade class
     @property
     def immutable(self) -> ImmutableConfig:
         return self._immutable
@@ -54,10 +54,6 @@ class AppConfig:
     @property
     def label_sizes(self) -> dict:
         return self._immutable.label_sizes
-
-    @label_sizes.setter
-    def label_sizes(self, value: dict) -> None:
-        self._immutable.label_sizes = value
 
     # --- CanvasState delegators ---
     @property

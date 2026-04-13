@@ -4,6 +4,7 @@ import base64
 import contextlib
 import io
 import json
+import math
 import os
 import tempfile
 import tkinter as tk
@@ -158,8 +159,14 @@ class FileMenu:
                 messagebox.showerror("Error", "Invalid .niim file: 'device' and 'current_label_size' must be strings.")
                 return
 
+            text_data = data.get("text")
+            image_data = data.get("image")
+            if not isinstance(text_data, dict) or not isinstance(image_data, dict):
+                messagebox.showerror("Error", "Invalid .niim file: 'text' and 'image' must be dicts.")
+                return
+
             existing_items = len(self.canvas_state.text_items) + len(self.canvas_state.image_items)
-            file_items = len(data.get("text", {})) + len(data.get("image", {}))
+            file_items = len(text_data) + len(image_data)
             total_items = existing_items + file_items
             if total_items > _MAX_ITEMS_PER_FILE:
                 messagebox.showerror(
@@ -170,25 +177,24 @@ class FileMenu:
 
             device = data.get("device", "").lower()
             label_size = data.get("current_label_size", "")
-            if device not in self.immutable.label_sizes:
-                messagebox.showerror("Error", f"Device '{device}' not found in configuration.")
-                return
-            if label_size not in self.immutable.label_sizes[device].get("size", {}):
-                messagebox.showerror("Error", f"Label size '{label_size}' not found for device '{device}'.")
+            if device not in self.immutable.label_sizes or label_size not in self.immutable.label_sizes[device].get(
+                "size", {}
+            ):
+                messagebox.showerror(
+                    "Error", f"Device '{device}' / label size '{label_size}' not found in configuration."
+                )
                 return
 
             with contextlib.suppress(Exception):
                 self._on_deselect_all()
 
-            self._on_load_canvas_config(data["device"], data["current_label_size"])
+            self._on_load_canvas_config(device, label_size)
 
-            if isinstance(data.get("text"), dict):
-                for item_data in data["text"].values():
-                    self.load_text(item_data)
+            for item_data in text_data.values():
+                self.load_text(item_data)
 
-            if isinstance(data.get("image"), dict):
-                for item_data in data["image"].values():
-                    self.load_image(item_data)
+            for item_data in image_data.values():
+                self.load_image(item_data)
 
     def load_text(self, data: dict[str, object]) -> None:
         try:
@@ -200,19 +206,30 @@ class FileMenu:
                 or not all(isinstance(c, int | float) for c in coords[:2])
             ):
                 raise ValueError("Invalid or missing coords: expected a list with at least 2 numeric elements")
+            if not all(math.isfinite(c) for c in coords[:2]):
+                raise ValueError("coords must be finite")
 
             # Validate font_props
             fp = data.get("font_props")
             if not isinstance(fp, dict):
                 raise ValueError("Invalid or missing font_props: expected a dict")
-            if "size" not in fp or not isinstance(fp["size"], (int, float)) or not (1 <= fp["size"] <= 500):
+            for key in ("family", "size", "slant", "weight", "underline", "kerning"):
+                if key not in fp:
+                    raise ValueError(f"font_props missing '{key}'")
+            if not isinstance(fp["family"], str) or len(fp["family"]) > 256:
+                raise ValueError("font_props['family'] must be a string of at most 256 characters")
+            if not isinstance(fp["size"], (int, float)) or not (1 <= fp["size"] <= 500):
                 raise ValueError("font_props['size'] must be a number between 1 and 500")
-            if "kerning" in fp and not isinstance(fp["kerning"], (int, float)):
+            if not isinstance(fp["kerning"], (int, float)):
                 raise ValueError("font_props['kerning'] must be a number")
+            if not math.isfinite(fp["kerning"]) or not (-100 <= fp["kerning"] <= 100):
+                raise ValueError("font_props['kerning'] must be finite and between -100 and 100")
 
             # Validate content
             if not isinstance(data.get("content"), str):
                 raise ValueError("'content' must be a string")
+            if len(data["content"]) > 10_000:
+                raise ValueError("'content' exceeds maximum length of 10,000 characters")
 
             raw_b64 = data.get("font_image", "")
             if not isinstance(raw_b64, str) or len(raw_b64) > 10 * 1024 * 1024:
@@ -251,43 +268,47 @@ class FileMenu:
                 or not all(isinstance(c, int | float) for c in coords[:2])
             ):
                 raise ValueError("Invalid or missing coords: expected a list with at least 2 numeric elements")
+            if not all(math.isfinite(c) for c in coords[:2]):
+                raise ValueError("coords must be finite")
 
             raw_orig_b64 = data.get("original_image", "")
             if not isinstance(raw_orig_b64, str) or len(raw_orig_b64) > 10 * 1024 * 1024:
                 raise ValueError("Original image data too large or wrong type")
             original_image_data = base64.b64decode(raw_orig_b64)
             original_image = Image.open(io.BytesIO(original_image_data))
-            if original_image.format != "PNG":
-                raise ValueError(f"Expected PNG image, got {original_image.format}")
-            if original_image.width * original_image.height > _MAX_LABEL_PIXELS:
-                w, h = original_image.width, original_image.height
-                original_image.close()
-                raise ValueError(f"Image too large: {w}x{h}")
-            original_image.load()
+            try:
+                if original_image.format != "PNG":
+                    raise ValueError(f"Expected PNG image, got {original_image.format}")
+                if original_image.width * original_image.height > _MAX_LABEL_PIXELS:
+                    raise ValueError(f"Image too large: {original_image.width}x{original_image.height}")
+                original_image.load()
 
-            raw_img_b64 = data.get("image", "")
-            if not isinstance(raw_img_b64, str) or len(raw_img_b64) > 10 * 1024 * 1024:
-                raise ValueError("Resized image data too large or wrong type")
-            image_data = base64.b64decode(raw_img_b64)
-            image = Image.open(io.BytesIO(image_data))
-            if image.format != "PNG":
-                raise ValueError(f"Expected PNG image, got {image.format}")
-            if image.width * image.height > _MAX_LABEL_PIXELS:
-                w, h = image.width, image.height
+                raw_img_b64 = data.get("image", "")
+                if not isinstance(raw_img_b64, str) or len(raw_img_b64) > 10 * 1024 * 1024:
+                    raise ValueError("Resized image data too large or wrong type")
+                image_data = base64.b64decode(raw_img_b64)
+                image = Image.open(io.BytesIO(image_data))
+                if image.format != "PNG":
+                    raise ValueError(f"Expected PNG image, got {image.format}")
+                if image.width * image.height > _MAX_LABEL_PIXELS:
+                    w, h = image.width, image.height
+                    image.close()
+                    raise ValueError(f"Resized image too large: {w}x{h}")
+                image.load()  # force decode before BytesIO is GC'd
+                img_tk = ImageTk.PhotoImage(image)
                 image.close()
-                raise ValueError(f"Resized image too large: {w}x{h}")
-            image.load()  # force decode before BytesIO is GC'd
-            img_tk = ImageTk.PhotoImage(image)
-            image.close()
-            image_id = self.canvas_state.canvas.create_image(coords[0], coords[1], image=img_tk, anchor="nw")
+                image_id = self.canvas_state.canvas.create_image(coords[0], coords[1], image=img_tk, anchor="nw")
 
-            self.canvas_state.image_items[image_id] = {
-                "image": img_tk,
-                "original_image": original_image,
-                "bbox": None,
-                "handle": None,
-            }
+                self.canvas_state.image_items[image_id] = {
+                    "image": img_tk,
+                    "original_image": original_image,
+                    "bbox": None,
+                    "handle": None,
+                }
 
-            self._on_bind_image_select(image_id)
+                self._on_bind_image_select(image_id)
+            except Exception:
+                original_image.close()
+                raise
         except (OSError, ValueError, TypeError, KeyError, PIL.UnidentifiedImageError) as e:
             messagebox.showwarning("Warning", f"Failed to load image item: {e}")
