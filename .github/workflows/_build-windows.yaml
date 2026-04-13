@@ -109,7 +109,12 @@ jobs:
       - name: Move CLI files to release directory
         run: |
           New-Item -Path $env:GITHUB_WORKSPACE\release\NiimPrintX-Cli -ItemType Directory
-          Move-Item -Path $env:GITHUB_WORKSPACE\dist\niimprintx\* -Destination $env:GITHUB_WORKSPACE\release\NiimPrintX-Cli
+          # CLI spec produces a one-file EXE at dist\niimprintx.exe (no COLLECT directory)
+          if (Test-Path "$env:GITHUB_WORKSPACE\dist\niimprintx") {
+            Move-Item -Path $env:GITHUB_WORKSPACE\dist\niimprintx\* -Destination $env:GITHUB_WORKSPACE\release\NiimPrintX-Cli
+          } else {
+            Move-Item -Path $env:GITHUB_WORKSPACE\dist\niimprintx.exe -Destination $env:GITHUB_WORKSPACE\release\NiimPrintX-Cli
+          }
 
 
       - name: Create GUI compressed file
