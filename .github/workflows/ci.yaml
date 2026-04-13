@@ -38,6 +38,7 @@ jobs:
         uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b  # v5
         with:
           python-version: ${{ matrix.python-version }}
+          allow-prereleases: true
           cache: 'poetry'
 
       - name: Install dependencies
@@ -118,7 +119,7 @@ jobs:
         run: pipx inject poetry poetry-plugin-export
 
       - name: Export requirements
-        run: poetry export -f requirements.txt --output requirements.txt --without-hashes
+        run: poetry export -f requirements.txt --output requirements.txt --without-hashes --all-extras
 
       - name: Audit dependencies
         uses: pypa/gh-action-pip-audit@1220774d901786e6f652ae159f7b6bc8fea6d266  # v1.1.0

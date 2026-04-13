@@ -51,10 +51,10 @@ class PrintOption:
     def check_heartbeat(self) -> None:
         if self._heartbeat_active:
             return
+        self._heartbeat_active = True
         asyncio.run_coroutine_threadsafe(self.schedule_heartbeat(), self.root.async_loop)
 
     async def schedule_heartbeat(self) -> None:
-        self._heartbeat_active = True
         try:
             await self._heartbeat_loop()
         except asyncio.CancelledError:
@@ -128,10 +128,8 @@ class PrintOption:
             with contextlib.suppress(tk.TclError):
                 self.root.status_bar.update_status(self.printer.printer_connected)
 
-        try:
+        with contextlib.suppress(tk.TclError):
             self.root.after(0, _update)
-        except tk.TclError:
-            self._connecting = False
 
     def display_print(self) -> None:
         if self.printer.print_job:
@@ -265,13 +263,18 @@ class PrintOption:
         popup.grab_set()  # Make modal — prevents opening multiple popups
 
         # Load the PNG image with PIL and convert to ImageTk
-        if self.print_image is not None:
-            with contextlib.suppress(Exception):
-                self.print_image.close()
-        Image.MAX_IMAGE_PIXELS = 5_000_000
-        self.print_image = Image.open(filename)
-        self.print_image.load()  # Force decode before tempfile is removed
-        img_tk = ImageTk.PhotoImage(self.print_image)
+        try:
+            if self.print_image is not None:
+                with contextlib.suppress(Exception):
+                    self.print_image.close()
+            Image.MAX_IMAGE_PIXELS = 5_000_000
+            self.print_image = Image.open(filename)
+            self.print_image.load()  # Force decode before tempfile is removed
+            img_tk = ImageTk.PhotoImage(self.print_image)
+        except Exception:
+            with contextlib.suppress(tk.TclError):
+                popup.destroy()
+            raise
 
         # Create a Label to display the image
         self.image_label = tk.Label(popup, image=img_tk)
@@ -364,6 +367,7 @@ class PrintOption:
                     self.print_image.close()
                 self.print_image = None
             popup.destroy()
+            self._popup_ref = None
 
         close_button = tk.Button(button_frame, text="Close", command=_on_popup_close)
         close_button.grid(row=0, column=1, padx=5, pady=10, sticky="ew")

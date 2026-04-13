@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import math
 import threading
 import tkinter as tk
 from tkinter import font as tk_font
@@ -172,6 +173,9 @@ class TextTab:
         except (ValueError, tk.TclError):
             kerning = 0.0
             self.kerning_var.set("0")
+        if not math.isfinite(kerning):
+            kerning = 0.0
+        kerning = max(-100.0, min(kerning, 100.0))
         weight: str = "bold" if self.bold_var.get() else "normal"
         slant: str = "italic" if self.italic_var.get() else "roman"
         underline: bool = self.underline_var.get()

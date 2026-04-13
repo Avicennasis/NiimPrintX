@@ -21,7 +21,6 @@ class AppConfig:
         self._canvas = CanvasState()
         self._printer = PrinterState(default_device=next(iter(self._immutable.label_sizes)))
 
-    # TODO: AppConfig is unused in production — either complete migration or remove this facade class
     @property
     def immutable(self) -> ImmutableConfig:
         return self._immutable

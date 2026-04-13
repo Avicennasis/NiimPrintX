@@ -145,3 +145,15 @@ def test_encode_image_rgba_transparent_becomes_white(make_client):
     for pkt in packets:
         line_data = pkt.data[6:]
         assert line_data == bytes([0x00])
+
+
+def test_encode_image_positive_offset_blank_border(make_client):
+    """Positive vertical offset should produce blank (non-printing) rows at top."""
+    client = make_client()
+    img = Image.new("L", (8, 2), color=0)  # all black
+    packets = list(client._encode_image(img, vertical_offset=2))
+    assert len(packets) == 4  # 2 original + 2 offset
+    # First 2 rows are offset padding -- should be all zeros (blank)
+    for pkt in packets[:2]:
+        line_data = pkt.data[6:]
+        assert line_data == b"\x00", f"Expected blank border, got {line_data.hex()}"

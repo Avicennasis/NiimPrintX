@@ -5,6 +5,8 @@ import subprocess
 
 import click
 
+BATCH_SIZE = 200
+
 
 @click.command()
 @click.argument("image_directory", type=click.Path(exists=True))
@@ -21,12 +23,13 @@ def process_images(image_directory):
         shutil.copy(filename, original_dir)
         shutil.copy(filename, resized_dir)
 
-    # Run mogrify commands
+    # Run mogrify commands in batches for ARG_MAX safety
     png_files = glob.glob(os.path.join(resized_dir, "*.png"))
-    if png_files:
-        subprocess.run(["mogrify", "-resize", "50x50", "--", *png_files], check=True)
-        subprocess.run(["mogrify", "-format", "png", "-alpha", "on", "--", *png_files], check=True)
-        subprocess.run(["mogrify", "-fill", "black", "-colorize", "100", "--", *png_files], check=True)
+    for i in range(0, len(png_files), BATCH_SIZE):
+        batch = png_files[i : i + BATCH_SIZE]
+        subprocess.run(["mogrify", "-resize", "50x50", "--", *batch], check=True)
+        subprocess.run(["mogrify", "-format", "png", "-alpha", "on", "--", *batch], check=True)
+        subprocess.run(["mogrify", "-fill", "black", "-colorize", "100", "--", *batch], check=True)
 
 
 if __name__ == "__main__":

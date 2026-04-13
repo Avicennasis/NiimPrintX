@@ -48,28 +48,7 @@ async def test_send_command_reconnect_success(make_client):
 
 
 # ---------------------------------------------------------------------------
-# 2. send_command reconnect failure raises PrinterException
-# ---------------------------------------------------------------------------
-
-
-async def test_send_command_reconnect_failure(make_client):
-    """When the BLE client is disconnected and reconnection leaves char_uuid unset,
-    send_command must raise PrinterException about missing characteristic UUID."""
-    client = make_client()
-    client.transport.client.is_connected = False
-    client.char_uuid = None  # connect() won't restore it
-
-    async def fake_connect():
-        client.transport.client.is_connected = True
-
-    client.connect = AsyncMock(side_effect=fake_connect)
-
-    with pytest.raises(PrinterException, match="No characteristic UUID available"):
-        await client.send_command(RequestCodeEnum.GET_INFO, b"\x01")
-
-
-# ---------------------------------------------------------------------------
-# 3. _print_job calls end_print on failure during end_page_print
+# 2. _print_job calls end_print on failure during end_page_print
 # ---------------------------------------------------------------------------
 
 

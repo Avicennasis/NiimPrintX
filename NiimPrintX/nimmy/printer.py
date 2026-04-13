@@ -183,7 +183,10 @@ class PrinterClient:
             else:
                 logger.debug("Dropped unsolicited notification (%d bytes)", len(snapshot))
 
-        self._loop.call_soon_threadsafe(_set)
+        try:
+            self._loop.call_soon_threadsafe(_set)
+        except RuntimeError:
+            logger.debug("Event loop closed; dropping late notification")
 
     async def print_image(
         self,
