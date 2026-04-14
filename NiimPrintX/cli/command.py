@@ -10,7 +10,7 @@ from PIL import Image
 from NiimPrintX.cli.helper import print_error, print_info, print_success
 from NiimPrintX.nimmy.bluetooth import find_device
 from NiimPrintX.nimmy.logger_config import get_logger, logger_enable, setup_logger
-from NiimPrintX.nimmy.printer import DEFAULT_MAX_DENSITY, MODEL_MAX_DENSITY, V2_MODELS, InfoEnum, PrinterClient
+from NiimPrintX.nimmy.printer import DEFAULT_MAX_DENSITY, MODEL_MAX_DENSITY, V2_MODELS, V4_MODELS, InfoEnum, PrinterClient
 
 # Max print width per model in pixels (derived from label width x DPI)
 # V2 models (b1/b18/b21) use 384px; 300 DPI models use 354px (30mm @ 300 DPI)
@@ -145,7 +145,16 @@ async def _print(
         printer = PrinterClient(device)
         await printer.connect()
         print_info(f"Connected to {device.name!r}")
-        if model in V2_MODELS:
+        if model in V4_MODELS:
+            print_info("Printing with V4 protocol (D110_M 2025)")
+            await printer.print_image_v4(
+                image,
+                density=density,
+                quantity=quantity,
+                vertical_offset=vertical_offset,
+                horizontal_offset=horizontal_offset,
+            )
+        elif model in V2_MODELS:
             print_info("Printing with V2 protocol")
             await printer.print_image_v2(
                 image,

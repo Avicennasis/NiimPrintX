@@ -80,10 +80,10 @@ class BLETransport:
         self.client = None
         self._notifying_uuids.clear()
 
-    async def write(self, data: bytes | bytearray, char_uuid: str, timeout: float = 10.0) -> None:  # noqa: ASYNC109 — uses asyncio.wait_for internally
+    async def write(self, data: bytes | bytearray, char_uuid: str, timeout: float = 10.0, *, response: bool = False) -> None:  # noqa: ASYNC109 — uses asyncio.wait_for internally
         if self.client and self.client.is_connected:
             try:
-                await asyncio.wait_for(self.client.write_gatt_char(char_uuid, data, response=False), timeout=timeout)
+                await asyncio.wait_for(self.client.write_gatt_char(char_uuid, data, response=response), timeout=timeout)
             except TimeoutError:
                 # NOTE: After a write timeout, the BLE transport may be desynchronised —
                 # the write could still complete on the peripheral side while we've

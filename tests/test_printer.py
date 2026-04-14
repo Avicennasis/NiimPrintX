@@ -21,7 +21,7 @@ async def test_send_command_clears_event_before_wait(make_client):
     response_pkt = NiimbotPacket(0x40, b"\x01")
     fresh_bytes = response_pkt.to_bytes()
 
-    async def fake_write(data, char_uuid):
+    async def fake_write(data, char_uuid, **kwargs):
         # Simulate printer responding after write
         client.notification_data = fresh_bytes
         client.notification_event.set()
@@ -35,7 +35,7 @@ async def test_send_command_catches_valueerror_from_malformed_packet(make_client
     """ValueError from from_bytes must be wrapped as PrinterException."""
     client = make_client()
 
-    async def fake_write(data, char_uuid):
+    async def fake_write(data, char_uuid, **kwargs):
         # Simulate a corrupted response (bad header)
         client.notification_data = b"\xde\xad\x40\x01\x01\x40\xaa\xaa"
         client.notification_event.set()
@@ -130,7 +130,7 @@ async def test_get_rfid_empty_data_returns_none(make_client):
     client = make_client()
     response_pkt = NiimbotPacket(RequestCodeEnum.GET_RFID, b"\x00")
 
-    async def fake_write(data, char_uuid):
+    async def fake_write(data, char_uuid, **kwargs):
         client.notification_data = response_pkt.to_bytes()
         client.notification_event.set()
 
@@ -148,7 +148,7 @@ async def test_get_rfid_valid_data(make_client):
     rfid_data += struct.pack(">HHB", 100, 50, 2)  # total, used, type
     response_pkt = NiimbotPacket(RequestCodeEnum.GET_RFID, rfid_data)
 
-    async def fake_write(data, char_uuid):
+    async def fake_write(data, char_uuid, **kwargs):
         client.notification_data = response_pkt.to_bytes()
         client.notification_event.set()
 
@@ -169,7 +169,7 @@ async def test_get_rfid_malformed_returns_none(make_client):
     # Valid start but truncated — will cause IndexError in parsing
     response_pkt = NiimbotPacket(RequestCodeEnum.GET_RFID, b"\x01\x02\x03")
 
-    async def fake_write(data, char_uuid):
+    async def fake_write(data, char_uuid, **kwargs):
         client.notification_data = response_pkt.to_bytes()
         client.notification_event.set()
 
@@ -189,7 +189,7 @@ async def test_get_rfid_empty_barcode_and_serial(make_client):
     rfid_data = uuid + barcode_len + serial_len + tail
     response_pkt = NiimbotPacket(RequestCodeEnum.GET_RFID, rfid_data)
 
-    async def fake_write(data, char_uuid):
+    async def fake_write(data, char_uuid, **kwargs):
         client.notification_data = response_pkt.to_bytes()
         client.notification_event.set()
 
@@ -213,7 +213,7 @@ async def test_get_rfid_truncated_data(make_client):
     rfid_data = uuid + bytes([50]) + b"\xab\xcd"
     response_pkt = NiimbotPacket(RequestCodeEnum.GET_RFID, rfid_data)
 
-    async def fake_write(data, char_uuid):
+    async def fake_write(data, char_uuid, **kwargs):
         client.notification_data = response_pkt.to_bytes()
         client.notification_event.set()
 
@@ -228,7 +228,7 @@ async def test_get_rfid_no_data(make_client):
     client = make_client()
     response_pkt = NiimbotPacket(RequestCodeEnum.GET_RFID, b"")
 
-    async def fake_write(data, char_uuid):
+    async def fake_write(data, char_uuid, **kwargs):
         client.notification_data = response_pkt.to_bytes()
         client.notification_event.set()
 
@@ -241,7 +241,7 @@ async def test_set_quantity(make_client):
     client = make_client()
     response_pkt = NiimbotPacket(RequestCodeEnum.SET_QUANTITY, b"\x01")
 
-    async def fake_write(data, char_uuid):
+    async def fake_write(data, char_uuid, **kwargs):
         client.notification_data = response_pkt.to_bytes()
         client.notification_event.set()
 
@@ -254,7 +254,7 @@ async def test_end_print(make_client):
     client = make_client()
     response_pkt = NiimbotPacket(RequestCodeEnum.END_PRINT, b"\x01")
 
-    async def fake_write(data, char_uuid):
+    async def fake_write(data, char_uuid, **kwargs):
         client.notification_data = response_pkt.to_bytes()
         client.notification_event.set()
 
@@ -268,7 +268,7 @@ async def test_get_print_status(make_client):
     status_data = struct.pack(">HBB", 3, 50, 75)
     response_pkt = NiimbotPacket(RequestCodeEnum.GET_PRINT_STATUS, status_data)
 
-    async def fake_write(data, char_uuid):
+    async def fake_write(data, char_uuid, **kwargs):
         client.notification_data = response_pkt.to_bytes()
         client.notification_event.set()
 
@@ -394,7 +394,7 @@ async def test_response_parser_empty_data(make_client):
     # Build a valid packet with zero-length data
     empty_pkt = NiimbotPacket(RequestCodeEnum.SET_LABEL_TYPE, b"")
 
-    async def fake_write(data, char_uuid):
+    async def fake_write(data, char_uuid, **kwargs):
         client.notification_data = empty_pkt.to_bytes()
         client.notification_event.set()
 
@@ -406,7 +406,7 @@ async def test_response_parser_empty_data(make_client):
     # Also verify set_label_density with the same empty-response scenario
     empty_pkt2 = NiimbotPacket(RequestCodeEnum.SET_LABEL_DENSITY, b"")
 
-    async def fake_write2(data, char_uuid):
+    async def fake_write2(data, char_uuid, **kwargs):
         client.notification_data = empty_pkt2.to_bytes()
         client.notification_event.set()
 
@@ -431,7 +431,7 @@ async def test_print_image_v2_zero_dimension(make_client):
     ok_pkt = NiimbotPacket(RequestCodeEnum.SET_LABEL_DENSITY, b"\x01")
     ok_bytes = ok_pkt.to_bytes()
 
-    async def fake_write(data, char_uuid):
+    async def fake_write(data, char_uuid, **kwargs):
         client.notification_data = ok_bytes
         client.notification_event.set()
 
@@ -456,7 +456,7 @@ async def test_get_print_status_short_response(make_client):
     # Build a packet with only 2 bytes of data (need 4 for HBB unpack)
     short_pkt = NiimbotPacket(RequestCodeEnum.GET_PRINT_STATUS, b"\x00\x01")
 
-    async def fake_write(data, char_uuid):
+    async def fake_write(data, char_uuid, **kwargs):
         client.notification_data = short_pkt.to_bytes()
         client.notification_event.set()
 
@@ -583,7 +583,7 @@ async def test_print_job_status_poll_greater_than(make_client):
     call_count = 0
 
     # Track which command is being sent to return the right mock response
-    async def fake_write(data, char_uuid):
+    async def fake_write(data, char_uuid, **kwargs):
         nonlocal call_count
         # Parse the outgoing packet to determine what command this is
         pkt = NiimbotPacket.from_bytes(data)
@@ -622,7 +622,7 @@ async def test_end_page_print_timeout(mock_sleep, make_client):
     retry loop must exhaust and raise PrinterException('end_page_print timed out')."""
     client = make_client()
 
-    async def fake_write(data, char_uuid):
+    async def fake_write(data, char_uuid, **kwargs):
         pkt = NiimbotPacket.from_bytes(data)
 
         if pkt.type == RequestCodeEnum.END_PAGE_PRINT:
@@ -657,7 +657,7 @@ async def test_status_poll_timeout(mock_sleep, make_client):
     timeout."""
     client = make_client()
 
-    async def fake_write(data, char_uuid):
+    async def fake_write(data, char_uuid, **kwargs):
         pkt = NiimbotPacket.from_bytes(data)
 
         if pkt.type == RequestCodeEnum.END_PAGE_PRINT:
@@ -697,7 +697,7 @@ async def test_print_job_cleanup_skips_reconnect_when_disconnected(mock_sleep, m
     end_print_called = False
     end_page_count = 0
 
-    async def fake_write(data, char_uuid):
+    async def fake_write(data, char_uuid, **kwargs):
         nonlocal end_print_called, end_page_count
         pkt = NiimbotPacket.from_bytes(data)
 
@@ -787,7 +787,7 @@ async def test_print_job_cleanup_skips_end_page_when_not_started(mock_sleep, mak
     end_page_called = False
     end_print_called = False
 
-    async def fake_write(data, char_uuid):
+    async def fake_write(data, char_uuid, **kwargs):
         nonlocal end_page_called, end_print_called
         pkt = NiimbotPacket.from_bytes(data)
 

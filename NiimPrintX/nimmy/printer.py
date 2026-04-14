@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 logger = get_logger()
 
 V2_MODELS = frozenset({"b1", "b18", "b21"})
+V4_MODELS = frozenset({"d110_m"})  # 2025 D110M uses V4 protocol per NiimBlueLib
 
 # Maximum density per model (from hardware specs)
 MODEL_MAX_DENSITY = {"b21": 5}  # All other models default to DEFAULT_MAX_DENSITY
@@ -100,9 +101,11 @@ class PrinterClient:
             services[service.uuid] = s
 
         candidates: list[str] = []
-        for characteristics in services.values():
+        for svc_uuid, characteristics in services.items():
+            logger.debug(f"Service {svc_uuid}:")
             for char in characteristics:
                 props = char["properties"]
+                logger.debug(f"  Char {char['id']}: {props}")
                 if "read" in props and "write-without-response" in props and "notify" in props:
                     candidates.append(char["id"])
         if not candidates:
@@ -110,6 +113,7 @@ class PrinterClient:
         if len(candidates) > 1:
             logger.warning(f"Multiple matching characteristics found: {candidates}; using first")
         self.char_uuid = candidates[0]
+        logger.debug(f"Selected characteristic: {self.char_uuid}")
 
     async def send_command(self, request_code: int, data: bytes, timeout: float = 10) -> NiimbotPacket:  # noqa: ASYNC109 — uses asyncio.wait_for internally
         async with self._command_lock:
@@ -156,14 +160,14 @@ class PrinterClient:
                 self._expecting_response = False
                 self.notification_event.clear()
 
-    async def write_raw(self, data: NiimbotPacket) -> None:
+    async def write_raw(self, data: NiimbotPacket, *, response: bool = False) -> None:
         async with self._command_lock:
             try:
                 if not self.transport.client or not self.transport.client.is_connected:
                     await self.connect()
                 if self.char_uuid is None:
                     raise PrinterException("No characteristic UUID available")
-                await self.transport.write(data.to_bytes(), self.char_uuid)
+                await self.transport.write(data.to_bytes(), self.char_uuid, response=response)
             except (BLEException, ValueError, TypeError) as e:
                 logger.error(f"Write error: {e}")
                 raise PrinterException(f"BLE write failed: {e}") from e
@@ -181,7 +185,7 @@ class PrinterClient:
                 self.notification_data = snapshot
                 self.notification_event.set()
             else:
-                logger.debug("Dropped unsolicited notification (%d bytes)", len(snapshot))
+                logger.debug(f"Dropped unsolicited notification ({len(snapshot)} bytes): {list(snapshot)}")
 
         try:
             self._loop.call_soon_threadsafe(_set)
@@ -208,6 +212,17 @@ class PrinterClient:
     ) -> None:
         await self._print_job(image, density, quantity, vertical_offset, horizontal_offset, v2=True)
 
+    async def print_image_v4(
+        self,
+        image: Image.Image,
+        density: int = 3,
+        quantity: int = 1,
+        vertical_offset: int = 0,
+        horizontal_offset: int = 0,
+    ) -> None:
+        """V4 protocol for D110_M (2025 model) - different command formats."""
+        await self._print_job(image, density, quantity, vertical_offset, horizontal_offset, v4=True)
+
     async def _print_job(
         self,
         image: Image.Image,
@@ -217,6 +232,7 @@ class PrinterClient:
         horizontal_offset: int,
         *,
         v2: bool = False,
+        v4: bool = False,
     ) -> None:
         async with self._print_lock:
             print_started = False
@@ -246,18 +262,29 @@ class PrinterClient:
                 if not await self.set_label_type(1):
                     raise PrinterException("Printer rejected set_label_type")
 
-                if v2:
+                if v4:
+                    if not await self.start_print_v4(quantity=quantity):
+                        raise PrinterException("Printer rejected start_print_v4")
+                elif v2:
                     if not await self.start_print_v2(quantity=quantity):
                         raise PrinterException("Printer rejected start_print_v2")
                 elif not await self.start_print():
                     raise PrinterException("Printer rejected start_print")
                 print_started = True
 
-                if not await self.start_page_print():
-                    raise PrinterException("Printer rejected start_page_print")
-                page_started = True
+                # V4 protocol (D110_M) omits PageStart entirely
+                if not v4:
+                    if not await self.start_page_print():
+                        raise PrinterException("Printer rejected start_page_print")
+                    page_started = True
 
-                if v2:
+                if v4:
+                    if not await self.set_dimension_v4(effective_height, effective_width, quantity):
+                        raise PrinterException("Printer rejected set_dimension_v4")
+                    # V4 protocol: fire-and-forget PrintStatus before image data
+                    await self.write_raw(NiimbotPacket(RequestCodeEnum.GET_PRINT_STATUS, b"\x01"))
+                    logger.debug("V4: sent fire-and-forget PrintStatus before image data")
+                elif v2:
                     if not await self.set_dimension_v2(effective_height, effective_width, quantity):
                         raise PrinterException("Printer rejected set_dimension_v2")
                 else:
@@ -266,9 +293,28 @@ class PrinterClient:
                     if not await self.set_quantity(quantity):
                         raise PrinterException("Printer rejected set_quantity")
 
+                pkt_count = 0
+                non_zero_rows = 0
                 for pkt in self._encode_image(image, vertical_offset, horizontal_offset):
-                    await self.write_raw(pkt)
-                    await asyncio.sleep(0)  # yield to event loop without artificial delay
+                    # Check if this row has any non-zero data (actual content)
+                    row_data = pkt.data[6:]  # Skip 6-byte header
+                    if any(b != 0 for b in row_data):
+                        non_zero_rows += 1
+                        if non_zero_rows <= 3:
+                            # Show header bytes (first 6) + first 10 data bytes
+                            header_bytes = list(pkt.data[:6])
+                            raw_bytes = pkt.to_bytes()
+                            logger.debug(f"Row {pkt_count} header={header_bytes} data={list(row_data[:10])}...")
+                            logger.debug(f"  Raw packet ({len(raw_bytes)} bytes): {raw_bytes[:20].hex()}...")
+                    await self.write_raw(pkt)  # fire-and-forget for image data
+                    pkt_count += 1
+                    # Small delay to let printer process
+                    if pkt_count % 10 == 0:
+                        await asyncio.sleep(0.01)
+                logger.debug(f"Sent {pkt_count} image packets, {non_zero_rows} with non-zero content")
+
+                # Give printer time to process all image data before end_page_print
+                await asyncio.sleep(0.5)
 
                 for _ in range(200):  # ~10 seconds at 0.05s interval
                     if await self.end_page_print():
@@ -282,7 +328,7 @@ class PrinterClient:
                 max_status_checks = 600  # ~60 seconds at 0.1s interval
                 status: PrintStatus = {"page": 0, "progress1": 0, "progress2": 0}
                 for _ in range(max_status_checks):
-                    status = await self.get_print_status()
+                    status = await self.get_print_status_v4() if v4 else await self.get_print_status()
                     if status["page"] >= quantity:
                         break
                     await asyncio.sleep(0.1)
@@ -382,8 +428,11 @@ class PrinterClient:
 
             for y in range(img.height):
                 line_data = bytes(mv[y * byte_count : (y + 1) * byte_count])
-                counts = (0, 0, 0)  # It seems like you can always send zeros
-                header = struct.pack(">HBBBB", y, *counts, 1)
+                # Per niimprint: "It seems like you can always send zeros" for pixel counts
+                counts = (0, 0, 0)
+                # Use big-endian for row index (matches niimprint library)
+                row_fmt = ">HBBBB"
+                header = struct.pack(row_fmt, y, *counts, 1)
                 pkt = NiimbotPacket(0x85, header + line_data)
                 yield pkt
         finally:
@@ -519,6 +568,23 @@ class PrinterClient:
             raise PrinterException("Empty response from printer for START_PRINT")
         return bool(packet.data[0])
 
+    async def start_print_v4(self, quantity: int, speed: int = 2, page_color: int = 0) -> bool:
+        """V4 protocol (D110_M 2025): 9-byte PrintStart per NiimBlueLib.
+
+        Format: totalPages(2) + zeros(4) + pageColor(1) + speed(1) + flag(1)
+        """
+        if not 1 <= quantity <= 65535:
+            raise PrinterException(f"Quantity must be 1-65535, got {quantity}")
+        if not 0 <= speed <= 255:
+            raise PrinterException(f"Speed must be 0-255, got {speed}")
+        # NiimBlueLib format: totalPages(u16 BE) + 4 zeros + pageColor + speed + flag(0x01)
+        data = struct.pack(">H", quantity) + b"\x00\x00\x00\x00" + bytes([page_color, speed, 0x01])
+        logger.debug(f"start_print_v4: {list(data)}")
+        packet = await self.send_command(RequestCodeEnum.START_PRINT, data)
+        if len(packet.data) < 1:
+            raise PrinterException("Empty response from printer for START_PRINT_V4")
+        return bool(packet.data[0])
+
     async def end_print(self) -> bool:
         packet = await self.send_command(RequestCodeEnum.END_PRINT, b"\x01")
         if len(packet.data) < 1:
@@ -560,6 +626,26 @@ class PrinterClient:
             raise PrinterException("Empty response from printer for SET_DIMENSION")
         return bool(packet.data[0])
 
+    async def set_dimension_v4(self, height: int, width: int, copies: int) -> bool:
+        """V4 protocol (D110_M 2025): 13-byte SetPageSize per NiimBlueLib.
+
+        Format: rows(2) + cols(2) + copiesCount(2) + cutHeight(2) + cutType(1) + zero(1) + sendAll(1) + partHeight(2)
+        """
+        if not 1 <= height <= 65535:
+            raise PrinterException(f"Height must be 1-65535, got {height}")
+        if not 1 <= width <= 65535:
+            raise PrinterException(f"Width must be 1-65535, got {width}")
+        if not 1 <= copies <= 65535:
+            raise PrinterException(f"Copies must be 1-65535, got {copies}")
+        # NiimBlueLib format with sendAll=1 at byte 10
+        # cutHeight=0, cutType=0, zero=0, sendAll=1, partHeight=0
+        data = struct.pack(">HHH", height, width, copies) + b"\x00\x00\x00\x00\x01\x00\x00"
+        logger.debug(f"set_dimension_v4: height={height}, width={width}, copies={copies}, data={list(data)}")
+        packet = await self.send_command(RequestCodeEnum.SET_DIMENSION, data)
+        if len(packet.data) < 1:
+            raise PrinterException("Empty response from printer for SET_DIMENSION_V4")
+        return bool(packet.data[0])
+
     async def set_quantity(self, n: int) -> bool:
         if not 1 <= n <= 65535:
             raise PrinterException(f"Quantity must be 1-65535, got {n}")
@@ -574,3 +660,17 @@ class PrinterClient:
             raise PrinterException(f"get_print_status: short response ({len(packet.data)} bytes)")
         page, progress1, progress2 = struct.unpack(">HBB", packet.data[:4])
         return {"page": page, "progress1": progress1, "progress2": progress2}
+
+    async def get_print_status_v4(self) -> PrintStatus:
+        """V4 protocol (D110_M): 8-byte status with page count in bytes 6-7."""
+        packet = await self.send_command(RequestCodeEnum.GET_PRINT_STATUS, b"\x01")
+        if len(packet.data) < 8:
+            # Fall back to V1 parsing for shorter responses
+            if len(packet.data) >= 4:
+                page, progress1, progress2 = struct.unpack(">HBB", packet.data[:4])
+                return {"page": page, "progress1": progress1, "progress2": progress2}
+            raise PrinterException(f"get_print_status_v4: short response ({len(packet.data)} bytes)")
+        # V4 format: bytes 6-7 contain page count (big-endian)
+        page = struct.unpack(">H", packet.data[6:8])[0]
+        logger.debug(f"V4 status: page={page} (from bytes 6-7 of {list(packet.data)})")
+        return {"page": page, "progress1": 0, "progress2": 0}

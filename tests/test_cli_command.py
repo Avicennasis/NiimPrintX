@@ -29,6 +29,7 @@ def _mock_printer(*, connect_ok=True):
     mock.disconnect.return_value = None
     mock.print_image.return_value = None
     mock.print_image_v2.return_value = None
+    mock.print_image_v4.return_value = None
     return mock
 
 
@@ -250,9 +251,9 @@ class TestV2ProtocolRouting:
                 assert result.exit_code == 0
                 assert "v2" in result.output.lower()
 
-    @pytest.mark.parametrize("model", ["d11", "d110", "d101", "d11_h", "d110_m"])
+    @pytest.mark.parametrize("model", ["d11", "d110", "d101", "d11_h"])
     def test_d_series_uses_v1_protocol(self, runner, model):
-        """D-series models should call print_image (V1), not print_image_v2."""
+        """D-series models (except d110_m) should call print_image (V1)."""
         device = _mock_device()
         printer = _mock_printer()
 
@@ -264,6 +265,23 @@ class TestV2ProtocolRouting:
             ):
                 result = runner.invoke(niimbot_cli, ["print", "-m", model, "-d", "1", "-i", "test.png"])
                 assert result.exit_code == 0
+                printer.print_image.assert_awaited_once()
+                printer.print_image_v2.assert_not_awaited()
+
+    def test_d110_m_uses_v1_protocol(self, runner):
+        """D110_M uses V1 protocol (V4 not working, see UPSTREAM_ISSUES.md)."""
+        device = _mock_device()
+        printer = _mock_printer()
+
+        with runner.isolated_filesystem():
+            Image.new("RGB", (200, 100)).save("test.png")
+            with (
+                patch("NiimPrintX.cli.command.find_device", new_callable=AsyncMock, return_value=device),
+                patch("NiimPrintX.cli.command.PrinterClient", return_value=printer),
+            ):
+                result = runner.invoke(niimbot_cli, ["print", "-m", "d110_m", "-d", "1", "-i", "test.png"])
+                assert result.exit_code == 0
+                assert "v1" in result.output.lower()
                 printer.print_image.assert_awaited_once()
                 printer.print_image_v2.assert_not_awaited()
 
