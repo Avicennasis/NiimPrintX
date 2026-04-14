@@ -179,7 +179,7 @@ class PrintOption:
 
     def export_to_png(
         self, output_filename: str | None = None, horizontal_offset: float = 0.0, vertical_offset: float = 0.0
-    ) -> Image.Image | None:
+    ) -> Image.Image | bool | None:
         if cairo is None:
             raise ImportError("GUI extras not installed. Run: pip install NiimPrintX[gui]")
         if self.canvas_state.canvas is None or self.canvas_state.bounding_box is None:
@@ -229,10 +229,13 @@ class PrintOption:
                         resized_image = ImageTk.getimage(font_img_widget)
                     else:
                         # tk.PhotoImage (from Wand text) — extract via Tcl
-                        import base64 as b64  # noqa: PLC0415 — lazy import; only needed for tk.PhotoImage path
-
-                        png_b64 = font_img_widget.tk.call(str(font_img_widget), "data", "-format", "png")
-                        resized_image = Image.open(io.BytesIO(b64.b64decode(png_b64)))
+                        png_data = font_img_widget.tk.call(str(font_img_widget), "data", "-format", "png")
+                        # Tcl may return raw bytes or base64 string depending on Tk version
+                        if isinstance(png_data, bytes):
+                            resized_image = Image.open(io.BytesIO(png_data))
+                        else:
+                            import base64 as b64  # noqa: PLC0415 — lazy import
+                            resized_image = Image.open(io.BytesIO(b64.b64decode(png_data)))
                     with io.BytesIO() as buffer:
                         resized_image.save(buffer, format="PNG")
                         buffer.seek(0)
@@ -249,7 +252,7 @@ class PrintOption:
                 cropped_ctx.paint()
                 if output_filename:
                     cropped_surface.write_to_png(output_filename)
-                    return None
+                    return True  # Success - file written
                 stride = cropped_surface.get_stride()
                 image_bytes = bytes(cropped_surface.get_data())  # copy before finish()
                 return Image.frombuffer(

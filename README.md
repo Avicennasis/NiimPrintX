@@ -78,20 +78,30 @@ To include the optional GUI dependencies (Tkinter theme):
 poetry install --extras gui
 ```
 
-After installation, two console entry points are available:
+After installation, two console entry points are available via Poetry's virtualenv:
 
 ```shell
-niimprintx --help    # CLI interface
-niimprintx-ui        # GUI application
+poetry run niimprintx --help    # CLI interface
+poetry run niimprintx-ui        # GUI application
 ```
 
-These are the recommended way to run NiimPrintX. The `python -m` invocations shown in the Usage section below also work.
+These are the recommended way to run NiimPrintX. The `python -m` invocations shown in the Usage section below also work (prefix with `poetry run`).
 
 ### Note:
 
 **ImageMagick** is only required for the GUI (`--extras gui`). The CLI works without it.
 
-macOS specific setup for local development:
+### Platform-Specific Setup
+
+**Linux (Debian/Ubuntu):**
+
+The GUI requires tkinter and system libraries for Cairo and GObject introspection:
+
+```shell
+sudo apt install python3-tk libcairo2-dev libgirepository1.0-dev pkg-config
+```
+
+**macOS:**
 
 ```shell
 brew install libffi
@@ -146,7 +156,7 @@ The CLI allows you to print images and get information about the printer models.
 
 #### General CLI Usage
 ```shell
-Usage: python -m NiimPrintX.cli [OPTIONS] COMMAND [ARGS]...
+Usage: poetry run niimprintx [OPTIONS] COMMAND [ARGS]...
 
 Options:
   -v, --verbose  Enable verbose logging
@@ -158,7 +168,7 @@ Commands:
 ```
 #### Print Command
 ```shell
-Usage: python -m NiimPrintX.cli print [OPTIONS]
+Usage: poetry run niimprintx print [OPTIONS]
 
 Options:
   -m, --model [b1|b18|b21|d11|d11_h|d110|d101|d110_m]
@@ -174,13 +184,13 @@ Options:
 **Example:**
 
 ```shell
-python -m NiimPrintX.cli print -m d110 -d 3 -n 1 -r 90 -i path/to/image.png
+poetry run niimprintx print -m d110 -d 3 -n 1 -r 90 -i path/to/image.png
 ```
 
 #### Info Command
 
 ```shell
-Usage: python -m NiimPrintX.cli info [OPTIONS]
+Usage: poetry run niimprintx info [OPTIONS]
 
 Options:
   -m, --model [b1|b18|b21|d11|d11_h|d110|d101|d110_m]
@@ -191,7 +201,7 @@ Options:
 **Example:**
 
 ```shell
-python -m NiimPrintX.cli info -m d110
+poetry run niimprintx info -m d110
 ```
 
 ### Graphical User Interface (GUI)
@@ -199,7 +209,7 @@ python -m NiimPrintX.cli info -m d110
 The GUI application allows users to design labels based on the label device and label size. Simply run the GUI application:
 
 ```shell
-python -m NiimPrintX.ui
+poetry run niimprintx-ui
 ```
 
 ## Development
