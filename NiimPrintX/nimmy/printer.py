@@ -5,7 +5,7 @@ import contextlib
 import enum
 import math
 import struct
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from PIL import Image, ImageOps
 
@@ -135,9 +135,9 @@ class PrinterClient:
                 logger.debug(f"Printer command sent - {code_label}:{request_code} - {list(data)}")
                 await asyncio.wait_for(self.notification_event.wait(), timeout)
                 # notification_data is set by notification_handler callback via call_soon_threadsafe;
-                # mypy can't see the cross-thread assignment, so we guard explicitly.
-                response_data = self.notification_data
-                if response_data is None:  # set by notification_handler via call_soon_threadsafe
+                # cast defeats mypy's flow narrowing from the line-125 reset assignment.
+                response_data = cast("bytes | None", self.notification_data)
+                if response_data is None:
                     msg = "Notification arrived but contained no data"
                     raise PrinterException(msg)
                 response = NiimbotPacket.from_bytes(response_data)
