@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.1] - 2026-04-18
+
+CI unblock: pygments CVE patch, mypy scope alignment.
+
+### Security
+- Bump `pygments` 2.17.2 → 2.20.0 (CVE-2026-4539: ReDoS in `AdlLexer`)
+
+### Fixed
+- mypy "unreachable" at `printer.py:143` — `cast()` on cross-thread `notification_data` read so flow-narrowing from the in-method reset doesn't collapse `bytes | None` to `None`
+
+### Changed
+- mypy config: add `NiimPrintX.ui.*` override with `ignore_errors = true` — Tkinter widget typing is already excluded from the strict `nimmy/cli` block; default pass was producing 116 duplicate errors in UI code
+
 ## [0.9.0] - 2026-04-13
 
 4-round convergence audit (Rounds 23-26). 143 findings fixed across 75+ files. 80 → 45 → 14 → 4 findings.
