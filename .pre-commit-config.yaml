@@ -1,0 +1,39 @@
+# Matches CI in .github/workflows/ci.yaml (lint + audit jobs)
+# Install: pre-commit install
+# Requires: poetry install --without build (uses the project's own ruff/mypy)
+#
+# pip-audit is wired to the pre-push stage only (it fetches the advisory DB
+# and can be slow). Run it manually with:
+#   pre-commit run --hook-stage manual pip-audit
+repos:
+  - repo: local
+    hooks:
+      - id: ruff
+        name: ruff check
+        entry: poetry run ruff check
+        language: system
+        types: [python]
+        files: ^(NiimPrintX|tests)/
+
+      - id: ruff-format
+        name: ruff format --check
+        entry: poetry run ruff format --check
+        language: system
+        types: [python]
+        files: ^(NiimPrintX|tests)/
+
+      - id: mypy
+        name: mypy
+        entry: poetry run mypy
+        language: system
+        types: [python]
+        files: ^NiimPrintX/
+        pass_filenames: false
+        args: [NiimPrintX/]
+
+      - id: pip-audit
+        name: pip-audit
+        entry: bash -c 'poetry export -f requirements.txt --output requirements.txt --without-hashes --all-extras && poetry run pip-audit -r requirements.txt'
+        language: system
+        pass_filenames: false
+        stages: [pre-push, manual]
