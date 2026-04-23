@@ -83,8 +83,12 @@ class FileMenu:
                         pil_image = ImageTk.getimage(font_image_widget)
                     else:
                         # tk.PhotoImage — extract PNG via Tk call
-                        png_b64 = font_image_widget.tk.call(str(font_image_widget), "data", "-format", "png")
-                        pil_image = Image.open(io.BytesIO(base64.b64decode(png_b64)))
+                        png_data = font_image_widget.tk.call(str(font_image_widget), "data", "-format", "png")
+                        # Tcl may return raw bytes or base64 string depending on Tk version
+                        if isinstance(png_data, bytes):
+                            pil_image = Image.open(io.BytesIO(png_data))
+                        else:
+                            pil_image = Image.open(io.BytesIO(base64.b64decode(png_data)))
                     with io.BytesIO() as buffer:
                         pil_image.save(buffer, format="PNG")
                         buffer.seek(0)
