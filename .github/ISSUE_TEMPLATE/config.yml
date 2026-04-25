@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Upstream NiimPrintX issues
+    url: https://github.com/labbots/NiimPrintX/issues
+    about: Bugs and features that affect the core library/CLI generally belong upstream.
+  - name: Security issue (this fork)
+    url: https://github.com/Avicennasis/NiimPrintX/blob/main/SECURITY.md
+    about: Please report security issues by email, not as public GitHub issues.

@@ -1,0 +1,41 @@
+name: Feature request
+description: Suggest an improvement or new capability
+title: "[feat] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the suggestion!
+
+        ⚠ **Feature requests for NiimPrintX core** generally belong at
+        [labbots/NiimPrintX](https://github.com/labbots/NiimPrintX/issues)
+        so all consumers benefit. This tracker is for fork-specific
+        improvements (build pipeline, repo-meta, fork-side CI).
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What you're trying to do
+      description: The user-facing problem.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What you'd like the project to provide.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What you tried or considered first.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context

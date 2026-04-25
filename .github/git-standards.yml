@@ -1,0 +1,9 @@
+# Persistent /git-standards configuration for this repo.
+# Schema: see ~/github/wiki.simmons.systems/operations/new-github-repo-setup.md
+
+# This is a substantially-diverged fork (see NOTICE.md). Existing tags
+# v0.0.1+ exist and the repo already ships an operator-managed
+# multi-OS PyInstaller release pipeline (`tag.yaml` + `_build-{linux,
+# macos,windows}.yaml`). /git-standards' release tier would write a
+# templated release.yml that doesn't match the multi-OS workflow shape.
+release_artifacts: false

@@ -1,0 +1,52 @@
+name-template: "v$RESOLVED_VERSION"
+tag-template: "v$RESOLVED_VERSION"
+
+categories:
+  - title: "Added"
+    labels:
+      - "enhancement"
+      - "feature"
+  - title: "Fixed"
+    labels:
+      - "bug"
+      - "fix"
+  - title: "Changed"
+    labels:
+      - "refactor"
+      - "chore"
+  - title: "Docs"
+    labels:
+      - "documentation"
+  - title: "Dependencies"
+    labels:
+      - "dependencies"
+
+change-template: "- $TITLE @$AUTHOR (#$NUMBER)"
+change-title-escapes: '\<*_&'
+
+version-resolver:
+  major:
+    labels:
+      - "breaking"
+  minor:
+    labels:
+      - "enhancement"
+      - "feature"
+  patch:
+    labels:
+      - "bug"
+      - "fix"
+      - "chore"
+      - "dependencies"
+      - "documentation"
+  default: patch
+
+exclude-labels:
+  - "skip-changelog"
+
+template: |
+  ## Changes
+
+  $CHANGES
+
+  **Full Changelog**: https://github.com/$OWNER/$REPOSITORY/compare/$PREVIOUS_TAG...v$RESOLVED_VERSION

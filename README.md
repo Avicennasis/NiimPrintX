@@ -4,6 +4,10 @@
 <a href="https://github.com/avicennasis/NiimPrintX/actions/workflows/tag.yaml"><img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/avicennasis/NiimPrintX/tag.yaml?style=for-the-badge"></a>
 <a href="https://github.com/avicennasis/NiimPrintX/actions/workflows/ci.yaml"><img alt="CI Status" src="https://img.shields.io/github/actions/workflow/status/avicennasis/NiimPrintX/ci.yaml?style=for-the-badge&label=CI"></a>
 <a href="https://github.com/avicennasis/NiimPrintX/commits/main/"><img alt="GitHub commits since latest release" src="https://img.shields.io/github/commits-since/avicennasis/NiimPrintX/latest?style=for-the-badge"></a>
+<a href="https://opensource.org/licenses/GPL-3.0"><img alt="License: GPL v3" src="https://img.shields.io/badge/License-GPL%20v3-blue.svg?style=for-the-badge"></a>
+<a href="https://scorecard.dev/viewer/?uri=github.com/Avicennasis/NiimPrintX"><img alt="OpenSSF Scorecard" src="https://api.securityscorecards.dev/projects/github.com/Avicennasis/NiimPrintX/badge"></a>
+<a href="https://github.com/pre-commit/pre-commit"><img alt="pre-commit" src="https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&style=for-the-badge"></a>
+<a href="CONTRIBUTING.md"><img alt="PRs welcome" src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=for-the-badge"></a>
 </p>
 
 
