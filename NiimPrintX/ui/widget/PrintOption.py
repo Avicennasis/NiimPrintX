@@ -235,6 +235,7 @@ class PrintOption:
                             resized_image = Image.open(io.BytesIO(png_data))
                         else:
                             import base64 as b64  # noqa: PLC0415 — lazy import
+
                             resized_image = Image.open(io.BytesIO(b64.b64decode(png_data)))
                     with io.BytesIO() as buffer:
                         resized_image.save(buffer, format="PNG")
