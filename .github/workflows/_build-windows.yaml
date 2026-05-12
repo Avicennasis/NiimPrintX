@@ -148,14 +148,14 @@ jobs:
 #          Rename-Item -Path $cliExePath -NewName $newCliExePath
 
       - name: Upload GUI package
-        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08  # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v4
         with:
           name: NiimPrintX-App-${{ steps.get_tag_name.outputs.VERSION }}-Windows-X64.zip
           path: release\NiimPrintX-App-${{ steps.get_tag_name.outputs.VERSION }}-Windows-X64.zip
           retention-days: 1
 
       - name: Upload CLI package
-        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08  # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v4
         with:
           name: NiimPrintX-CLI-${{ steps.get_tag_name.outputs.VERSION }}-Windows-X64.zip
           path: release\NiimPrintX-CLI-${{ steps.get_tag_name.outputs.VERSION }}-Windows-X64.zip

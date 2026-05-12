@@ -52,7 +52,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08  # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v4
         with:
           name: test-results-${{ matrix.python-version }}
           path: test-results.xml
@@ -60,7 +60,7 @@ jobs:
 
       - name: Upload coverage report
         if: always() && matrix.python-version == '3.13'
-        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08  # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v4
         with:
           name: coverage-report
           path: coverage.xml
