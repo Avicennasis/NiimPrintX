@@ -10,7 +10,7 @@ logger = get_logger()
 async def find_device(device_name_prefix=None):
     devices = await BleakScanner.discover()
     for device in devices:
-        if device.name and device.name.lower().startswith(device_name_prefix.lower()):
+        if device.name and device.name.lower().startswith(device_name_prefix.lower())  and len(device.metadata['uuids'])==0:
             return device
     raise BLEException(f"Failed to find device {device_name_prefix}")
 
