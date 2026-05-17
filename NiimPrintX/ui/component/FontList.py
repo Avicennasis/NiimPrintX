@@ -27,7 +27,7 @@ def fonts():
     # magick_path = 'imagemagick/bin/magick'
 
     # Path to the local ImageMagick binary within the collected data
-    result = subprocess.run([magick_path, '-list', 'font'], stdout=subprocess.PIPE, text=True)
+    result = subprocess.run([magick_path, '-list', 'font'], stdout=subprocess.PIPE, text=True, encoding='utf8')
     output = result.stdout
     fonts_details = parse_font_details(output)
     grouped_fonts = group_fonts_by_family(fonts_details)
