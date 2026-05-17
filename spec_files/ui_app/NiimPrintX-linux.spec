@@ -9,8 +9,14 @@ src_path = os.path.join(repo_root, 'NiimPrintX', 'ui')
 # Add custom assets
 datas = [
     (os.path.join(src_path, 'icons'), 'NiimPrintX/ui/icons'),
-    (os.path.join(src_path, 'assets'), 'NiimPrintX/ui/assets')
+    (os.path.join(src_path, 'assets'), 'NiimPrintX/ui/assets'),
+    ('/etc/ImageMagick-6', 'imagemagick/config'),
 ]
+
+# ImageMagick shared libraries required by wand at runtime
+import glob
+_im_libs = glob.glob('/usr/lib/x86_64-linux-gnu/libMagick*.so*')
+_im_binaries = [(lib, '.') for lib in _im_libs]
 
 # Include all submodules from PIL, tkinter, bleak, and wand
 hidden_imports = collect_submodules('PIL')
@@ -37,12 +43,12 @@ datas += [
 a = Analysis(
     [os.path.join(src_path, '__main__.py')],
     pathex=['.'],
-    binaries=[],
+    binaries=_im_binaries,
     datas=datas,
     hiddenimports=hidden_imports,
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=[],
+    runtime_hooks=[os.path.join(spec_dir, 'runtime_hook_imagemagick.py')],
     excludes=[],
     noarchive=False,
     optimize=0,
