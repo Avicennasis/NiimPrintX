@@ -69,6 +69,16 @@ jobs:
           }
           Write-Host "SHA-256 verified: $actual"
 
+      - name: Verify ImageMagick checksum
+        run: |
+          $expected = "9448F8A1159C9B14E3E1B9D8EAB1A6DDF88D26E1F888A34CEF430C756E4E6E1E"
+          $actual = (Get-FileHash -Path ImageMagick.zip -Algorithm SHA256).Hash
+          if ($actual -ne $expected) {
+            Write-Error "SHA-256 mismatch! Expected: $expected Got: $actual"
+            exit 1
+          }
+          Write-Host "SHA-256 verified: $actual"
+
       - name: Extract ImageMagick
         run: |
           New-Item -Path "$env:GITHUB_WORKSPACE\resources\ImageMagick" -ItemType Directory -Force

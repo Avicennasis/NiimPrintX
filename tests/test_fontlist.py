@@ -31,7 +31,6 @@ def _no_disk_cache():
     ):
         yield
 
-
 # ---------- parse_font_details ----------
 
 SINGLE_FONT_OUTPUT = """\

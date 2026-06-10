@@ -19,6 +19,9 @@ if TYPE_CHECKING:
 
     from .types import HeartbeatResponse, PrintStatus, RFIDResponse
 
+if TYPE_CHECKING:
+    from bleak import BleakClient
+
 logger = get_logger()
 
 V2_MODELS = frozenset({"b1", "b18", "b21"})

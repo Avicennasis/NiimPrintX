@@ -6,11 +6,11 @@ from rich.console import Console
 from rich.markup import escape
 
 # Check environment variable to determine ANSI color support
-no_color = "NO_COLOR" in os.environ
+no_color: bool = "NO_COLOR" in os.environ
 
 # Create a console object with or without color support
-console = Console(color_system=None if no_color else "auto")
-err_console = Console(color_system=None if no_color else "auto", stderr=True)
+console: Console = Console(color_system=None if no_color else "auto")
+err_console: Console = Console(color_system=None if no_color else "auto", stderr=True)
 
 
 def print_success(message: str) -> None:
