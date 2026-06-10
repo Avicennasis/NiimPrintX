@@ -19,16 +19,30 @@ logger = get_logger()
 NotifyCallback = Callable[[BleakGATTCharacteristic, bytearray], None | Awaitable[None]]
 
 
+def _candidate_prefixes(device_name_prefix: str) -> tuple[str, ...]:
+    """Return lowercase BLE-name prefixes to match for a CLI model name.
+
+    CLI model names may contain underscores (e.g. ``d11_h``, ``d110_m``) but
+    Niimbot BLE advertisements do not (``D11H``, ``D110M`` — see
+    MultiMote/niimbluelib src/printer_models.ts). Match against both the raw
+    prefix and the underscore-stripped form so either naming style works.
+    """
+    raw = device_name_prefix.lower()
+    stripped = raw.replace("_", "")
+    return (raw,) if stripped == raw else (raw, stripped)
+
+
 async def find_device(device_name_prefix: str | None = None, *, scan_timeout: float = 5.0) -> BLEDevice:
     if not device_name_prefix:
         raise BLEException("No device name prefix specified")
     devices = await BleakScanner.discover(return_adv=True, timeout=scan_timeout)
+    prefixes = _candidate_prefixes(device_name_prefix)
     # For D110 variants, prefer the device without service UUIDs.
     # D110 appears as two BLE devices; the printing-capable one has no UUIDs.
     is_d110 = device_name_prefix.lower().startswith("d110")
     fallback: BLEDevice | None = None
     for device, adv_data in devices.values():
-        if device.name and device.name.lower().startswith(device_name_prefix.lower()):
+        if device.name and device.name.lower().startswith(prefixes):
             if is_d110:
                 if len(adv_data.service_uuids) == 0:
                     return device

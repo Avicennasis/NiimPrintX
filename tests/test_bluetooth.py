@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from bleak.exc import BleakError
 
-from NiimPrintX.nimmy.bluetooth import BLETransport, find_device
+from NiimPrintX.nimmy.bluetooth import BLETransport, _candidate_prefixes, find_device
 from NiimPrintX.nimmy.exception import BLEException
 
 # ---------------------------------------------------------------------------
@@ -90,6 +90,109 @@ async def test_find_device_case_insensitive(mock_discover):
     mock_discover.return_value = {"AA:BB:CC:DD:EE:FF": (device, adv_data)}
     result = await find_device("d11")
     assert result is device
+
+
+# ---------------------------------------------------------------------------
+# find_device: CLI model name vs BLE advertisement normalization (#539)
+# ---------------------------------------------------------------------------
+
+
+def test_candidate_prefixes_plain_model_unchanged():
+    """Models without underscores produce a single raw prefix."""
+    assert _candidate_prefixes("d110") == ("d110",)
+    assert _candidate_prefixes("B21") == ("b21",)
+
+
+def test_candidate_prefixes_underscore_model_adds_stripped_form():
+    """Underscore CLI names also match the underscore-free BLE form."""
+    assert _candidate_prefixes("d11_h") == ("d11_h", "d11h")
+    assert _candidate_prefixes("D110_M") == ("d110_m", "d110m")
+
+
+@patch("NiimPrintX.nimmy.bluetooth.BleakScanner.discover", new_callable=AsyncMock)
+async def test_find_device_d11_h_matches_ble_advert_without_underscore(mock_discover):
+    """CLI model 'd11_h' must match a BLE advert named 'D11H...' (#539)."""
+    device = MagicMock()
+    device.name = "D11H-12345678"
+    adv_data = MagicMock()
+    adv_data.service_uuids = []
+
+    mock_discover.return_value = {"AA:BB:CC:DD:EE:FF": (device, adv_data)}
+    result = await find_device("d11_h")
+    assert result is device
+
+
+@patch("NiimPrintX.nimmy.bluetooth.BleakScanner.discover", new_callable=AsyncMock)
+async def test_find_device_d110_m_matches_ble_advert_without_underscore(mock_discover):
+    """CLI model 'd110_m' must match a BLE advert named 'D110M...' (#539)."""
+    device = MagicMock()
+    device.name = "D110M-87654321"
+    adv_data = MagicMock()
+    adv_data.service_uuids = []
+
+    mock_discover.return_value = {"AA:BB:CC:DD:EE:FF": (device, adv_data)}
+    result = await find_device("d110_m")
+    assert result is device
+
+
+@patch("NiimPrintX.nimmy.bluetooth.BleakScanner.discover", new_callable=AsyncMock)
+async def test_find_device_underscore_advert_still_matches(mock_discover):
+    """A literal underscore advert name still matches the raw prefix (both directions safe)."""
+    device = MagicMock()
+    device.name = "D11_H-12345678"
+    adv_data = MagicMock()
+    adv_data.service_uuids = []
+
+    mock_discover.return_value = {"AA:BB:CC:DD:EE:FF": (device, adv_data)}
+    result = await find_device("d11_h")
+    assert result is device
+
+
+@patch("NiimPrintX.nimmy.bluetooth.BleakScanner.discover", new_callable=AsyncMock)
+async def test_find_device_d110_m_keeps_d110_uuid_preference(mock_discover):
+    """d110_m goes through the D110 no-service-UUID preference logic."""
+    device_with_uuids = MagicMock()
+    device_with_uuids.name = "D110M-A"
+    adv_with_uuids = MagicMock()
+    adv_with_uuids.service_uuids = ["0000ae01-0000-1000-8000-00805f9b34fb"]
+
+    device_no_uuids = MagicMock()
+    device_no_uuids.name = "D110M-B"
+    adv_no_uuids = MagicMock()
+    adv_no_uuids.service_uuids = []
+
+    mock_discover.return_value = {
+        "AA:BB:CC:DD:EE:01": (device_with_uuids, adv_with_uuids),
+        "AA:BB:CC:DD:EE:02": (device_no_uuids, adv_no_uuids),
+    }
+    result = await find_device("d110_m")
+    assert result is device_no_uuids
+
+
+@patch("NiimPrintX.nimmy.bluetooth.BleakScanner.discover", new_callable=AsyncMock)
+async def test_find_device_existing_models_unaffected(mock_discover):
+    """Plain model names (d11/d110/b21) keep matching their adverts."""
+    device = MagicMock()
+    device.name = "B21-99999999"
+    adv_data = MagicMock()
+    adv_data.service_uuids = []
+
+    mock_discover.return_value = {"AA:BB:CC:DD:EE:FF": (device, adv_data)}
+    result = await find_device("b21")
+    assert result is device
+
+
+@patch("NiimPrintX.nimmy.bluetooth.BleakScanner.discover", new_callable=AsyncMock)
+async def test_find_device_underscore_model_no_match_raises(mock_discover):
+    """No advert matching either form should still raise BLEException."""
+    device = MagicMock()
+    device.name = "B21-99999999"
+    adv_data = MagicMock()
+    adv_data.service_uuids = []
+
+    mock_discover.return_value = {"AA:BB:CC:DD:EE:FF": (device, adv_data)}
+    with pytest.raises(BLEException, match="Failed to find device"):
+        await find_device("d11_h")
 
 
 # ---------------------------------------------------------------------------
