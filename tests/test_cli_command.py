@@ -15,7 +15,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from PIL import Image
 
-from NiimPrintX.cli.command import niimbot_cli
+from NiimPrintX.cli.command import DEFAULT_MAX_WIDTH_V1, MODEL_MAX_WIDTH, niimbot_cli
 from NiimPrintX.nimmy.printer import DEFAULT_MAX_DENSITY, V2_MODELS, InfoEnum
 
 
@@ -257,7 +257,8 @@ class TestV2ProtocolRouting:
         printer = _mock_printer()
 
         with runner.isolated_filesystem():
-            Image.new("RGB", (200, 100)).save("test.png")
+            # 96px fits every D-series model's max width (d101 caps at 192px)
+            Image.new("RGB", (96, 100)).save("test.png")
             with (
                 patch("NiimPrintX.cli.command.find_device", new_callable=AsyncMock, return_value=device),
                 patch("NiimPrintX.cli.command.PrinterClient", return_value=printer),
@@ -310,6 +311,54 @@ class TestV2ProtocolRouting:
             ):
                 result = runner.invoke(niimbot_cli, ["print", "-m", "b18", "-i", "exact.png"])
                 assert result.exit_code == 0
+
+
+# ---------------------------------------------------------------------------
+# print_command: per-model max width (#565)
+# ---------------------------------------------------------------------------
+
+
+class TestModelMaxWidth:
+    """Tests for per-model max print width lookup (Redmine #565)."""
+
+    def test_d101_width_constant(self):
+        """D101 printhead is 192px @ 203 DPI per niimbluelib printer_models.ts."""
+        assert MODEL_MAX_WIDTH["d101"] == 192
+
+    def test_d101_no_longer_falls_through_to_default(self):
+        """D101 must not fall through to the permissive 240px V1 default."""
+        assert MODEL_MAX_WIDTH.get("d101", DEFAULT_MAX_WIDTH_V1) != DEFAULT_MAX_WIDTH_V1
+
+    def test_d101_over_width_rejected(self, runner):
+        """193px exceeds the D101 printhead (192px) and should fail."""
+        device = _mock_device()
+        printer = _mock_printer()
+
+        with runner.isolated_filesystem():
+            Image.new("RGB", (193, 100)).save("too_wide.png")
+            with (
+                patch("NiimPrintX.cli.command.find_device", new_callable=AsyncMock, return_value=device),
+                patch("NiimPrintX.cli.command.PrinterClient", return_value=printer),
+            ):
+                result = runner.invoke(niimbot_cli, ["print", "-m", "d101", "-i", "too_wide.png"])
+                assert result.exit_code != 0
+                assert "exceeds" in result.output.lower()
+                printer.print_image.assert_not_awaited()
+
+    def test_d101_exact_max_width_ok(self, runner):
+        """192px wide should be accepted for D101."""
+        device = _mock_device()
+        printer = _mock_printer()
+
+        with runner.isolated_filesystem():
+            Image.new("RGB", (192, 100)).save("exact.png")
+            with (
+                patch("NiimPrintX.cli.command.find_device", new_callable=AsyncMock, return_value=device),
+                patch("NiimPrintX.cli.command.PrinterClient", return_value=printer),
+            ):
+                result = runner.invoke(niimbot_cli, ["print", "-m", "d101", "-i", "exact.png"])
+                assert result.exit_code == 0
+                printer.print_image.assert_awaited_once()
 
 
 # --- Print rotation ---

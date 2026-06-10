@@ -14,7 +14,9 @@ from NiimPrintX.nimmy.printer import DEFAULT_MAX_DENSITY, MODEL_MAX_DENSITY, V2_
 
 # Max print width per model in pixels (derived from label width x DPI)
 # V2 models (b1/b18/b21) use 384px; 300 DPI models use 354px (30mm @ 300 DPI)
-MODEL_MAX_WIDTH = {"d11_h": 354, "d110_m": 354}
+# D101 printhead is 192px @ 203 DPI per MultiMote/niimbluelib
+# src/printer_models.ts (commit d19b13e, PrinterModel.D101: printheadPixels 192)
+MODEL_MAX_WIDTH = {"d11_h": 354, "d110_m": 354, "d101": 192}
 DEFAULT_MAX_WIDTH_V1 = 240  # 30mm @ 203 DPI
 
 Image.MAX_IMAGE_PIXELS = 5_000_000
