@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- Linux GUI frozen build converted from one-file to one-dir, matching the Windows/macOS layout (#500) — the Linux release tarball now extracts to a `NiimPrintX/` directory (executable + `_internal/`) instead of a single binary
+
 ## [0.9.1] - 2026-04-18
 
 CI unblock: pygments CVE patch, mypy scope alignment.
