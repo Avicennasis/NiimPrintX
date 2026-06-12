@@ -18,7 +18,7 @@ It provides both a Command-Line Interface (CLI) and a Graphical User Interface (
 
 ## Fork Notice
 
-This is a community-maintained fork of the original [labbots/NiimPrintX](https://github.com/labbots/NiimPrintX). The upstream project was last updated in May 2024 and is no longer actively maintained. We picked up where it left off to keep NiimPrintX alive and moving forward.
+This is a community-maintained fork of the original [labbots/NiimPrintX](https://github.com/labbots/NiimPrintX). The upstream project resumed activity in May 2026 after a period of inactivity, and this fork stays synced with upstream while contributing fixes back.
 
 Since forking, we have:
 
