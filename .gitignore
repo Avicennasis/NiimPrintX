@@ -99,4 +99,4 @@ dmypy.json
 .pyre/
 .idea
 data/
-nimmy.log
+nimmy.log.stargazer-context.json
