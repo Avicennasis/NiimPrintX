@@ -72,4 +72,8 @@ class PrinterOperation:
         except Exception as e:
             logger.error(f"Heartbeat error: {e}")
             self._client = None
+            # Keep the connection-state flag in sync with the (now cleared)
+            # client so a consumer checking printer_connected can't see a stale
+            # "connected" after a heartbeat failure.
+            self.printer.printer_connected = False
             return False, {}

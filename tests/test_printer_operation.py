@@ -217,7 +217,7 @@ async def test_heartbeat_no_printer():
 
 
 async def test_heartbeat_failure_clears_printer():
-    """When heartbeat() raises, printer should be set to None."""
+    """When heartbeat() raises, the client is cleared and printer_connected is synced to False."""
     printer = _make_state(printer_connected=True)
     op = PrinterOperation(printer)
     op._client = _make_mock_printer()
@@ -228,6 +228,8 @@ async def test_heartbeat_failure_clears_printer():
     assert success is False
     assert hb == {}
     assert op._client is None
+    # Regression (FR-230): connection-state flag must not stay stale-True.
+    assert printer.printer_connected is False
 
 
 # ---------------------------------------------------------------------------

@@ -28,7 +28,7 @@ Since forking, we have:
 - Replaced the pickle-based `.niim` file format with a secure JSON-based format
 - Introduced user-configurable custom label sizes, per-device rotation, and BLE resilience improvements
 
-**Current version: v0.9.0**
+**Current version: v0.9.1**
 
 A huge thank you to [labbots](https://github.com/labbots) for creating NiimPrintX and building the foundation this project stands on.
 
