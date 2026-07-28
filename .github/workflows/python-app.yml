@@ -30,7 +30,12 @@ jobs:
     - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install flake8 pytest
+        # flake8 is PINNED: its first invocation below (--select=E9,F63,F7,F82)
+        # gates the build, and linters add rules across releases — unpinned, a
+        # flake8 release turns into a red build on a day nobody touched this repo.
+        # 7.3.0 verified clean against this tree. pytest is left unconstrained as
+        # before; it does not add rules, so pinning it is a separate decision.
+        pip install flake8==7.3.0 pytest
         # Install core dependencies (excluding macOS-specific packages)
         if [ -f requirements-ci.txt ]; then pip install -r requirements-ci.txt; fi
     - name: Lint with flake8
