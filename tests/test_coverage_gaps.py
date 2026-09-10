@@ -7,7 +7,7 @@ from PIL import Image
 
 from NiimPrintX.nimmy.bluetooth import BLETransport
 from NiimPrintX.nimmy.exception import BLEException, PrinterException
-from NiimPrintX.nimmy.logger_config import logger_enable
+from NiimPrintX.nimmy.logger_config import logger_enable, setup_logger
 from NiimPrintX.nimmy.packet import NiimbotPacket
 from NiimPrintX.nimmy.printer import RequestCodeEnum
 from NiimPrintX.nimmy.userconfig import _safe_int
@@ -179,6 +179,13 @@ def test_logger_enable_trace_level():
 def test_logger_enable_high_verbose():
     """logger_enable(99) should clamp to TRACE and not raise."""
     logger_enable(99)  # must not raise
+
+
+def test_setup_logger_when_stderr_is_none(monkeypatch):
+    """When sys.stderr is None (windowed GUI executable on Windows), setup_logger and logger_enable must not raise."""
+    monkeypatch.setattr("sys.stderr", None)
+    setup_logger()  # must not raise TypeError: Cannot log to objects of type 'NoneType'
+    logger_enable(1)  # must not raise
 
 
 # ---------------------------------------------------------------------------
