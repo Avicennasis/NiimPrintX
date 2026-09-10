@@ -19,9 +19,10 @@ def _get_log_path() -> Path:
 
 
 def _add_handlers(level: str) -> None:
-    logger.add(
-        sys.stderr, colorize=True, format="<blue>{time}</blue> | <level>{level}</level> | {message}", level=level
-    )
+    if sys.stderr is not None:
+        logger.add(
+            sys.stderr, colorize=True, format="<blue>{time}</blue> | <level>{level}</level> | {message}", level=level
+        )
     with contextlib.suppress(PermissionError, OSError):
         logger.add(_get_log_path(), rotation="100 MB", retention=5, compression="zip", level=level)
 
