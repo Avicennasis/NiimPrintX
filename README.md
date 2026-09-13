@@ -24,7 +24,7 @@ Since forking, we have:
 
 - Merged outstanding upstream pull requests from the community
 - Conducted 26 rounds of deep code review (143 findings fixed), hardening the codebase throughout
-- Added a comprehensive test suite (354 pytest tests, 90%+ coverage) and CI/CD pipeline
+- Added a comprehensive test suite (367 pytest tests, 90%+ coverage) and CI/CD pipeline
 - Replaced the pickle-based `.niim` file format with a secure JSON-based format
 - Introduced user-configurable custom label sizes, per-device rotation, and BLE resilience improvements
 
@@ -44,7 +44,7 @@ A huge thank you to [labbots](https://github.com/labbots) for creating NiimPrint
 * **User-Configurable Label Sizes:** Define custom label dimensions and device profiles via a simple TOML config file.
 * **Per-Device Rotation Settings:** Configure default rotation on a per-device basis through the config file.
 * **Decompression Bomb Protection:** Image loading includes safeguards against decompression bomb attacks.
-* **Comprehensive Test Suite:** 380 pytest tests (90%+ coverage) covering packets, Bluetooth communication, image encoding, configuration, CLI, and print integration.
+* **Comprehensive Test Suite:** 367 pytest tests (90%+ coverage) covering packets, Bluetooth communication, image encoding, configuration, CLI, and print integration.
 * **CI/CD Pipeline:** Automated ruff linting, pytest runs on every push, and PyInstaller builds for Linux, macOS, and Windows on tagged releases.
 
 ## Requirements
