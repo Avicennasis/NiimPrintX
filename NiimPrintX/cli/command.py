@@ -50,9 +50,7 @@ def _validate_model(ctx: click.Context, param: click.Parameter, value: str | Non
         return value
     lowered = value.lower()
     if lowered not in {m.lower() for m in _available_models()}:
-        raise click.BadParameter(
-            f"unknown model {value!r}; known models: {', '.join(_available_models())}"
-        )
+        raise click.BadParameter(f"unknown model {value!r}; known models: {', '.join(_available_models())}")
     return lowered
 
 
