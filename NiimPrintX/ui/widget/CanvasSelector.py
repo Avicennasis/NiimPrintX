@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import tkinter as tk
-from tkinter import ttk
+from tkinter import messagebox, ttk
 from typing import TYPE_CHECKING
 
 from NiimPrintX.ui.config import CanvasState, ImmutableConfig, PrinterState, mm_to_pixels
@@ -30,6 +30,9 @@ class CanvasSelector:
         self.printer: PrinterState = printer
         self.frame: ttk.Frame = ttk.Frame(parent)
         self.canvas_op: CanvasOperation = CanvasOperation(canvas_state, text_op, img_op)
+        # Last committed selection, used to revert a declined change (FR-234).
+        self._committed_device: str = self.printer.device
+        self._committed_label_size: str = ""
         self.create_widgets()
 
     def create_widgets(self) -> None:
@@ -43,16 +46,37 @@ class CanvasSelector:
             state="readonly",
         )
         device_option.pack(side=tk.LEFT, padx=10)
-        device_option.bind("<<ComboboxSelected>>", self.update_device_label_size)
+        device_option.bind("<<ComboboxSelected>>", self.on_device_selected)
         label_size_label = tk.Label(self.frame, text="Label size")
         label_size_label.pack(side=tk.LEFT, padx=10)
         self.selected_label_size = tk.StringVar()
         self.label_size_option = ttk.Combobox(self.frame, textvariable=self.selected_label_size, state="readonly")
         self.update_device_label_size()
         self.label_size_option.pack(side=tk.LEFT, padx=10)
-        self.label_size_option.bind("<<ComboboxSelected>>", self.update_canvas_size)
+        self.label_size_option.bind("<<ComboboxSelected>>", self.on_label_size_selected)
         self.update_canvas_size()
         self.frame.pack(side=tk.LEFT)
+
+    def _confirm_discard(self) -> bool:
+        """Ask before clearing an in-progress design (FR-234). True = proceed."""
+        if not (self.canvas_state.text_items or self.canvas_state.image_items):
+            return True
+        return messagebox.askyesno(
+            "Discard design?",
+            "Changing the device or label size clears the current design. Continue?",
+        )
+
+    def on_device_selected(self, event: tk.Event | None = None) -> None:
+        if not self._confirm_discard():
+            self.selected_device.set(self._committed_device.upper())
+            return
+        self.update_device_label_size(event)
+
+    def on_label_size_selected(self, event: tk.Event | None = None) -> None:
+        if not self._confirm_discard():
+            self.selected_label_size.set(self._committed_label_size)
+            return
+        self.update_canvas_size(event)
 
     def update_device_label_size(self, event: tk.Event | None = None) -> None:
         device = self.selected_device.get().lower()
@@ -123,6 +147,9 @@ class CanvasSelector:
         # Create a centered bounding box
         x_center = self.canvas_width // 2
         y_center = self.canvas_height // 2
+
+        self._committed_device = self.printer.device
+        self._committed_label_size = self.printer.current_label_size or ""
 
         self.canvas_state.bounding_box = self.canvas_state.canvas.create_rectangle(
             x_center - self.bounding_box_width // 2,
