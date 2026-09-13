@@ -205,7 +205,21 @@ class PrinterClient:
         quantity: int = 1,
         vertical_offset: int = 0,
         horizontal_offset: int = 0,
+        *,
+        model: str | None = None,
     ) -> None:
+        """Print with the v2 protocol.
+
+        ``model`` is optional but recommended for library consumers: when
+        supplied it is validated against ``V2_MODELS`` so a v2 payload can't be
+        sent to a device that only speaks v1 (FR-231). The CLI passes the model
+        it already parsed.
+        """
+        if model is not None and model not in V2_MODELS:
+            raise PrinterException(
+                f"Device {model!r} does not support the v2 print protocol "
+                f"(v2 models: {', '.join(sorted(V2_MODELS))})"
+            )
         await self._print_job(image, density, quantity, vertical_offset, horizontal_offset, v2=True)
 
     async def _print_job(
