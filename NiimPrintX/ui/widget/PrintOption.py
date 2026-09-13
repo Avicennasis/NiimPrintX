@@ -434,7 +434,7 @@ class PrintOption:
         try:
             rotation = int(self.print_rotation.get())
         except (ValueError, AttributeError):
-            rotation = self.immutable.label_sizes[self.printer.device].get("rotation", -90) % 360
+            rotation = self.immutable.label_sizes[self.printer.device].get("rotation", 270) % 360
 
         # PIL rotates counter-clockwise, so negate for clockwise
         rotation = -rotation
