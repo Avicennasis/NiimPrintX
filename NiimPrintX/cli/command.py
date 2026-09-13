@@ -19,8 +19,6 @@ from NiimPrintX.nimmy.printer import DEFAULT_MAX_DENSITY, MODEL_MAX_DENSITY, V2_
 MODEL_MAX_WIDTH = {"d11_h": 354, "d110_m": 354, "d101": 192}
 DEFAULT_MAX_WIDTH_V1 = 240  # 30mm @ 203 DPI
 
-Image.MAX_IMAGE_PIXELS = 5_000_000
-
 _MAX_HEIGHT_PX = 65535  # 16-bit row index protocol limit
 
 logger = get_logger()

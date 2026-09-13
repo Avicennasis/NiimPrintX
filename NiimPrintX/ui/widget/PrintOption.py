@@ -275,7 +275,6 @@ class PrintOption:
             if self.print_image is not None:
                 with contextlib.suppress(Exception):
                     self.print_image.close()
-            Image.MAX_IMAGE_PIXELS = 5_000_000
             self.print_image = Image.open(filename)
             self.print_image.load()  # Force decode before tempfile is removed
             img_tk = ImageTk.PhotoImage(self.print_image)

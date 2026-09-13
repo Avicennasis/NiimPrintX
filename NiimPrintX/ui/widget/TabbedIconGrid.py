@@ -14,8 +14,6 @@ from PIL import Image, ImageTk
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-PIL.Image.MAX_IMAGE_PIXELS = 5_000_000
-
 
 class TabbedIconGrid(tk.Frame):
     def __init__(

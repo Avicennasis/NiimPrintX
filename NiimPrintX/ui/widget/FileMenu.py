@@ -22,8 +22,6 @@ if TYPE_CHECKING:
 _MAX_LABEL_PIXELS = 5_000_000  # well above any real label dimensions
 _MAX_ITEMS_PER_FILE = 100
 
-PIL.Image.MAX_IMAGE_PIXELS = _MAX_LABEL_PIXELS
-
 
 class FileMenu:
     def __init__(
