@@ -179,7 +179,7 @@ class PrintOption:
 
     def export_to_png(
         self, output_filename: str | None = None, horizontal_offset: float = 0.0, vertical_offset: float = 0.0
-    ) -> Image.Image | bool | None:
+    ) -> Image.Image | None:
         if cairo is None:
             raise ImportError("GUI extras not installed. Run: pip install NiimPrintX[gui]")
         if self.canvas_state.canvas is None or self.canvas_state.bounding_box is None:
@@ -253,7 +253,9 @@ class PrintOption:
                 cropped_ctx.paint()
                 if output_filename:
                     cropped_surface.write_to_png(output_filename)
-                    return True  # Success - file written
+                # Always return the rendered image (None only on early exit), so
+                # callers get one return type whether or not a file was written
+                # (FR-239). Callers that only want the file ignore the result.
                 stride = cropped_surface.get_stride()
                 image_bytes = bytes(cropped_surface.get_data())  # copy before finish()
                 return Image.frombuffer(
