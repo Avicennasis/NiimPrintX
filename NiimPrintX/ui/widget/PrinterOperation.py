@@ -55,7 +55,7 @@ class PrinterOperation:
                 self.printer.printer_connected = True
 
             if self.printer.device in V2_MODELS:
-                await self._client.print_image_v2(image, density, quantity)
+                await self._client.print_image_v2(image, density, quantity, model=self.printer.device)
             else:
                 await self._client.print_image(image, density, quantity)
             return True

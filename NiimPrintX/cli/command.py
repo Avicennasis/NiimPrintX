@@ -180,6 +180,7 @@ async def _print(
                 quantity=quantity,
                 vertical_offset=vertical_offset,
                 horizontal_offset=horizontal_offset,
+                model=model,
             )
         else:
             print_info("Printing with V1 protocol")

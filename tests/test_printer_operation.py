@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from PIL import Image
 
 from NiimPrintX.nimmy.exception import BLEException
+from NiimPrintX.nimmy.printer import V2_MODELS
 from NiimPrintX.ui.widget.PrinterOperation import PrinterOperation
 
 # ---------------------------------------------------------------------------
@@ -159,21 +160,22 @@ async def test_print_auto_reconnects(mock_find_device, MockPrinterClient):
 @patch("NiimPrintX.ui.widget.PrinterOperation.find_device", new_callable=AsyncMock)
 async def test_print_v2_model_uses_print_image_v2(mock_find_device, MockPrinterClient):
     """For V2 models (b1, b18, b21), print() should call print_image_v2."""
-    mock_device = MagicMock()
-    mock_find_device.return_value = mock_device
+    for model in sorted(V2_MODELS):
+        mock_device = MagicMock()
+        mock_find_device.return_value = mock_device
 
-    mock_printer = _make_mock_printer()
-    MockPrinterClient.return_value = mock_printer
+        mock_printer = _make_mock_printer()
+        MockPrinterClient.return_value = mock_printer
 
-    printer = _make_state(printer_connected=False, device="b21")
-    op = PrinterOperation(printer)
+        printer = _make_state(printer_connected=False, device=model)
+        op = PrinterOperation(printer)
 
-    img = Image.new("1", (384, 200), color=0)
-    result = await op.print(img, density=5, quantity=2)
+        img = Image.new("1", (384, 200), color=0)
+        result = await op.print(img, density=5, quantity=2)
 
-    assert result is True
-    mock_printer.print_image_v2.assert_awaited_once_with(img, 5, 2)
-    mock_printer.print_image.assert_not_awaited()
+        assert result is True
+        mock_printer.print_image_v2.assert_awaited_once_with(img, 5, 2, model=model)
+        mock_printer.print_image.assert_not_awaited()
 
 
 # ---------------------------------------------------------------------------
