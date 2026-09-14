@@ -310,7 +310,7 @@ class PrintOption:
         print_copy_dropdown.grid(row=0, column=3, padx=5, pady=5, sticky="w")
 
         tk.Label(option_frame, text="Rotation").grid(row=0, column=4, padx=20, pady=5, sticky="e")
-        device_rotation = self.immutable.label_sizes[self.printer.device].get("rotation", -90)
+        device_rotation = self.immutable.label_sizes[self.printer.device].get("rotation", 270)
         rotation_choices = ["0", "90", "180", "270"]
         self.print_rotation = tk.StringVar()
         # Set default to the device's configured rotation (convert negative to positive for display)
@@ -433,7 +433,7 @@ class PrintOption:
         try:
             rotation = int(self.print_rotation.get())
         except (ValueError, AttributeError):
-            rotation = self.immutable.label_sizes[self.printer.device].get("rotation", -90) % 360
+            rotation = self.immutable.label_sizes[self.printer.device].get("rotation", 270) % 360
 
         # PIL rotates counter-clockwise, so negate for clockwise
         rotation = -rotation
