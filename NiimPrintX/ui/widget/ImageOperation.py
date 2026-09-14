@@ -19,7 +19,6 @@ class ImageOperation:
 
     def load_image(self, file_path: str) -> None:
         try:
-            Image.MAX_IMAGE_PIXELS = 5_000_000
             raw_image = Image.open(file_path)
             source_image = raw_image.convert("RGBA")
             raw_image.close()
