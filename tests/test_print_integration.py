@@ -118,7 +118,7 @@ async def test_print_image_v2_sends_correct_commands(make_client):
 
     img = Image.new("L", (16, 4), color=128)
     with patch("asyncio.sleep", new_callable=AsyncMock):
-        await client.print_image_v2(img, density=3, quantity=2)
+        await client.print_image_v2(img, density=3, quantity=2, model="b21")
 
     assert RequestCodeEnum.SET_LABEL_DENSITY in commands_sent
     assert RequestCodeEnum.SET_LABEL_TYPE in commands_sent
@@ -191,7 +191,7 @@ async def test_print_image_v2_uses_v2_commands(make_client):
 
     img = Image.new("L", (16, 4), color=128)
     with patch("asyncio.sleep", new_callable=AsyncMock):
-        await client.print_image_v2(img, density=3, quantity=2)
+        await client.print_image_v2(img, density=3, quantity=2, model="b21")
 
     types = [t for t, _ in commands]
 

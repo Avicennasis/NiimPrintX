@@ -154,6 +154,7 @@ async def test_v2_print_with_b21_model(make_client):
             quantity=1,
             vertical_offset=5,
             horizontal_offset=3,
+            model="b21",
         )
 
     expected_write_raw_count = 13  # 8 rows + 5 vertical offset

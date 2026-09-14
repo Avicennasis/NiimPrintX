@@ -439,8 +439,11 @@ async def test_print_image_v2_zero_dimension(make_client):
 
     img = Image.new("1", (100, 50), color=0)
 
+    with pytest.raises(PrinterException, match="does not support the v2 print protocol"):
+        await client.print_image_v2(img, model="d110")
+
     with pytest.raises(PrinterException, match="no data after applying offsets"):
-        await client.print_image_v2(img, horizontal_offset=-100)
+        await client.print_image_v2(img, horizontal_offset=-100, model="b21")
 
 
 # ---------------------------------------------------------------------------
