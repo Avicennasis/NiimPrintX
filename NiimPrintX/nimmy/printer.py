@@ -271,6 +271,8 @@ class PrinterClient:
                     await asyncio.sleep(0)  # yield to event loop without artificial delay
 
                 for _ in range(200):  # ~10 seconds at 0.05s interval
+                    if not self.transport.client or not self.transport.client.is_connected:
+                        raise PrinterException("Bluetooth disconnected during end_page_print")
                     if await self.end_page_print():
                         page_started = False  # page cleanly closed; don't re-send in cleanup
                         break
@@ -282,6 +284,8 @@ class PrinterClient:
                 max_status_checks = 600  # ~60 seconds at 0.1s interval
                 status: PrintStatus = {"page": 0, "progress1": 0, "progress2": 0}
                 for _ in range(max_status_checks):
+                    if not self.transport.client or not self.transport.client.is_connected:
+                        raise PrinterException("Bluetooth disconnected during print status polling")
                     status = await self.get_print_status()
                     if status["page"] >= quantity:
                         break
