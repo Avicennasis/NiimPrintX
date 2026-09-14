@@ -11,6 +11,8 @@ from NiimPrintX.cli.helper import print_error, print_info, print_success
 from NiimPrintX.nimmy.bluetooth import find_device
 from NiimPrintX.nimmy.logger_config import get_logger, logger_enable, setup_logger
 from NiimPrintX.nimmy.printer import DEFAULT_MAX_DENSITY, MODEL_MAX_DENSITY, V2_MODELS, InfoEnum, PrinterClient
+from NiimPrintX.nimmy.userconfig import load_user_config, merge_label_sizes
+from NiimPrintX.ui.config import ImmutableConfig
 
 # Max print width per model in pixels (derived from label width x DPI)
 # V2 models (b1/b18/b21) use 384px; 300 DPI models use 354px (30mm @ 300 DPI)
@@ -24,6 +26,30 @@ _MAX_HEIGHT_PX = 65535  # 16-bit row index protocol limit
 logger = get_logger()
 
 _ALL_MODELS = sorted(V2_MODELS | MODEL_MAX_WIDTH.keys() | {"d11", "d101", "d110"})
+
+
+def _available_models() -> list[str]:
+    """Built-in models plus any custom devices defined in the user config.toml.
+
+    The user config is merged lazily (FR-240) so a custom device usable in the
+    GUI is also accepted on the CLI, while a config error falls back to the
+    built-in list rather than breaking the CLI at import time.
+    """
+    try:
+        user = ImmutableConfig(load_user_config, merge_label_sizes).label_sizes
+        return sorted(set(user) | V2_MODELS | MODEL_MAX_WIDTH.keys() | {"d11", "d101", "d110"})
+    except Exception:  # pragma: no cover — config errors must never break the CLI
+        return _ALL_MODELS
+
+
+def _validate_model(ctx: click.Context, param: click.Parameter, value: str | None) -> str | None:
+    """Accept any built-in or user-config device, case-insensitively."""
+    if value is None:
+        return value
+    lowered = value.lower()
+    if lowered not in {m.lower() for m in _available_models()}:
+        raise click.BadParameter(f"unknown model {value!r}; known models: {', '.join(_available_models())}")
+    return lowered
 
 
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
@@ -43,7 +69,8 @@ def niimbot_cli(verbose: int) -> None:
 @click.option(
     "-m",
     "--model",
-    type=click.Choice(_ALL_MODELS, case_sensitive=False),
+    type=str,
+    callback=_validate_model,
     default="d110",
     show_default=True,
     help="Niimbot printer model",
@@ -179,7 +206,8 @@ async def _print(
 @click.option(
     "-m",
     "--model",
-    type=click.Choice(_ALL_MODELS, case_sensitive=False),
+    type=str,
+    callback=_validate_model,
     default="d110",
     show_default=True,
     help="Niimbot printer model",
