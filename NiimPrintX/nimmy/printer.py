@@ -235,6 +235,14 @@ class PrinterClient:
             page_started = False
             epp_timed_out = False
             try:
+                if not isinstance(quantity, int) or isinstance(quantity, bool) or not 1 <= quantity <= 65535:
+                    raise PrinterException(f"Quantity must be 1-65535, got {quantity}")
+                if not isinstance(density, int) or isinstance(density, bool) or not 1 <= density <= 5:
+                    raise PrinterException(f"Label density must be 1-5, got {density}")
+                if not all(
+                    isinstance(v, int) and not isinstance(v, bool) for v in (vertical_offset, horizontal_offset)
+                ):
+                    raise PrinterException("Offsets must be integers")
                 # Calculate post-offset dimensions before any BLE traffic
                 effective_height = image.height
                 effective_width = image.width
@@ -252,6 +260,11 @@ class PrinterClient:
                         f"Image produces no data after applying offsets "
                         f"(effective size: {effective_width}x{effective_height})"
                     )
+
+                if image.width > 1992 or effective_width > 1992:
+                    raise PrinterException("Image width exceeds protocol limit of 1992px")
+                if image.height > 65535 or effective_height > 65535:
+                    raise PrinterException("Image height exceeds protocol limit of 65535 rows")
 
                 if not await self.set_label_density(density):
                     raise PrinterException("Printer rejected set_label_density")
@@ -282,30 +295,39 @@ class PrinterClient:
                     await self.write_raw(pkt)
                     await asyncio.sleep(0)  # yield to event loop without artificial delay
 
-                for _ in range(200):  # ~10 seconds at 0.05s interval
-                    if not self.transport.client or not self.transport.client.is_connected:
-                        raise PrinterException("Bluetooth disconnected during end_page_print")
-                    if await self.end_page_print():
-                        page_started = False  # page cleanly closed; don't re-send in cleanup
-                        break
-                    await asyncio.sleep(0.05)
-                else:
+                try:
+                    async with asyncio.timeout(10):
+                        for _ in range(200):
+                            if not self.transport.client or not self.transport.client.is_connected:
+                                raise PrinterException("Bluetooth disconnected during end_page_print")
+                            if await self.end_page_print():
+                                page_started = False
+                                break
+                            await asyncio.sleep(0.05)
+                        else:
+                            epp_timed_out = True
+                            raise PrinterException("end_page_print timed out")
+                except TimeoutError:
                     epp_timed_out = True
-                    raise PrinterException("end_page_print timed out")
+                    raise PrinterException("end_page_print timed out") from None
 
-                max_status_checks = 600  # ~60 seconds at 0.1s interval
                 status: PrintStatus = {"page": 0, "progress1": 0, "progress2": 0}
-                for _ in range(max_status_checks):
-                    if not self.transport.client or not self.transport.client.is_connected:
-                        raise PrinterException("Bluetooth disconnected during print status polling")
-                    status = await self.get_print_status()
-                    if status["page"] >= quantity:
-                        break
-                    await asyncio.sleep(0.1)
-                else:
-                    raise PrinterException(f"Print status timeout: page {status['page']}/{quantity}")
+                try:
+                    async with asyncio.timeout(60):
+                        for _ in range(600):
+                            if not self.transport.client or not self.transport.client.is_connected:
+                                raise PrinterException("Bluetooth disconnected during print status polling")
+                            status = await self.get_print_status()
+                            if status["page"] >= quantity:
+                                break
+                            await asyncio.sleep(0.1)
+                        else:
+                            raise PrinterException(f"Print status timeout: page {status['page']}/{quantity}")
+                except TimeoutError:
+                    raise PrinterException(f"Print status timeout: page {status['page']}/{quantity}") from None
 
-                await self.end_print()
+                if not await self.end_print():
+                    raise PrinterException("Printer rejected end_print")
             except BaseException as e:
                 # BaseException includes CancelledError — must clean up printer
                 # to avoid leaving hardware in mid-print state (requires power cycle)
@@ -342,8 +364,10 @@ class PrinterClient:
         # Composite alpha onto white background before grayscale conversion
         # (RGBA/LA images have undefined RGB in transparent regions;
         #  PA mode stores transparency in palette, not per-pixel — convert first)
+        palette_image = None
         if image.mode in ("PA", "P"):
-            image = image.convert("RGBA")
+            palette_image = image.convert("RGBA")
+            image = palette_image
         if image.mode in ("RGBA", "LA"):
             background = Image.new("RGB", image.size, (255, 255, 255))
             try:
@@ -355,6 +379,8 @@ class PrinterClient:
                 gray = background.convert("L")
             finally:
                 background.close()
+                if palette_image is not None:
+                    palette_image.close()
         else:
             gray = image.convert("L")
         try:

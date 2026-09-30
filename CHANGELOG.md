@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Validate print inputs before BLE commands, enforce polling deadlines, and clean up failed or stale printer connections.
+
 ### Changed
 - Linux GUI frozen build converted from one-file to one-dir, matching the Windows/macOS layout (#500) — the Linux release tarball now extracts to a `NiimPrintX/` directory (executable + `_internal/`) instead of a single binary
 
