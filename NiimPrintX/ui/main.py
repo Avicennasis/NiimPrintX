@@ -171,15 +171,17 @@ class LabelPrinterApp(tk.Tk):
             self._shutting_down = False
             return
 
+        # Release editor rasters and Tk PhotoImage references on the Tk thread.
+        # Their destructors must not call Tcl from the asyncio worker.
+        for item in self.canvas_state.image_items.values():
+            orig = item.get("original_image")
+            if orig is not None:
+                with contextlib.suppress(Exception):
+                    orig.close()
+        self.canvas_state.image_items.clear()
+        self.canvas_state.text_items.clear()
+
         async def _shutdown():
-            # Close PIL images to prevent leaks
-            for item in self.canvas_state.image_items.values():
-                orig = item.get("original_image")
-                if orig is not None:
-                    with contextlib.suppress(Exception):
-                        orig.close()
-            self.canvas_state.image_items.clear()
-            self.canvas_state.text_items.clear()
             # Disconnect printer if connected
             if hasattr(self, "print_option") and self.print_option.print_op.is_connected:
                 with contextlib.suppress(Exception):

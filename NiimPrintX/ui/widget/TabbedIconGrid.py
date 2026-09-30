@@ -127,16 +127,16 @@ class TabbedIconGrid(tk.Frame):
             if filename.lower().endswith((".png", ".jpg", ".jpeg")):
                 image_path = os.path.join(icon_folder, filename)
                 try:
-                    img = Image.open(image_path)
-                    # I16: img.load() forces full pixel decode into memory in this thread.
-                    # After this call the PIL Image holds a fully-decoded raster buffer
-                    # and the bg thread never mutates it again, so handing it to the main
-                    # thread via after() is safe (no lazy I/O or shared mutable state).
-                    img.load()
-                    pil_images.append((filename, img, subfolder_name))
+                    with Image.open(image_path) as image:
+                        # Decode in the worker; only detached rasters cross threads.
+                        pil_images.append((filename, image.copy(), subfolder_name))
                 except (OSError, ValueError, PIL.UnidentifiedImageError):
-                    pass  # skip corrupt/unrecognized image files
-        self.after(0, lambda: self._create_icon_widgets(frame, pil_images, subfolder_name, canvas))
+                    continue
+        try:
+            self.after(0, lambda: self._create_icon_widgets(frame, pil_images, subfolder_name, canvas))
+        except (tk.TclError, RuntimeError):
+            for _, image, _ in pil_images:
+                image.close()
 
     def _create_icon_widgets(
         self,
@@ -147,15 +147,21 @@ class TabbedIconGrid(tk.Frame):
     ) -> None:
         """Create PhotoImages and icon grid widgets — must run on main thread."""
         try:
-            if not frame.winfo_exists():
-                return
+            alive = frame.winfo_exists()
         except tk.TclError:
+            alive = False
+        if not alive:
+            for _, image, _ in pil_images:
+                image.close()
             return
         icons: list[tuple[str, ImageTk.PhotoImage, str]] = []
-        for filename, pil_img, sub_name in pil_images:
-            photo = ImageTk.PhotoImage(pil_img)
-            pil_img.close()
-            icons.append((filename, photo, sub_name))
+        try:
+            for filename, pil_img, sub_name in pil_images:
+                photo = ImageTk.PhotoImage(pil_img)
+                icons.append((filename, photo, sub_name))
+        finally:
+            for _, image, _ in pil_images:
+                image.close()
 
         # Clear old icon references for this tab
         old_refs = self.icon_references.pop(subfolder_name, None)

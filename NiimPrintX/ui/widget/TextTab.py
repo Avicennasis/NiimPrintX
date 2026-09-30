@@ -37,7 +37,7 @@ class TextTab:
             if self.fonts:
                 self.font_family_dropdown.config(values=list(self.fonts.keys()))
 
-        with contextlib.suppress(tk.TclError):
+        with contextlib.suppress(tk.TclError, RuntimeError):
             self.frame.after(0, _apply)
 
     def create_widgets(self) -> None:
@@ -155,6 +155,7 @@ class TextTab:
 
     def _guarded_update_canvas_text(self, text_id: int) -> None:
         """Update canvas text only if the text item is still the current selection."""
+        self._render_after_id = None
         if text_id != self.canvas_state.current_selected:
             return
         self.text_op.update_canvas_text(text_id)

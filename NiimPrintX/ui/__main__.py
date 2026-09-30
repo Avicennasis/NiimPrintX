@@ -41,8 +41,8 @@ def resource_path(relative_path: str) -> str:
     if hasattr(sys, "_MEIPASS"):
         base_path = sys._MEIPASS
     else:
-        # Two levels up from NiimPrintX/ui/__main__.py → package root
-        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        # Three levels up from NiimPrintX/ui/__main__.py → package root
+        base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
     return os.path.realpath(os.path.join(base_path, relative_path))
 
