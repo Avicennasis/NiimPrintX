@@ -67,12 +67,20 @@ class CanvasSelector:
         )
 
     def on_device_selected(self, event: tk.Event | None = None) -> None:
+        if self.printer.print_job:
+            self.selected_device.set(self._committed_device.upper())
+            return
+        if self.selected_device.get().lower() == self._committed_device:
+            return
         if not self._confirm_discard():
             self.selected_device.set(self._committed_device.upper())
             return
         self.update_device_label_size(event)
 
     def on_label_size_selected(self, event: tk.Event | None = None) -> None:
+        if self.printer.print_job or self.selected_label_size.get() == self._committed_label_size:
+            self.selected_label_size.set(self._committed_label_size)
+            return
         if not self._confirm_discard():
             self.selected_label_size.set(self._committed_label_size)
             return
@@ -151,11 +159,13 @@ class CanvasSelector:
         self._committed_device = self.printer.device
         self._committed_label_size = self.printer.current_label_size or ""
 
+        left = x_center - self.bounding_box_width // 2
+        top = y_center - self.bounding_box_height // 2
         self.canvas_state.bounding_box = self.canvas_state.canvas.create_rectangle(
-            x_center - self.bounding_box_width // 2,
-            y_center - self.bounding_box_height // 2,
-            x_center + self.bounding_box_width // 2,
-            y_center + self.bounding_box_height // 2,
+            left,
+            top,
+            left + self.bounding_box_width,
+            top + self.bounding_box_height,
             outline="blue",
             width=1,
             fill="white",

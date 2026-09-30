@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import contextlib
 import io
 import os
@@ -68,13 +69,13 @@ class PrintOption:
                 state, _ = await self.print_op.heartbeat()
                 try:
                     self.root.after(0, lambda s=state: self.update_status(s))
-                except tk.TclError:
+                except (tk.TclError, RuntimeError):
                     self._heartbeat_active = False
                     break
             elif not self.printer.print_job:
                 try:
                     self.root.after(0, lambda: self.update_status(False))
-                except tk.TclError:
+                except (tk.TclError, RuntimeError):
                     self._heartbeat_active = False
                     break
             await asyncio.sleep(5)
@@ -83,10 +84,9 @@ class PrintOption:
         if self._connecting:
             return
         self.printer.printer_connected = connected
-        if not connected and self.connect_button["state"] != tk.DISABLED:
-            self.connect_button.config(text="Connect")
-            self.connect_button.config(state=tk.NORMAL)
-        with contextlib.suppress(tk.TclError):
+        if self.connect_button["state"] != tk.DISABLED:
+            self.connect_button.config(text="Disconnect" if connected else "Connect", state=tk.NORMAL)
+        with contextlib.suppress(tk.TclError, RuntimeError):
             self.root.status_bar.update_status(connected)
 
     def create_widgets(self) -> None:
@@ -98,6 +98,8 @@ class PrintOption:
         self.connect_button.pack(side=tk.RIGHT, padx=10)
 
     def printer_connect(self) -> None:
+        if self.printer.print_job:
+            return
         self.connect_button.config(state=tk.DISABLED)
         self._connecting = True
         if not self.printer.printer_connected:
@@ -117,18 +119,18 @@ class PrintOption:
 
         def _update():
             self._connecting = False
-            if was_connecting and result:
+            if was_connecting and result and self.print_op.is_connected:
                 self.printer.printer_connected = True
                 self.connect_button.config(text="Disconnect")
-            elif not was_connecting and result:
+            elif was_connecting or result:
                 self.printer.printer_connected = False
                 self.connect_button.config(text="Connect")
             # On failure, leave button text matching current state
             self.connect_button.config(state=tk.NORMAL)
-            with contextlib.suppress(tk.TclError):
+            with contextlib.suppress(tk.TclError, RuntimeError):
                 self.root.status_bar.update_status(self.printer.printer_connected)
 
-        with contextlib.suppress(tk.TclError):
+        with contextlib.suppress(tk.TclError, RuntimeError):
             self.root.after(0, _update)
 
     def display_print(self) -> None:
@@ -142,18 +144,22 @@ class PrintOption:
                 fd, tmp_file_path = tempfile.mkstemp(suffix=".png")
                 os.close(fd)
                 try:
-                    if self.export_to_png(tmp_file_path) is None:
+                    rendered = self.export_to_png(tmp_file_path)
+                    if rendered is None:
                         self.toolbar_print_button.config(state=tk.NORMAL)
                         return
+                    rendered.close()
                     self.display_image_in_popup(tmp_file_path)
                 finally:
                     with contextlib.suppress(OSError):
                         os.remove(tmp_file_path)
             else:
                 with tempfile.NamedTemporaryFile(suffix=".png") as tmp_file:
-                    if self.export_to_png(tmp_file.name) is None:
+                    rendered = self.export_to_png(tmp_file.name)
+                    if rendered is None:
                         self.toolbar_print_button.config(state=tk.NORMAL)
                         return
+                    rendered.close()
                     self.display_image_in_popup(tmp_file.name)
         except Exception as e:  # noqa: BLE001 — GUI must re-enable button on any export failure
             self.toolbar_print_button.config(state=tk.NORMAL)
@@ -172,8 +178,9 @@ class PrintOption:
         file_path = filedialog.asksaveasfilename(**options)
         if file_path:
             try:
-                self.export_to_png(file_path)
-                self.display_image_in_popup(file_path)
+                rendered = self.export_to_png(file_path)
+                if rendered is not None:
+                    rendered.close()
             except Exception as e:  # noqa: BLE001 — UI-facing catch-all for user feedback dialog
                 mb.showerror("Save Error", f"Failed to save image:\n{e}")
 
@@ -184,91 +191,64 @@ class PrintOption:
             raise ImportError("GUI extras not installed. Run: pip install NiimPrintX[gui]")
         if self.canvas_state.canvas is None or self.canvas_state.bounding_box is None:
             return None
-        width = self.canvas_state.canvas.winfo_width()
-        height = self.canvas_state.canvas.winfo_height()
-
+        # Canvas.bbox includes the rectangle outline. Use the label geometry
+        # itself so exports have exactly the configured physical dimensions.
+        x1, y1, x2, y2 = self.canvas_state.canvas.coords(self.canvas_state.bounding_box)
+        width, height = round(x2 - x1), round(y2 - y1)
+        if width < 1 or height < 1:
+            return None
         dpi = self.immutable.label_sizes[self.printer.device]["print_dpi"]
-        horizontal_offset_pixels = mm_to_pixels(horizontal_offset, dpi)
-        vertical_offset_pixels = mm_to_pixels(vertical_offset, dpi)
-
-        x1, y1, x2, y2 = self.canvas_state.canvas.bbox(self.canvas_state.bounding_box)
-
-        x1 += horizontal_offset_pixels
-        y1 += vertical_offset_pixels
-        x2 += horizontal_offset_pixels
-        y2 += vertical_offset_pixels
-
-        bbox_width = x2 - x1
-        bbox_height = y2 - y1
-
+        dx = mm_to_pixels(horizontal_offset, dpi)
+        dy = mm_to_pixels(vertical_offset, dpi)
         surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
         try:
             ctx = cairo.Context(surface)
-            ctx.set_source_rgb(1, 1, 1)  # White background
+            ctx.set_source_rgb(1, 1, 1)
             ctx.paint()
-
-            # Drawing images (if any)
-            if self.canvas_state.image_items:
-                for img_id, img_props in self.canvas_state.image_items.items():
-                    coords = self.canvas_state.canvas.coords(img_id)
-                    resized_image = ImageTk.getimage(img_props["image"])
+            # Preserve the actual canvas stacking order, including mixed text
+            # and images. Render into the label directly, with white padding.
+            for item_id in self.canvas_state.canvas.find_all():
+                if item_id in self.canvas_state.image_items:
+                    widget = self.canvas_state.image_items[item_id]["image"]
+                elif item_id in self.canvas_state.text_items:
+                    widget = self.canvas_state.text_items[item_id]["font_image"]
+                else:
+                    continue
+                if isinstance(widget, ImageTk.PhotoImage):
+                    raster = ImageTk.getimage(widget)
+                else:
+                    png_data = widget.tk.call(str(widget), "data", "-format", "png")
+                    if not isinstance(png_data, bytes):
+                        png_data = base64.b64decode(png_data)
+                    raster = Image.open(io.BytesIO(png_data))
+                try:
                     with io.BytesIO() as buffer:
-                        resized_image.save(buffer, format="PNG")
+                        raster.save(buffer, format="PNG")
                         buffer.seek(0)
-                        img_surface = cairo.ImageSurface.create_from_png(buffer)
-                    ctx.set_source_surface(img_surface, coords[0], coords[1])
-                    ctx.paint()
-                    img_surface.finish()  # release native Cairo memory
-
-            # Drawing text items
-            if self.canvas_state.text_items:
-                for text_id, text_props in self.canvas_state.text_items.items():
-                    coords = self.canvas_state.canvas.coords(text_id)
-                    font_img_widget = text_props["font_image"]
-                    if isinstance(font_img_widget, ImageTk.PhotoImage):
-                        resized_image = ImageTk.getimage(font_img_widget)
-                    else:
-                        # tk.PhotoImage (from Wand text) — extract via Tcl
-                        png_data = font_img_widget.tk.call(str(font_img_widget), "data", "-format", "png")
-                        # Tcl may return raw bytes or base64 string depending on Tk version
-                        if isinstance(png_data, bytes):
-                            resized_image = Image.open(io.BytesIO(png_data))
-                        else:
-                            import base64 as b64  # noqa: PLC0415 — lazy import
-
-                            resized_image = Image.open(io.BytesIO(b64.b64decode(png_data)))
-                    with io.BytesIO() as buffer:
-                        resized_image.save(buffer, format="PNG")
-                        buffer.seek(0)
-                        img_surface = cairo.ImageSurface.create_from_png(buffer)
-                    ctx.set_source_surface(img_surface, coords[0], coords[1])
-                    ctx.paint()
-                    img_surface.finish()  # release native Cairo memory
-
-            # Create a cropped surface to save
-            cropped_surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, int(bbox_width), int(bbox_height))
-            try:
-                cropped_ctx = cairo.Context(cropped_surface)
-                cropped_ctx.set_source_surface(surface, -x1, -y1)
-                cropped_ctx.paint()
-                if output_filename:
-                    cropped_surface.write_to_png(output_filename)
-                # Always return the rendered image (None only on early exit), so
-                # callers get one return type whether or not a file was written
-                # (FR-239). Callers that only want the file ignore the result.
-                stride = cropped_surface.get_stride()
-                image_bytes = bytes(cropped_surface.get_data())  # copy before finish()
-                return Image.frombuffer(
-                    "RGBA", (int(bbox_width), int(bbox_height)), image_bytes, "raw", "BGRA", stride, 1
-                )
-            finally:
-                cropped_surface.finish()
+                        item_surface = cairo.ImageSurface.create_from_png(buffer)
+                    try:
+                        x, y = self.canvas_state.canvas.coords(item_id)
+                        ctx.set_source_surface(item_surface, x - x1 + dx, y - y1 + dy)
+                        ctx.paint()
+                    finally:
+                        item_surface.finish()
+                finally:
+                    raster.close()
+            if output_filename:
+                surface.write_to_png(output_filename)
+            return Image.frombuffer(
+                "RGBA", (width, height), bytes(surface.get_data()), "raw", "BGRA", surface.get_stride(), 1
+            )
         finally:
             surface.finish()
 
     def display_image_in_popup(self, filename: str) -> None:
         # Create a new Toplevel window
+        if getattr(self, "_popup_ref", None) is not None:
+            self._popup_ref.lift()
+            return
         popup = tk.Toplevel(self.root)
+        self._popup_ref = popup
         popup.title("Preview Image")
         popup.grab_set()  # Make modal — prevents opening multiple popups
 
@@ -281,8 +261,9 @@ class PrintOption:
             self.print_image.load()  # Force decode before tempfile is removed
             img_tk = ImageTk.PhotoImage(self.print_image)
         except Exception:
-            with contextlib.suppress(tk.TclError):
+            with contextlib.suppress(tk.TclError, RuntimeError):
                 popup.destroy()
+            self._popup_ref = None
             raise
 
         # Create a Label to display the image
@@ -311,7 +292,7 @@ class PrintOption:
         print_copy_dropdown = tk.Spinbox(option_frame, from_=1, to=65535, textvariable=self.print_copy, width=4)
         print_copy_dropdown.grid(row=0, column=3, padx=5, pady=5, sticky="w")
 
-        tk.Label(option_frame, text="Rotation").grid(row=0, column=4, padx=20, pady=5, sticky="e")
+        tk.Label(option_frame, text="Rotation (clockwise)").grid(row=0, column=4, padx=20, pady=5, sticky="e")
         device_rotation = self.immutable.label_sizes[self.printer.device].get("rotation", 270)
         rotation_choices = ["0", "90", "180", "270"]
         self.print_rotation = tk.StringVar()
@@ -322,6 +303,8 @@ class PrintOption:
             option_frame, textvariable=self.print_rotation, values=rotation_choices, state="readonly", width=4
         )
         rotation_dropdown.grid(row=0, column=5, padx=5, pady=5, sticky="w")
+        rotation_dropdown.bind("<<ComboboxSelected>>", lambda event: self.update_preview())
+        self.update_preview()
 
         offset_frame = tk.Frame(popup)
         offset_frame.grid(row=2, column=0, columnspan=4, padx=20, pady=10, sticky="ew")
@@ -369,7 +352,7 @@ class PrintOption:
         self.print_button.grid(row=0, column=0, padx=5, pady=10, sticky="ew")
 
         def _on_popup_close():
-            with contextlib.suppress(tk.TclError):
+            with contextlib.suppress(tk.TclError, RuntimeError):
                 self.toolbar_print_button.config(state=tk.NORMAL)
             if self.print_image is not None:
                 with contextlib.suppress(Exception):
@@ -397,7 +380,7 @@ class PrintOption:
         try:
             horizontal_offset = self.horizontal_offset.get()
             vertical_offset = self.vertical_offset.get()
-        except tk.TclError:
+        except (tk.TclError, RuntimeError):
             return
         result = self.export_to_png(
             output_filename=None, horizontal_offset=horizontal_offset, vertical_offset=vertical_offset
@@ -408,12 +391,20 @@ class PrintOption:
             with contextlib.suppress(Exception):
                 self.print_image.close()
         self.print_image = result
-        img_tk = ImageTk.PhotoImage(self.print_image)
-        with contextlib.suppress(tk.TclError):
-            self.image_label.config(image=img_tk)
-            self.image_label.image = img_tk
+        self.update_preview()
+
+    def update_preview(self) -> None:
+        """Show the same clockwise rotation that will be sent to the printer."""
+        if self.print_image is None:
+            return
+        with self.print_image.rotate(-int(self.print_rotation.get()), expand=True) as preview:
+            img_tk = ImageTk.PhotoImage(preview)
+        self.image_label.config(image=img_tk)
+        self.image_label.image = img_tk
 
     def print_label(self, image: Image.Image, density: str, quantity: str) -> None:
+        if self.printer.print_job:
+            return
         self.print_button.config(state=tk.DISABLED)
         self._popup_ref = self.image_label.winfo_toplevel()
         self.printer.print_job = True
@@ -446,8 +437,11 @@ class PrintOption:
             )
             future.add_done_callback(self._print_handler)
         except Exception:
+            if getattr(self, "_rotated_image", None) is not None:
+                self._rotated_image.close()
+                self._rotated_image = None
             self.printer.print_job = False
-            with contextlib.suppress(tk.TclError):
+            with contextlib.suppress(tk.TclError, RuntimeError):
                 self.print_button.config(state=tk.NORMAL)
             raise
 
@@ -464,25 +458,28 @@ class PrintOption:
                     self._rotated_image.close()
                 self._rotated_image = None
             if result:
-                with contextlib.suppress(tk.TclError):
+                with contextlib.suppress(tk.TclError, RuntimeError):
                     self.root.status_bar.update_status(self.printer.printer_connected)
             else:
                 popup_alive = self._popup_ref is not None
                 if popup_alive:
-                    with contextlib.suppress(tk.TclError):
+                    with contextlib.suppress(tk.TclError, RuntimeError):
                         popup_alive = self._popup_ref.winfo_exists()
                 if popup_alive:
-                    with contextlib.suppress(tk.TclError):
+                    with contextlib.suppress(tk.TclError, RuntimeError):
                         mb.showerror(
                             "Print Failed", "The print job failed. Check the printer connection and try again."
                         )
-            with contextlib.suppress(tk.TclError):
+            with contextlib.suppress(tk.TclError, RuntimeError):
                 self.print_button.config(state=tk.NORMAL)
-            with contextlib.suppress(tk.TclError):
+            with contextlib.suppress(tk.TclError, RuntimeError):
                 self.toolbar_print_button.config(state=tk.NORMAL)
 
         try:
             self.root.after(0, _update)
-        except tk.TclError:
-            # Root destroyed during print — reset state directly
+        except (tk.TclError, RuntimeError):
+            # Root destroyed during print — release the raster without Tk.
             self.printer.print_job = False
+            if getattr(self, "_rotated_image", None) is not None:
+                self._rotated_image.close()
+                self._rotated_image = None

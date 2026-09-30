@@ -129,6 +129,10 @@ NiimPrintX supports an optional TOML configuration file for customizing device s
 ### Example config.toml
 
 ```toml
+# Customize the GUI print rotation (clockwise) for a built-in device
+[devices.d110]
+rotation = 270
+
 # Add custom label sizes to an existing built-in device
 [devices.d110.size]
 "30mm x 15mm" = [30, 15]
@@ -146,7 +150,7 @@ rotation = 270
 
 ### How merging works
 
-* **Existing devices:** User-defined sizes are merged into the built-in size list. You can add new label sizes without losing the defaults.
+* **Existing devices:** User-defined sizes are merged into the built-in size list. You can add new label sizes without losing the defaults. You can also override `rotation` with `0`, `90`, `180`, or `270` degrees clockwise for the GUI; the preview shows this rotation. Built-in density and DPI remain hardware defaults. CLI rotation is selected explicitly with `--rotate`.
 * **New devices:** You can define entirely new device entries. A new device must include at least one valid size (a `[width, height]` pair). Optional settings (`density`, `print_dpi`, `rotation`) default to `3`, `203`, and `270` respectively if omitted.
 
 
@@ -294,3 +298,16 @@ This fork incorporates pull requests and addresses issues submitted by the origi
 ## License
 
 NiimPrintX is licensed under the [GNU General Public License v3.0](LICENSE). See the LICENSE file for details.
+
+### GUI regression tests
+
+The canvas, preview, and `.niim` file regression tests use real Tk widgets.
+On Linux, install Tk, ImageMagick, Cairo, Xvfb, and `xauth`, then run:
+
+```bash
+poetry install --without build --extras gui
+xvfb-run -a poetry run pytest tests/test_gui_*.py -v
+```
+
+The standard test suite skips display-dependent cases when no display is available.
+CI runs these cases separately under Xvfb with the GUI extras installed.
