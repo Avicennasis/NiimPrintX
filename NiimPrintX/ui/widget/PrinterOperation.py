@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 from typing import TYPE_CHECKING
 
 from NiimPrintX.nimmy.bluetooth import find_device
@@ -16,22 +17,32 @@ class PrinterOperation:
     def __init__(self, printer: PrinterState) -> None:
         self.printer: PrinterState = printer
         self._client: PrinterClient | None = None
+        self._model: str = printer.device
 
     @property
     def is_connected(self) -> bool:
         """Whether a BLE client is currently connected."""
-        return self._client is not None
+        return self._client is not None and self._model == self.printer.device
 
     async def printer_connect(self, model):
+        client = None
         try:
+            if self._client is not None:
+                await self.printer_disconnect()
             device = await find_device(model)
             client = PrinterClient(device)
             await client.connect()
             self._client = client
+            self._model = model
+            self.printer.printer_connected = True
             return True
         except Exception as e:
             logger.error(f"Cannot connect to printer {model}: {e}")
+            if client is not None:
+                with contextlib.suppress(Exception):
+                    await client.disconnect()
             self._client = None
+            self.printer.printer_connected = False
             return False
 
     async def printer_disconnect(self):
@@ -39,9 +50,11 @@ class PrinterOperation:
             if self._client:
                 await self._client.disconnect()
             self._client = None
+            self.printer.printer_connected = False
             return True
         except Exception as e:
             self._client = None
+            self.printer.printer_connected = False
             logger.error(f"Disconnect error: {e}")
             return False
 
@@ -65,13 +78,16 @@ class PrinterOperation:
 
     async def heartbeat(self):
         try:
+            if self._client is not None and self._model != self.printer.device:
+                await self.printer_disconnect()
+                return False, {}
             if self._client:
                 hb = await self._client.heartbeat()
                 return True, hb
             return False, {}
         except Exception as e:
             logger.error(f"Heartbeat error: {e}")
-            self._client = None
+            await self.printer_disconnect()
             # Keep the connection-state flag in sync with the (now cleared)
             # client so a consumer checking printer_connected can't see a stale
             # "connected" after a heartbeat failure.

@@ -273,7 +273,7 @@ async def test_notification_data_none_guard(make_client):
 def test_info_command_returns_false_exits_nonzero(runner):
     """When _info() returns False, info_command must call sys.exit(1)
     producing a non-zero exit code."""
-    with patch("NiimPrintX.cli.command.asyncio.run", return_value=False):
+    with patch("NiimPrintX.cli.command._info", return_value=False):
         from NiimPrintX.cli.command import niimbot_cli
 
         result = runner.invoke(niimbot_cli, ["info", "-m", "d110"])
