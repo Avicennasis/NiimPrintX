@@ -101,3 +101,6 @@ dmypy.json
 data/
 nimmy.log
 .stargazer-*
+
+# Local Symphony prompts, baselines, and worker responses
+.m1-orchestrator/

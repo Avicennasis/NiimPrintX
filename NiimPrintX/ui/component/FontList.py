@@ -87,6 +87,10 @@ def _load_disk_cache(magick_path: str | None) -> dict[str, Any] | None:
         with open(cache_file, encoding="utf-8") as fh:
             data: dict[str, Any] = json.load(fh)
 
+        if not isinstance(data, dict) or any(not isinstance(value, dict) for value in data.values()):
+            logger.warning("Font disk cache has an invalid structure; will regenerate")
+            return None
+
         logger.info("Loaded font list from disk cache (%s)", cache_file)
         return data
     except Exception:  # noqa: BLE001 — best-effort cache; must not break app startup
