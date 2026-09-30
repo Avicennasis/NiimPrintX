@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Validate complete designs before replacing the canvas, preserve mixed stacking order in saved files, and keep save/load item limits consistent.
 - Match rotation previews to printed pixels, preserve label dimensions and mixed layering, place new text inside the label, and honor image EXIF orientation.
 - Validate print inputs before BLE commands, enforce polling deadlines, and clean up failed or stale printer connections.
 
