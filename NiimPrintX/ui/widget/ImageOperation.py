@@ -4,7 +4,7 @@ import contextlib
 from tkinter import messagebox
 from typing import TYPE_CHECKING
 
-from PIL import Image, ImageTk
+from PIL import Image, ImageOps, ImageTk
 from PIL.Image import UnidentifiedImageError
 
 if TYPE_CHECKING:
@@ -19,26 +19,25 @@ class ImageOperation:
 
     def load_image(self, file_path: str) -> None:
         try:
-            raw_image = Image.open(file_path)
-            source_image = raw_image.convert("RGBA")
-            raw_image.close()
+            with Image.open(file_path) as raw_image, ImageOps.exif_transpose(raw_image) as oriented:
+                source_image = oriented.convert("RGBA")
         except (OSError, ValueError, UnidentifiedImageError) as e:
             messagebox.showerror("Error", f"Failed to load image: {e}")
             return
 
-        x1, y1, x2, y2 = self.canvas_state.canvas.bbox(self.canvas_state.bounding_box)
+        x1, y1, x2, y2 = self.canvas_state.canvas.coords(self.canvas_state.bounding_box)
         canvas_width = x2 - x1
         canvas_height = y2 - y1
 
         img_width, img_height = source_image.size
         scale_factor = min(canvas_width / img_width, canvas_height / img_height)
-        new_width = int(img_width * scale_factor)
-        new_height = int(img_height * scale_factor)
+        new_width = max(1, int(img_width * scale_factor))
+        new_height = max(1, int(img_height * scale_factor))
         resized_image = source_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
         img_tk = ImageTk.PhotoImage(resized_image)
         resized_image.close()
 
-        x1, y1, x2, y2 = self.canvas_state.canvas.bbox(self.canvas_state.bounding_box)
+        x1, y1, x2, y2 = self.canvas_state.canvas.coords(self.canvas_state.bounding_box)
         cx = (x1 + x2) // 2 - new_width // 2
         cy = (y1 + y2) // 2 - new_height // 2
         image_id = self.canvas_state.canvas.create_image(cx, cy, image=img_tk, anchor="nw")
@@ -124,16 +123,12 @@ class ImageOperation:
         original_image = self.canvas_state.image_items[image_id]["original_image"]
 
         # Calculate the new size based on the mouse movement, preserving aspect ratio
-        MAX_CANVAS_DIM = 32767
+        MAX_CANVAS_DIM = 4096
         orig_w, orig_h = original_image.size
         aspect = orig_w / orig_h
-        new_width = max(initial_width + dx, 20)  # Ensure a minimum width
-        new_width = min(new_width, MAX_CANVAS_DIM)
-        new_height = int(new_width / aspect)
-        if new_height < 20:
-            new_height = 20
-            new_width = max(int(new_height * aspect), 20)
-        new_height = min(new_height, MAX_CANVAS_DIM)
+        new_width = min(max(initial_width + dx, 20), MAX_CANVAS_DIM, MAX_CANVAS_DIM * aspect)
+        new_height = max(1, round(new_width / aspect))
+        new_width = max(1, round(new_width))
 
         # Resize the image to the new size
         resized_image = original_image.resize((new_width, new_height), Image.Resampling.BILINEAR)

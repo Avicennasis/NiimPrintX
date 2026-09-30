@@ -78,11 +78,18 @@ def merge_label_sizes(builtin_sizes: dict[str, Any], user_config: dict[str, Any]
             continue
         if device_name in builtin_sizes:
             # Warn about ignored keys for built-in devices
-            ignored = {k for k in device_conf if k != "size"}
+            ignored = {k for k in device_conf if k not in {"size", "rotation"}}
             if ignored:
                 logger.warning(
-                    f"Config keys {ignored} for built-in device '{device_name}' are ignored; only 'size' can be extended"
+                    f"Config keys {ignored} for built-in device '{device_name}' are ignored; only 'size' and 'rotation' can be customized"
                 )
+            if "rotation" in device_conf:
+                default_rotation = builtin_sizes[device_name].get("rotation", 270)
+                rotation = _safe_int(device_conf["rotation"], default_rotation) % 360
+                if rotation in (0, 90, 180, 270):
+                    builtin_sizes[device_name]["rotation"] = rotation
+                else:
+                    logger.warning(f"Invalid rotation {rotation} for '{device_name}'; keeping {default_rotation}")
             # Merge sizes into existing device
             if "size" in device_conf and isinstance(device_conf["size"], dict):
                 for label, dims in device_conf["size"].items():

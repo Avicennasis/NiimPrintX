@@ -63,3 +63,11 @@ def make_client():
 def runner():
     """Shared Click CLI test runner."""
     return CliRunner()  # Click 8+ mixes stderr by default
+
+
+@pytest.fixture
+def editor():
+    """Build a real GUI only for tests requesting the editor fixture."""
+    from tests.gui_helpers import editor as make_editor
+
+    yield from make_editor.__wrapped__()

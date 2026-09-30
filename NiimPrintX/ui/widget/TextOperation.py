@@ -72,9 +72,10 @@ class TextOperation:
         tk_image: tk.PhotoImage | None = self.create_text_image(font_props, text)
         if tk_image is None:
             return
+        x1, y1, x2, y2 = self.canvas_state.canvas.coords(self.canvas_state.bounding_box)
         text_id: int = self.canvas_state.canvas.create_image(
-            0,
-            0,
+            x1 + max(0, (x2 - x1 - tk_image.width()) / 2),
+            y1 + max(0, (y2 - y1 - tk_image.height()) / 2),
             image=tk_image,
             anchor="nw",
         )
@@ -186,7 +187,7 @@ class TextOperation:
         if text_id not in self.canvas_state.text_items:
             return
         dy: int = event.y - self.canvas_state.text_items[text_id]["initial_y"]
-        new_size: int = max(8, self.canvas_state.text_items[text_id]["initial_size"] + round(dy / 10))
+        new_size: int = min(500, max(4, self.canvas_state.text_items[text_id]["initial_size"] + round(dy / 10)))
         # Skip expensive re-render if size hasn't actually changed
         if new_size == self.canvas_state.text_items[text_id]["font_props"]["size"]:
             return

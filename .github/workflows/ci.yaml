@@ -66,6 +66,26 @@ jobs:
           path: coverage.xml
           retention-days: 30
 
+  gui:
+    name: "GUI regressions"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions: {}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v4
+      - name: Install poetry
+        run: pipx install poetry==2.3.3
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v5
+        with:
+          python-version: '3.12'
+          cache: 'poetry'
+      - name: Install GUI system libraries
+        run: sudo apt-get update && sudo apt-get install -y python3-tk xvfb xauth imagemagick libmagickwand-dev libcairo2-dev pkg-config
+      - name: Install GUI extras
+        run: poetry install --without build --extras gui
+      - name: Run real Tk rendering and file regressions
+        run: xvfb-run -a poetry run pytest tests/test_gui_*.py -v
+
   lint:
     name: "Lint"
     runs-on: ubuntu-24.04
