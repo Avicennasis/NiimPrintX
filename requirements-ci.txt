@@ -4,7 +4,7 @@
 appdirs==1.4.4
 asttokens==2.4.1
 bleak==0.21.1
-click==8.1.7
+click==8.3.3
 devtools==0.12.2
 executing==2.0.1
 loguru==0.7.2
