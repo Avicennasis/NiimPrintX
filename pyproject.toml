@@ -16,7 +16,7 @@ python = ">=3.12,<3.15"
 click = "^8.3"
 bleak = "^3.0"
 loguru = "^0.7.2"
-pillow = "^12.1.1"
+pillow = ">=12.1.1,<14.0.0"
 platformdirs = "^4.0"
 rich = "^14.0"
 pycairo = {version = "^1.26.0", optional = true}
