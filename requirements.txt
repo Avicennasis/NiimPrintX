@@ -6,7 +6,7 @@
 bleak>=3.0,<4
 click>=8.3,<9
 loguru>=0.7.2,<1
-pillow>=12.1.1,<13
+pillow>=12.1.1,<14
 platformdirs>=4.0,<5
 rich>=14.0,<15
 # Optional GUI dependencies (install manually: pip install pycairo wand sv-ttk)
